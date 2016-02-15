@@ -5,14 +5,12 @@
 
 #define DEBUG
 
+// ----------------------------- MPR121 SECTION --------------------------------
 static const uint8_t TOUCH_CHANNELS = 12;
 static const uint8_t MPR121_I2C_ADDRESS = 0x5A;
 static const uint8_t MPR121_INTERRUPT_PIN = 2;
 static const uint8_t MPR121_TOUCH_THRESHOLD = 2;
 static const uint8_t MPR121_RELEASE_THRESHOLD = 1;
-
-static const uint8_t LED1_PIN = 4;
-static const uint8_t LED2_PIN = 5;
 
 static const uint8_t TOUCH_CHANNEL_MAX_COMBINATIONS = 2;
 static const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
@@ -22,10 +20,20 @@ static const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
 };
 
 static uint8_t currentTouchData[TOUCH_CHANNEL_MAX_COMBINATIONS] = { 0, 0 };
+// -----------------------------------------------------------------------------
 
+// ------------------------- LED SIGNALING SECTION -----------------------------
+static const uint8_t LED1_PIN = 4;
+static const uint8_t LED2_PIN = 5;
+// -----------------------------------------------------------------------------
+
+// ----------------------------- SLEEP SECTION ---------------------------------
 static volatile bool wakeUp = false;
 static const uint32_t INACTIVITY_SLEEP_INTERVAL_MS = 4000;
+// -----------------------------------------------------------------------------
 
+
+// ---------------------------- MPR121 HANDLING --------------------------------
 static uint8_t pushTouchChannel(uint8_t channel) {
   static uint8_t touchDataIndex = 0;
   static uint8_t channelDataCount = 0;
@@ -96,7 +104,9 @@ static void checkMPR121Touch() {
     }
   }
 }
+// -----------------------------------------------------------------------------
 
+// ------------------------- SLEEP HANDLING ------------------------------------
 static void pinChangeExternalInterrupt() {
   wakeUp = true;
 }
@@ -114,17 +124,18 @@ static void checkSleep(uint32_t sleepIntervalMs) {
     Serial.println(F(" -> going to sleep..."));
     #endif
 
-    MPR121.stop();
+    //MPR121.stop();
     LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
     #ifdef DEBUG
     Serial.println(F(" -> waking up ..."));
     #endif
 
-    MPR121.run();
+    //MPR121.run();
     lastSleepCheckTimestamp = millis();
   }
 }
+// -----------------------------------------------------------------------------
 
 void setup() {
   #ifdef DEBUG
@@ -148,6 +159,8 @@ void setup() {
     }
   }
 
+  // external interrupt for wake up
+  //  need to see if MPR121 generates this properly with IRQ PIN
   attachInterrupt(2, pinChangeExternalInterrupt, CHANGE);
 
   MPR121.setInterruptPin(MPR121_INTERRUPT_PIN);
