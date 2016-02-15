@@ -1,0 +1,27 @@
+           100K	  1	            	            	            	            	R1
+          100nF	  3	            	            	            	            	C4, C1, C3
+           100R	  1	            	            	            	            	R2
+            10K	  2	            	            	            	            	R6, R5
+         1N4148	  3	            	            	            	            	D4, D2, D3
+        1uF/16V	  1	            	            	            	            	C5
+           330R	  2	            	            	            	            	R4, R3
+      4.7uF/16V	  1	            	            	            	            	C2
+      470uF/16V	  1	            	            	            	            	C6
+      ATMEGA8-P	  1	            	            	            	            	IC1
+          BAT46	  2	            	            	            	            	D6, D5
+          BC337	  3	            	            	            	            	Q3, Q1, Q2
+IR SENSOR FEMALE	  1	            	            	            	            	K2
+ IR SENSOR MALE	  1	            	            	            	            	K1
+            ISP	  1	            	            	            	            	P2
+       JV-5S-KT	  3	            	            	            	            	RELAY3, RELAY1, RELAY2
+LAMPS: CH COMMON	  1	            	            	            	            	X2
+   LAMPS: CH1-3	  1	            	            	            	            	X1
+  MAINS: 230Vac	  1	            	            	            	            	X3
+POWER/IR ACTIVITY	  1	            	            	            	            	D1
+          RFM70	  1	            	            	            	            	U2
+         Serial	  1	            	            	            	            	P1
+ TEZ2/D230/7.5V	  1	            	            	            	            	TR1
+      TS1086-33	  1	            	            	            	            	U3
+       TSOP1738	  1	            	            	            	            	U1
+         UA7805	  1	            	            	            	            	U4
+           W06M	  1	            	            	            	            	BR1

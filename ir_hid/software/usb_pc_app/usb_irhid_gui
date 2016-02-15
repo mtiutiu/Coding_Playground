@@ -1,0 +1,347 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0110 
+header_name {.h} 
+code_name {.cxx}
+Function {make_window()} {open C
+} {
+  Fl_Window {} {
+    label {USB IR HID} open
+    xywh {324 259 795 260} type Double visible
+  } {
+    Fl_Group {} {
+      label {Virtual Keyboard} open
+      xywh {5 20 785 165} box DOWN_BOX labeltype EMBOSSED_LABEL
+    } {
+      Fl_Button {} {
+        label T
+        tooltip {T key} xywh {235 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Q
+        callback {o->label();}
+        tooltip {Q key} xywh {75 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label R
+        tooltip {R key} xywh {195 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label E
+        tooltip {E key} xywh {155 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label W
+        tooltip {W key} xywh {115 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label P
+        tooltip {P key} xywh {435 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Y
+        tooltip {Y key} xywh {275 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label O
+        tooltip {O key} xywh {395 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label I
+        tooltip {I key} xywh {355 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label U
+        tooltip {U key} xywh {315 77 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Tab
+        tooltip {Tab key} xywh {10 77 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F5
+        tooltip {F5 key} xywh {220 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F1
+        tooltip {F1 key} xywh {60 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F4
+        tooltip {F4 key} xywh {180 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F3
+        tooltip {F3 key} xywh {140 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F2
+        tooltip {F2 key} xywh {100 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F10
+        tooltip {F10 key} xywh {420 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F6
+        tooltip {F6 key} xywh {260 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F9
+        tooltip {F9 key} xywh {380 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F8
+        tooltip {F8 key} xywh {340 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F7
+        tooltip {F7 key} xywh {300 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Esc
+        tooltip {Esc key} xywh {10 27 50 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 5
+        tooltip {5 key} xywh {170 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 1
+        tooltip {1 key} xywh {10 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 4
+        tooltip {4 key} xywh {130 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 3
+        tooltip {3 key} xywh {90 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 2
+        tooltip {2 key} xywh {50 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 0
+        tooltip {0 key} xywh {370 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 6
+        tooltip {6 key} xywh {210 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 9
+        tooltip {9 key} xywh {330 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 8
+        tooltip {8 key} xywh {290 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label 7
+        tooltip {7 key} xywh {250 52 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F11
+        tooltip {F11 key} xywh {460 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F12
+        tooltip {F12 key} xywh {500 27 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label G
+        tooltip {G key} xywh {265 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label A
+        tooltip {A key} xywh {105 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label F
+        tooltip {F key} xywh {225 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label D
+        tooltip {D key} xywh {185 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label S
+        tooltip {S key} xywh {145 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Enter
+        tooltip {Enter key} xywh {465 102 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label H
+        tooltip {H key} xywh {305 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label L
+        tooltip {L key} xywh {425 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label K
+        tooltip {K key} xywh {385 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label J
+        tooltip {J key} xywh {345 102 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Backspace
+        tooltip {Backspace key} xywh {410 52 130 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label B
+        tooltip {B key} xywh {235 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Z
+        tooltip {Z key} xywh {75 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label V
+        tooltip {V key} xywh {195 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label C
+        tooltip {C key} xywh {155 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label X
+        tooltip {X key} xywh {115 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label N
+        tooltip {N key} xywh {275 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label {>}
+        tooltip {> key} xywh {395 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label {<}
+        tooltip {< key} xywh {355 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label M
+        tooltip {M key} xywh {315 127 40 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Shift
+        tooltip {Shift key} xywh {10 127 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Ctrl
+        tooltip {Ctrl key} xywh {10 152 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Ctrl
+        tooltip {Ctrl key} xywh {475 152 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Space
+        tooltip {Space key} xywh {140 152 270 25} labeltype ENGRAVED_LABEL align 16
+      }
+      Fl_Button {} {
+        label Shift
+        tooltip {Shift key} xywh {435 127 105 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Tab
+        tooltip {Tab key} xywh {475 77 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Alt
+        tooltip {Alt key} xywh {75 152 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Alt
+        tooltip {Alt key} xywh {410 152 65 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Up
+        tooltip {Up key} xywh {650 132 50 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Down
+        tooltip {Down key} xywh {650 157 50 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Left
+        tooltip {Left key} xywh {600 157 50 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Right
+        tooltip {Right key} xywh {700 157 50 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Home
+        tooltip {Home key} xywh {635 57 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label End
+        tooltip {End key} xywh {635 82 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Delete
+        tooltip {Delete key} xywh {560 82 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label {Pg Down}
+        tooltip {Page Down key} xywh {710 82 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label Insert
+        tooltip {Insert key} xywh {560 57 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Button {} {
+        label {Pg Up}
+        tooltip {Page Up key} xywh {710 57 75 25} labeltype ENGRAVED_LABEL
+      }
+      Fl_Light_Button {} {
+        label {Caps Lock}
+        callback {o->label();} selected
+        tooltip {Caps Lock key} xywh {10 102 95 25} selection_color 63 labeltype ENGRAVED_LABEL
+      }
+    }
+    Fl_Button {} {
+      label {Start IR Learn}
+      callback {o->label();}
+      tooltip {Start IR Learn key} xywh {545 200 110 25}
+    }
+    Fl_Button {} {
+      label {Stop IR Learn}
+      callback {o->label();}
+      tooltip {Stop IR Learn key} xywh {665 200 110 25}
+    }
+    Fl_Button {} {
+      label Quit
+      callback {Fl_Double_Window* main_win = (Fl_Double_Window*)(o->parent());
+main_win->hide();}
+      tooltip {Quit key} xywh {15 225 110 25}
+    }
+    Fl_Button {} {
+      label {About...}
+      callback {o->label();}
+      tooltip {About key} xywh {15 195 110 25} hotspot
+    }
+    Fl_Box {} {
+      image {ir.png} xywh {153 201 50 49}
+    }
+    Fl_Box {} {
+      image {usb.png} xywh {212 201 50 49}
+    }
+    Fl_Text_Display {} {
+      label {IR HID USB device status}
+      tooltip {USB IR HID status} xywh {288 206 225 44}
+    }
+    Fl_Button {} {
+      label {Scan USB IR HID}
+      callback {o->label();}
+      tooltip {Scan USB key} xywh {600 230 125 25}
+    }
+  }
+} 

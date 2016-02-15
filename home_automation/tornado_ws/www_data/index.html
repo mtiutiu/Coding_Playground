@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <title>title</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="/lib/jquery-1.11.1.min.js" type="text/javascript"></script>
+        <script src="/lib/jquery.mobile-1.4.3.min.js" type="text/javascript"></script>
+        <script src="/lib/sprintf.min.js" type="text/javascript"></script>
+        <script src="/lib/reconnecting-websocket.min.js" type="text/javascript"></script>
+        <script src="/lib/jquery.countdown360.min.js" type="text/javascript"></script>
+        <script src="/lib/jquery.cftoaster.min.js" type="text/javascript"></script>
+        <script src="/lib/jqm-datebox.core.min.js" type="text/javascript"></script>
+        <script src="/lib/jqm-datebox.mode.datebox.min.js" type="text/javascript"></script>
+        <script src="/lib/jqm-datebox.mode.durationbox.min.js" type="text/javascript"></script>
+        <!-- script src="/lib/ejs_production.min.js" type="text/javascript"></script --> 
+        <link href="/css/jquery.cftoaster.css" type="text/css" rel="stylesheet"/>
+        <link href="/css/jqm-icon-pack-fa.css" type="text/css" rel="stylesheet" />
+        <link href="/css/jquery.mobile.structure-1.4.3.min.css" type="text/css" rel="stylesheet" />
+        <link href="/css/jquery.mobile.theme-1.4.3.min.css" type="text/css" rel="stylesheet" />
+        <link href="/css/jqm-datebox.min.css" type="text/css" rel="stylesheet" />
+
+        <script type="text/javascript">
+            var PeerEvent = [
+                "PEER_NO_EVENT",
+                "PEER_LIST_EVENT",
+                "PEER_DEAD_EVENT",
+                "PEER_ALIVE_EVENT",
+                "LIGHT_PEER_CHANNELS_COUNT_EVENT",
+                "PEER_STATE_EVENT",
+                "PEER_DATE_EVENT",
+                "PEER_UPTIME_EVENT",
+                "PEER_NAME_EVENT",
+                "PEER_FREE_RAM_EVENT",
+                "PEER_IR_LEARN_START_EVENT",
+                "PEER_IR_LEARN_DONE_EVENT",
+                "PEER_TTL_LOW_EVENT",
+                "PEER_ALARM_EVENT",
+                "PEER_BATTERY_LEVEL_EVENT"
+            ];
+
+            var PeerEventSource = [
+              "PEER_NO_EVENT_SOURCE",
+              "SYSTEM EVENT",
+              "USER EVENT",
+              "IR EVENT",
+              "SCHEDULER EVENT"
+            ];
+
+            var PeerStatus = {
+              PEER_STATUS_OK: 0,
+              PEER_INVALID_CMD_CODE: 1,
+              PEER_INVALID_CHANNEL_CODE: 2,
+              PEER_IR_KEY_ALREADY_ASSIGNED_CODE: 3,
+              PEER_NO_IR_KEYPRESS_CODE: 4,
+              PEER_NAME_ALREADY_ASSIGNED_CODE: 5,
+              PEER_NO_REPLY_CODE: 6,
+              PEER_NOT_REGISTERED_CODE: 7,
+              PEER_NO_IR_SUPPORT_CODE: 8,
+              PEER_LIST_MAX_CAPACITY_CODE: 9
+            };
+
+            var PeerStatusCallback = [
+                peerStatusOKCallback,
+                peerInvalidCmdCallback,
+                peerInvalidChannelCallback,
+                peerIrKeyAlreadyAssignedCallback,
+                peerNoIrKeyPressedCallback,
+                peerNameAlreadyAssignedCallback,
+                peerNoReplyCallback,
+                peerNotRegisteredCallback,
+                peerNoIRSupportCallback,
+                peerListMaxCapacityCallback
+            ];
+
+            var PeerType = {
+              LIGHT_TYPE: 0,
+              IR_LIGHT_TYPE: 1,
+              SERIAL_TYPE: 2
+            };
+
+            var PeerTypeStringIdentification = [
+                "LIGHT",
+                "IR_LIGHT"
+            ];
+
+            // this is used to select the navigation page and its dynamic content sections for light peers listing page
+            var PeerListPageCallback = [
+                // we use the same list for both light types(with or without IR support)
+                { 
+                    page_title: "Lights",
+                    page_id: "#lightPeersPage",
+                    list: "#lightPeersList",
+                    page_list_update_handler: updateLightPeersList,
+                    page_handler: goToLightPeersListPage 
+                }, 
+                // we use the same list for both light types(with or without IR support)
+                { 
+                    page_title: "Lights",
+                    page_id: "#lightPeersPage",
+                    list: "#lightPeersList",
+                    page_list_update_handler: updateLightPeersList,
+                    page_handler: goToLightPeersListPage
+                }   
+            ];
+
+            // this is used to select the navigation page and its dynamic content sections for a specific light peer
+            var PeerTypePageControlsListCallback = [
+                // we use the same list for both light types(with or without IR support)
+                { 
+                    page_id: "#lightPeerPage",
+                    list: "#lightPeerChannelsList",
+                    page_list_update_handler: updateLightPeerStateList,
+                    page_handler: goToLightPeerPage
+                },
+                // we use the same list for both light types(with or without IR support)  
+                { 
+                    page_id: "#lightPeerPage",
+                    list: "#lightPeerChannelsList",
+                    page_list_update_handler: updateLightPeerStateList,
+                    page_handler: goToLightPeerPage
+                }   
+            ];
+
+            var PeerTypeSettingsPage = [
+                { 
+                    page_id: "#lightPeerSettingsPage",
+                    list: "#lightPeerChannelsIRLearnList",
+                    scheduler_list: "#scheduledLightChannelList"
+                },
+                { 
+                    page_id: "#lightPeerSettingsPage",
+                    list: "#lightPeerChannelsIRLearnList",
+                    scheduler_list: "#scheduledLightChannelList"
+                },
+                { 
+                    page_id: "#systemSettingsPage",
+                    list: ""
+                }
+            ];
+
+            var PeerTypeStatisticsSection = [
+                { 
+                    free_sram_info: "#lightPeerFreeSRAM",
+                    time_info: "#lightPeerDateTime",
+                    uptime_info: "#lightPeerUptime",
+                    timeinfo_update_handler: updateLightPeerTimeInfo
+                },
+                {
+                    free_sram_info: "#lightPeerFreeSRAM",
+                    time_info: "#lightPeerDateTime",
+                    uptime_info: "#lightPeerUptime",
+                    timeinfo_update_handler: updateLightPeerTimeInfo
+                },
+                {
+                    free_sram_info: "#systemFreeSRAM",
+                    time_info: "#systemDateTime",
+                    uptime_info: "#systemUptime",
+                    timeinfo_update_handler: updateLightPeerTimeInfo
+                }
+            ];
+
+            var PeerTypeNotificationMsgFormat = [
+                { 
+                    state_event: "PEER: %s - STATE CHANGED, SOURCE: %s.",
+                    name_event: ""
+                },
+                { 
+                    state_event:"PEER: %s - STATE CHANGED, SOURCE: %s.",
+                    name_event: ""
+                }
+            ];
+
+            var SliderState = [
+                "off",
+                "on"
+            ];
+
+            var ws;
+            var serverIp = "ws://" + location.hostname + ":" + location.port + "/ws";
+
+            function getRandomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            // because the fucking sprintf doesn't want to padd numbers when it is required
+            function pad(data) {
+                return data < 10 ? '0' + data : data;
+            }
+
+            function getUptime(uptime) {
+                var days, hours, minutes, seconds, x;
+                x = uptime / 1000;
+                seconds = Math.floor(x % 60);
+                x /= 60;
+                minutes = Math.floor(x % 60);
+                x /= 60;
+                hours = Math.floor(x % 24);
+                x /= 24;
+                days = Math.floor(x);
+
+                return sprintf (
+                    "%d days %s:%s",
+                    days,
+                    pad(hours),
+                    pad(minutes)
+                );
+            }
+
+            function getFormattedDate(date) {
+                return sprintf (
+                    "%s/%s/%d - %s:%s",
+                    pad(date.getUTCMonth() + 1),
+                    pad(date.getUTCDate()),
+                    date.getUTCFullYear(),
+                    pad(date.getUTCHours()),
+                    pad(date.getUTCMinutes())
+                );
+            }
+
+            // this gets called automagically when we have data from websocket with OK status for further processing
+            function peerStatusOKCallback(event, data) {
+                // we have to make sure that the event length is not out of index range for the PeerEvent array
+                if(event < PeerEvent.length) {
+                    $(document).trigger({type:PeerEvent[event], message:data, time:new Date()});
+                }
+            }
+
+            // called on invalid command passed to master rf node(backend)
+            function peerInvalidCmdCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER INVALID COMMAND!");
+            }
+
+            // called on invalid channel passed to a light node(backend)
+            function peerInvalidChannelCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER INVALID CHANNEL!");
+            }
+
+            // called on invalid channel state set command passed to a light node(backend)
+            function peerInvalidChannelStateCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER INVALID CHANNEL STATE!");
+            }
+
+            // called when trying to learn a light node with a ir key that was already assigned to it(backend)
+            function peerIrKeyAlreadyAssignedCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER IR KEY ALREADY ASSIGNED!");
+            }
+
+            // called when no ir key was pressed while light node in learning mode(backend)
+            function peerNoIrKeyPressedCallback(event, data) {
+                displayPopupDialog("INFO", "PEER NO IR KEYPRESS DETECTED!");
+            }
+
+            // called when user tries to assign the same name to a peer
+            function peerNameAlreadyAssignedCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER NAME ALREADY ASSIGNED!");
+            }
+
+            // called when no response was received from a peer(response timeout) --> NOT IMPLEMENTED YET IN BACKEND
+            function peerNoReplyCallback(event, data) {
+                displayPopupDialog("INFO", "PEER NO REPLY!");
+            }
+
+            // called when issuing a command to a peer that was not registered(discovered) on master rf node(backend)
+            function peerNotRegisteredCallback(event, data) {
+                displayPopupDialog("ERROR", "PEER NOT REGISTERED!");
+            }
+
+            // called when there are no ir peers registered on the backend
+            function peerNoIRSupportCallback(event, data) {
+                displayPopupDialog("ERROR", "NO IR PEER SUPPORT DETECTED!");
+            }
+
+            // called when peer list reached max capacity on master rf node(backend)
+            function peerListMaxCapacityCallback(event, data) {
+                displayPopupDialog("INFO", "PEER MAX CAPACITY REACHED!");
+            }
+
+            function updateLightPeersList(list, peerName) {
+                //console.log("PEER NAME: " + peerList[i].name + " PEER TYPE: " + peerList[i].type);
+                list.append("<li data-icon='lightbulb-o'><a href='javascript: goToLightPeerPage(\"" + peerName + "\")'>" + peerName + "</a></li>").listview().listview("refresh");
+            }
+
+            function updateLightPeerStateList(peerName, peerStateList, stateData) {
+                // in this case the data argument contains the max channels for a light node
+                for(var i = 0; i < stateData.length; i++) {
+                    // making sure that we're on the right page before updating its content
+                    if($(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html() == peerName) {
+                        // if no switches are present then add them first
+                        if(!$("#lightChannel" + peerName + i).length) {
+                            peerStateList.append('<div class="ui-block-a"><center><h4>Channel ' + i + '</h4></center></div><div class="ui-block-b"><select data-mini="true" data-role="slider" id="lightChannel' + peerName + i + '"><option value="off">Off</option><option value="on">On</option></select></div>');
+                            $("#lightChannel" + peerName + i).slider().val(SliderState[stateData[i]]).slider("refresh");
+                            $("#lightChannel" + peerName + i).off().on("change", function(event) {
+                                // target id can be(e.g.): lightChanneldormitor0, lightChanneldormitor1...we get the last character from string
+                                var channelIndex = event.target.id.slice(-1);
+                                var currentPeerName = $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html();
+                                wsMakeRequest("qpeer " + currentPeerName + " chtoggle " + channelIndex);
+                            });
+                        // otherwise just update them
+                        } else {
+                            $("#lightChannel" + peerName + i).slider().val(SliderState[stateData[i]]).slider("refresh");
+                        }
+                    }
+                }
+            }
+
+            function updateLightPeerTimeInfo(peerType, time, uptime) {
+                $(PeerTypeStatisticsSection[peerType].uptime_info).html(uptime);
+                $(PeerTypeStatisticsSection[peerType].time_info).html(time);
+                $(PeerTypeStatisticsSection[peerType].uptime_info).html(uptime);
+                $(PeerTypeStatisticsSection[peerType].time_info).html(time);
+            }
+
+            function removePopupDialog() {
+                // if popup is open then remove it and also any event handlers associated with it
+               if($("#popupInfo").hasClass("ui-popup-active")) {
+                    $("#popupInfo").off().popup("close");
+                } 
+            }
+
+            function displayPopupDialog(title, message, progress) {
+                removePopupDialog();
+
+                $("#popupInfo").children(":jqmData(role=header)").find("h4").html(title);
+                
+                $("#infoMsg").empty();
+
+                if(progress) {
+                    var progressWidget = $('<center><div id="countdown"></div></center>');
+                    progressWidget.countdown360({
+                        radius      : 30,
+                        seconds     : 5,
+                        fontColor   : '#FFFFFF',
+                        autostart   : false,
+                        onComplete  : function () { }
+                    }).start()
+                    $("#infoMsg").append(progressWidget);
+                    $("#okBtn").hide();
+                } else {
+                    $("#okBtn").show();
+                }
+
+                $("#infoMsg").append("<p style='font-size:12px;line-height:1.3;font-family:Arial, Helvetica, sans-serif; text-align:center;'>" + message + "</p>");
+
+                $("#popupInfo").popup("open");
+
+                // we return the popup jquery object in order to attach an event handler when we click ok button and respond to that
+                // we need to remove also the previous attached event handlers in order to not create funny things around because this popup dialog is used in many places
+                return $("#popupInfo").off();
+            }
+
+            function wsMakeRequest(request) {
+                try {
+                    ws.send(request + "\r\n");
+                } catch(exception) {
+                    displayPopupDialog("ERROR", "Websocket error: " + exception);
+                }
+            }
+
+            function goToHomePage(name) {
+                $("#HAStartPage").data("title", name);
+                $("#HAStartPage").children(":jqmData(role=header)").find("h1").html(name);
+
+                $.mobile.pageContainer.pagecontainer(
+                    "change",
+                    "#HAStartPage",
+                    {
+                        transition: "slide",
+                        reverse: false
+                    }
+                );
+            }
+
+            function goToSystemSettingsPage(name) {
+                $(PeerTypeSettingsPage[PeerType.SERIAL_TYPE].page_id).data("title", name);
+                $(PeerTypeSettingsPage[PeerType.SERIAL_TYPE].page_id).children(":jqmData(role=header)").find("h1").html(name);
+
+                // start collapsed by default
+                $(PeerTypeSettingsPage[PeerType.SERIAL_TYPE].page_id).find("div").each(function() {
+                    if($(this).attr("data-role") == "collapsible") {
+                        $(this).collapsible().collapsible("option", "collapsed", true);
+                    }
+                });
+
+                $("#systemStatisticsSection").off().on("collapsibleexpand", function(event, ui) {
+                    wsMakeRequest("freemem");
+                    setTimeout(function(){wsMakeRequest("date")}, 100);
+                    setTimeout(function(){wsMakeRequest("uptime")}, 200);
+                });
+
+                $.mobile.pageContainer.pagecontainer(
+                    "change",
+                    PeerTypeSettingsPage[PeerType.SERIAL_TYPE].page_id,
+                    {
+                        transition: "slide",
+                        allowSamePageTransition: false,
+                        reverse: false
+                    }
+                );
+            }
+
+            function goToLightPeersListPage(name) {
+                $(PeerListPageCallback[PeerType.LIGHT_TYPE].page_id).data("title", name);
+                $(PeerListPageCallback[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html(name);
+
+                // clear current light peers listing from page
+                $(PeerListPageCallback[PeerType.LIGHT_TYPE].list).empty();
+
+                // display an empty message first before populating with data
+                if(!$(PeerListPageCallback[PeerType.LIGHT_TYPE].list).children().length) {
+                    $(PeerListPageCallback[PeerType.LIGHT_TYPE].list).html("<center><h4>No peers available!</h4></center>");
+                }
+
+                // populate page peers list section with relevant data
+                wsMakeRequest("lspeers");
+
+                // need to find out how to synchronise better with the wsMakeRequest async call
+                $.mobile.pageContainer.pagecontainer(
+                    "change",
+                    PeerListPageCallback[PeerType.LIGHT_TYPE].page_id,
+                    {
+                        transition: "slide",
+                        reverse: false
+                    }
+                );
+            }
+
+            // we share the same page for each light peer and update its contents accordingly
+            function goToLightPeerPage(name) {
+                $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].page_id).data("title", name);
+                $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html(name);
+
+                // clear current light peer channels state listing from page
+                $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].list).empty();
+
+                // populate page controls section with relevant data
+                wsMakeRequest("qpeer " + name + " lsch");
+
+                // need to find out how to synchronise better with the wsMakeRequest async call
+                $.mobile.pageContainer.pagecontainer(
+                    "change",
+                    PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].page_id,
+                    {
+                        transition: "slide",
+                        allowSamePageTransition: true, // very important when using same page for rendering dynamic content
+                        reverse: false
+                    }
+                );
+            }
+
+            function goToLightPeerSettingsPage(name) {
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).data("title", name);
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html(name);
+
+                // create and populate ir learn section
+                var chIdElements = "";
+                var chBtnElements = "";
+                $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].list).find("h4").each(function() {
+                    chIdElements += "<center><h4 style='margin-top: 18px; margin-bottom: 24px;'>" + $(this).text() + "</h4></center>";
+                    chBtnElements += '<a data-mini="true" data-role="button" href="javascript: wsMakeRequest(\'irlpeer \' + $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(\':jqmData(role=header)\').find(\'h1\').html() + \' ' + $(this).text().slice(-1) + ' 5000\');" id="IRLearnBtnChannel' + name + $(this).text().slice(-1) + '">IR Learn</a>';
+                });
+
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=content)").find(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].list).empty().append
+                (
+                    sprintf
+                    (
+                        '<div class="ui-block-a">%s</div><div class="ui-block-b">%s</div>',
+                        chIdElements,
+                        chBtnElements
+                    )
+                ).trigger("create");
+
+                // create and populate name settings section
+                var lightPeerNameSettingsSection = $(
+                    '<div class="ui-block-a">'+
+                        '<div data-role="fieldcontain">'+
+                            '<input type="text" id="' + name + 'NameInputTextField" value="' + name + '" maxlength="15" />'+
+                        '</div>'+
+                    '</div>'+
+                    '<div class="ui-block-b">'+
+                        '<a data-mini="true" data-role="button" id="' + name + 'changeName">Change</a>'+
+                    '</div>'
+                );
+
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=content)").find("#lightPeerNameSettings").empty().append(lightPeerNameSettingsSection).trigger("create");
+
+                $("#" + name + "changeName").off().on("click", function(event, ui) {
+                    var previousName = $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html();
+                    var newName = $("#" + name + "NameInputTextField").val();
+
+                    // check if other peer from the peers list has the same name(this only works ok after peers list has loaded completely)
+                    var isOtherPeerRegisteredWithSameName = false;
+                    $(PeerListPageCallback[PeerType.LIGHT_TYPE].list).children("li").each(function() {
+                        if($(this).text() == newName) {
+                            displayPopupDialog("ERROR", "PEER NAME ALREADY ASSIGNED!");
+                            isOtherPeerRegisteredWithSameName = true;
+                        }
+                    });
+
+                    if(!isOtherPeerRegisteredWithSameName) {
+                        wsMakeRequest("qpeer " + previousName + " setname " + newName);
+                    }
+                });
+
+                // populate scheduler channels settings list
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].scheduler_list).empty();
+                $(PeerTypePageControlsListCallback[PeerType.LIGHT_TYPE].list).find("h4").each(function() {
+                    var channelIndex = $(this).text().slice(-1);
+                    $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].scheduler_list).append(
+                        "<option value='" + channelIndex + "'>" + channelIndex + "</option>"
+                    );
+                });
+
+                $("#dateTimePicker").bind('datebox', function (e, passed) { 
+                  if (passed.method === 'set') {
+                    wsMakeRequest("qpeer " + $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html() + " date");
+                    //console.log('Time is: ' + passed.date);
+                  }
+                });
+
+                // start collapsed by default
+                $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).find("div").each(function() {
+                    if($(this).attr("data-role") == "collapsible") {
+                        $(this).collapsible().collapsible("option", "collapsed", true);
+                    }
+                });
+
+                $("#statisticsSection").off().on("collapsibleexpand", function(event, ui) {
+                    wsMakeRequest("qpeer " + $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html() + " freemem");
+                    setTimeout(
+                        function() {
+                            wsMakeRequest("qpeer " + $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html() + " date")
+                        },
+                        getRandomInt(getRandomInt(50, 500),2500)
+                    );
+                    setTimeout(
+                        function() {
+                            wsMakeRequest("qpeer " + $(PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id).children(":jqmData(role=header)").find("h1").html() + " uptime")
+                        },
+                        getRandomInt(getRandomInt(50, 500),2500)
+                    );
+                });
+
+                $.mobile.pageContainer.pagecontainer(
+                    "change",
+                    PeerTypeSettingsPage[PeerType.LIGHT_TYPE].page_id,
+                    {
+                        transition: "slide",
+                        allowSamePageTransition: true, // very important when using same page for rendering dynamic content
+                        reverse: false
+                    }
+                );
+            }
+
+            // event triggered when peer list command is issued
+            $(document).on("PEER_LIST_EVENT", function(event) {
+                var peerListData = event.message.data;
+  
+                // clear current peers listing based on peer type
+                for(var i = 0; i < peerListData.length; i++) {
+                    if(peerListData[i].type < Object.getOwnPropertyNames(PeerType).length) {
+                        // we need to know which list to clear so we use a lookup table mechanism
+                        $(PeerListPageCallback[peerListData[i].type].list).empty();
+                    }
+                }
+
+                // create the corresponding list of peers based on received data
+                for(var i = 0; i < peerListData.length; i++) {
+                    // check if we're in range first
+                    if(peerListData[i].type < Object.getOwnPropertyNames(PeerType).length) {
+                        // we need to know which list to populate so we use a lookup table mechanism
+                        PeerListPageCallback[peerListData[i].type].page_list_update_handler($(PeerListPageCallback[peerListData[i].type].list), peerListData[i].name);
+                        if($.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() == peerListData[i].name) {
+                            // because peers send also their current date/uptime info at a regular interval we can update the page statistics here
+                            PeerTypeStatisticsSection[peerListData[i].type].timeinfo_update_handler(
+                                peerListData[i].type,
+                                (peerListData[i].time >= 0) ? getFormattedDate(new Date(peerListData[i].time * 1000)) : "Pending...",
+                                (peerListData[i].uptime >= 0) ? getUptime(peerListData[i].uptime) : "Pending..."
+                            );
+                        }
+                    }
+                }
+            });
+
+            // event triggered when peer alive notifications arrive
+            $(document).on("PEER_ALIVE_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+
+                $.mobile.pageContainer.pagecontainer("getActivePage").cftoaster
+                (
+                    { content: sprintf
+                        (
+                            "PEER: %s OF TYPE: %s IS NOW ONLINE.",
+                            peerName,
+                            PeerTypeStringIdentification[peerType]
+                        )
+                    }
+                );
+
+                // update peer icon back when it comes online
+                $(PeerListPageCallback[peerType].list).children("li").each(function() {
+                    if($(this).text() == peerName) {
+                      $(this).find("a").buttonMarkup({ icon: "lightbulb-o" });
+                    }
+                });
+            });
+
+            // event triggered when peer dead notifications arrive
+            $(document).on("PEER_DEAD_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+
+                var activePage = $.mobile.pageContainer.pagecontainer("getActivePage");
+                // if we're not on peer's page when it is offline then show a popup message
+                if(activePage.children(":jqmData(role=header)").find("h1").html() == peerName) {
+                    displayPopupDialog("INFO", "PEER: " + peerName + " IS NOW OFFLINE.").on("popupafterclose", function(event, ui) {
+                        PeerListPageCallback[peerType].page_handler(PeerListPageCallback[peerType].page_title);
+                    });
+                // otherwise send a toaster notification
+                } else {
+                    activePage.cftoaster
+                    (
+                        { content: sprintf
+                            (
+                                "PEER: %s OF TYPE: %s IS NOW OFFLINE.",
+                                peerName,
+                                PeerTypeStringIdentification[peerType]
+                            )
+                        }
+                    );
+                }
+
+                // this is for the last one standing to cleanup after itself
+                $(PeerListPageCallback[peerType].list).children("li").each(function() {
+                    if($(this).text() == peerName) {
+                      $(this).empty().remove();
+                    }
+                });
+
+                if(!$(PeerListPageCallback[peerType].list).children().length) {
+                    $(PeerListPageCallback[peerType].list).html("<center><h4>No peers available!</h4></center>");
+                }
+
+                if($.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() == peerName) {
+                    $(PeerTypePageControlsListCallback[peerType].list).children().each(function() {
+                        $(this).addClass("ui-disabled");
+                    });
+
+                    $(PeerTypeSettingsPage[peerType].list).children().each(function() {
+                        $(this).addClass("ui-disabled");
+                    });
+
+                    $("#lightPeerNameSettings").children().addClass("ui-disabled");
+                    //$("#schedulerControl").addClass("ui-disabled");
+                }
+            });
+
+            // event triggered when peer ttl low notifications arrive
+            $(document).on("PEER_TTL_LOW_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+
+                removePopupDialog();
+
+                $.mobile.pageContainer.pagecontainer("getActivePage").cftoaster
+                (
+                    { content: sprintf
+                        (
+                            "PEER: %s OF TYPE: %s SEEMS TO BE DEAD.",
+                            peerName,
+                            PeerTypeStringIdentification[peerType]
+                        )
+                    }
+                );
+
+                // display a warning sign for those peers in the list that are assumed to be dead
+                $(PeerListPageCallback[peerType].list).children("li").each(function() {
+                    if($(this).text() == peerName) {
+                      $(this).find("a").buttonMarkup({ icon: "exclamation-triangle" });
+                    }
+                });
+            });
+
+            // event triggered when peer state notifications arrive
+            $(document).on("PEER_STATE_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var stateData = event.message.data;
+                var eventSourceId = event.message.source;
+
+                $(PeerListPageCallback[peerType].list).children("li").each(function() {
+                    if($(this).text() == peerName) {
+                      $(this).find("a").buttonMarkup({ icon: "lightbulb-o" });
+                    }
+                });
+
+                // display notification message of which peer state has changed by external events(like ir remote key press)
+                if(!$.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=content)").find($(PeerTypePageControlsListCallback[peerType].list)).length || $.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() != peerName) {
+                    $.mobile.pageContainer.pagecontainer("getActivePage").cftoaster
+                    (
+                        { content: sprintf
+                            (
+                                PeerTypeNotificationMsgFormat[peerType].state_event,
+                                peerName,
+                                PeerEventSource[eventSourceId]
+                            )
+                        }
+                    );
+                }
+
+                // check if we're in range first
+                if(peerType < Object.getOwnPropertyNames(PeerType).length) {
+                    // we need to know which state list to populate so we use a lookup table mechanism
+                    PeerTypePageControlsListCallback[peerType].page_list_update_handler(peerName, $(PeerTypePageControlsListCallback[peerType].list), stateData);
+                }
+            });
+
+
+            // event triggered when peer name change notifications arrive
+            $(document).on("PEER_NAME_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var nameData = event.message.data;
+
+                $(PeerTypePageControlsListCallback[peerType].page_id).data("title", nameData);
+                $(PeerTypePageControlsListCallback[peerType].page_id).children(":jqmData(role=header)").find("h1").html(nameData);
+
+                $(PeerTypeSettingsPage[peerType].page_id).data("title", nameData);
+                $(PeerTypeSettingsPage[peerType].page_id).children(":jqmData(role=header)").find("h1").html(nameData);
+
+                displayPopupDialog("INFO", "PEER NAME SUCCESFULLY CHANGED TO: " + peerName);
+            });
+
+            // event triggered when peer datetime notifications arrive
+            $(document).on("PEER_DATE_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var peerUnixTime = event.message.time;
+                var dateTimeData = event.message.data;
+
+                if($.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() == peerName) {
+                    //$('[id^="peerDateTime"]').html(getFormattedDate(new Date(peerUnixTime*1000)));
+                    $("#dateTimePicker").datebox().datebox('setTheDate', new Date(peerUnixTime*1000));
+                    PeerTypeStatisticsSection[peerType].timeinfo_update_handler(
+                        peerType,
+                        (dateTimeData >= 0) ? getFormattedDate(new Date(dateTimeData * 1000)) : "Pending...",
+                        "Pending..."
+                    );
+                }
+            });
+
+            // event triggered when peer datetime notifications arrive
+            $(document).on("PEER_UPTIME_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var peerUnixTime = event.message.time;
+                var uptimeData = event.message.data;
+                
+                if($.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() == peerName) {
+                    PeerTypeStatisticsSection[peerType].timeinfo_update_handler(
+                        peerType,
+                        (peerUnixTime >= 0) ? getFormattedDate(new Date(peerUnixTime * 1000)) : "Pending...",
+                        (uptimeData >= 0) ? getUptime(uptimeData) : "Pending..."
+                    );
+                }
+            });
+
+            // event triggered when peer ir learn process has been initiated
+            $(document).on("PEER_IR_LEARN_START_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var peerIrChannel = event.message.data.channel;
+                var peerIrLearnTimeout = event.message.data.timeout;
+
+                displayPopupDialog
+                (
+                    "INFO",
+                    sprintf
+                    (
+                        "IR LEARN STARTED FOR PEER: %s ON CHANNEL: %d",
+                        peerName,
+                        peerIrChannel
+                    ),
+                    true
+                );
+            });
+
+            // event triggered when peer ir learn process finished successfull
+            $(document).on("PEER_IR_LEARN_DONE_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var peerIrChannel = event.message.data.channel;
+                var peerIrKeyCode = event.message.data.key;
+
+                displayPopupDialog
+                (
+                    "INFO",
+                    sprintf
+                    (
+                        "PEER: %s LEARNED IR KEY: %X ON CHANNEL: %d",
+                        peerName,
+                        peerIrKeyCode,
+                        peerIrChannel
+                    )
+                );
+            });
+
+            // event triggered when peer free ram notifications arrive
+            $(document).on("PEER_FREE_RAM_EVENT", function(event) {
+                var peerName = event.message.node;
+                var peerType = event.message.type;
+                var peerUnixTime = event.message.time;
+                var freeRamData = event.message.data;
+
+                if($.mobile.pageContainer.pagecontainer("getActivePage").children(":jqmData(role=header)").find("h1").html() == peerName) {
+                    $(PeerTypeStatisticsSection[peerType].free_sram_info).html(
+                        sprintf
+                        (
+                            "%dB Free - %d%% Used",
+                            freeRamData,
+                            Math.round(((2048 - freeRamData)/2048)*100)
+                        )
+                    );
+                }
+            });
+
+            // this has to be executed first in order to go to home page when the user presses the browser refresh buttton
+            window.onload = function () {
+                var _hash = location.hash;
+
+                if (_hash != '' && _hash != "#HAStartPage") {
+                    var _url = location.href.replace(_hash, "");
+                    window.location.href = _url;
+                }
+            };
+
+            $(document).on('pageinit', '#HAStartPage', function () {
+                function initUIInfoPopup() {
+                    $("#popupInfo").popup();
+                    $("#popupInfo").popup("close");
+                    $("#popupInfo").popup({theme: "b" });
+                    $("#popupInfo").popup({overlayTheme: "b" });
+                    $("#popupInfo").popup({transition: "none" });
+                }
+                
+                function serverOnlineUpdateUIControls() {
+                    try {
+                        $('[id^="status_not_connected"').hide();
+                        $('[id^="status_connected"]').show();
+                        $("body").removeClass('ui-disabled');
+                    } catch(exception) {
+                    } 
+                }
+                
+                function serverOfflineUpdateUIControls() {
+                    try {
+                        $('[id^="status_not_connected"').show();
+                        $('[id^="status_connected"]').hide();
+                        $("body").addClass('ui-disabled');
+                    } catch(exception) {
+                    }
+                }
+
+                function initWs(wsIp) {
+                    if (! "WebSocket" in window) {
+                        displayPopupDialog("ERROR", "Websockets not supported!");
+                        return;
+                    }
+                    
+                    try {
+                        // very important!!! we have to close  the socket before opening it again
+                        if(ws) {
+                            ws.close();
+                            //ws = null;
+                        }
+                        
+                        ws = new ReconnectingWebSocket(wsIp);
+                        
+                        ws.onmessage = function(evt) {
+                            var jsonResponse = $.parseJSON(evt.data);
+                            if(jsonResponse.status < PeerStatusCallback.length) {
+                                // we need to know which page_list_update_handler function to call to process received data so we use a lookup table mechanism
+                                PeerStatusCallback[jsonResponse.status]
+                                (
+                                    jsonResponse.event, 
+                                    {
+                                        node:jsonResponse.node,
+                                        type:jsonResponse.type,
+                                        source:jsonResponse.source,
+                                        time:jsonResponse.time,
+                                        data:jsonResponse.data
+                                    }
+                                );
+                            }
+                        };
+                        ws.onerror = function(evt) {
+                            serverOfflineUpdateUIControls();
+                        };
+                        ws.onclose = function() {
+                            serverOfflineUpdateUIControls();
+                        };
+                        ws.onopen = function() {
+                            serverOnlineUpdateUIControls();
+                        };
+                    } catch(exception) {
+                        displayPopupDialog("ERROR", exception);
+                    }
+                }
+                
+                function initUI() {
+                    initUIInfoPopup();
+                    serverOfflineUpdateUIControls();
+                }
+                
+                function init() {
+                    initUI();
+                    initWs(serverIp);
+                
+                }
+
+                init();
+            });
+        </script>
+    </head>
+    
+    <body>
+        <!-- ############################################################### Dialog box used to display information messages ############################################################# -->
+        <div data-role="popup" id="popupInfo" data-theme="b" data-dismissible="false" style="max-width:220px;">
+            <div data-role="header">
+                <center><h4><!-- DYNAMIC CONTENT HERE: TITLE --></h4></center>
+            </div>
+            <div role="main" class="ui-content">
+                <div id="infoMsg"><!-- DYNAMIC CONTENT HERE: MESSAGE --></div>
+                <center><a id="okBtn" href="#" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-btn-b" data-rel="back" data-transition="none">OK</a></center>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+        
+        <!-- ############################################################### Home Automation Start Page ################################################################################## -->
+        <div data-role="page" id="HAStartPage" data-title="Home Automation" data-theme="b">
+            <div data-role="header">
+                <h1>Home Automation</h1>
+            </div>
+            <div data-role="content">
+                <div data-role="controlgroup">
+                    <a data-mini="true" data-role="button" data-transition="slide" id="lightsControl" href='javascript:PeerListPageCallback[PeerType.LIGHT_TYPE].page_handler("Lights");'>Lights Control</a>
+                    <a data-mini="true" data-role="button" data-transition="slide" id="heatControl">Heat Control</a>
+                    <a data-mini="true" data-role="button" data-transition="slide" href="javascript: goToSystemSettingsPage('master');">System Settings</a>
+                </div>
+            </div>
+            <div data-role="footer">
+                <h1>TIU-TECH INDUSTRIES</h1>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+
+        <!-- ############################################################### System Settings Page ##################################################################################### -->
+        <div data-role="page" id="systemSettingsPage" data-theme="b">
+            <div data-role="header">
+                <h1><!-- DYNAMIC CONTENT HERE: TITLE --></h1>
+            </div>
+            <div data-role="content">                
+                <div data-role="collapsible" data-iconpos="right" id="systemStatisticsSection">
+                    <h4>Statistics</h4>
+                    <div class="ui-grid-a">
+                        <div class="ui-block-a">
+                            <center><p>SRAM Usage</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="systemFreeSRAM">Pending...</p></center>
+                        </div>
+                        <div class="ui-block-a">
+                            <center><p>System Date/Time</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="systemDateTime">Pending...</p></center>
+                        </div>
+                        <div class="ui-block-a">
+                            <center><p>System Uptime</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="systemUptime">Pending...</p></center>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <a data-mini="true" data-role="button" data-icon="home" href="#HAStartPage" data-inline="false" data-transition="slide">Home</a>
+                    </div>
+                    <div class="ui-block-b">
+                        <a data-mini="true" data-role="button" data-icon="step-backward" href="#">Back</a>
+                    </div>
+                </div>
+            </div>
+            <div data-role="footer">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <center><p>WS Server Status</p></center>
+                    </div>
+                    <div id="status_not_connected" class="ui-block-b">
+                        <center><img src="images/red_bullet.png" width="32" height="32"></center>
+                    </div>
+                    <div id="status_connected" class="ui-block-b">
+                        <center><img src="images/green_bullet.png" width="32" height="32"></center>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+
+        <!-- ################################################################# Light Peers List Page ##################################################################################### -->
+        <div data-role="page" id="lightPeersPage" data-theme="b">
+            <div data-role="header">
+                <h1><!-- DYNAMIC CONTENT HERE: TITLE --></h1>
+            </div>
+            <div data-role="content">
+                <ul data-role="listview" data-inset="true" id="lightPeersList">
+                    <!-- DYNAMIC CONTENT HERE: DISCOVERED LIGHT PEERS LIST -->
+                </ul>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <a data-mini="true" data-role="button" data-icon="certificate" href="javascript: $(PeerListPageCallback[PeerType.LIGHT_TYPE].list).children('li').each(function() { var peer = $(this).text(); setTimeout(function() { wsMakeRequest('qpeer ' + peer + ' allon'); }, getRandomInt(getRandomInt(50, 500),2500)); });" data-inline="false" data-transition="slide">All Lights ON</a>
+                    </div>
+                    <div class="ui-block-b">
+                        <a data-mini="true" data-role="button" data-icon="power-off" href="javascript: $(PeerListPageCallback[PeerType.LIGHT_TYPE].list).children('li').each(function() { var peer = $(this).text(); setTimeout(function() { wsMakeRequest('qpeer ' + peer + ' alloff'); }, getRandomInt(getRandomInt(50, 500),2500)); });" data-inline="false" data-transition="slide">All Lights OFF</a>
+                    </div>
+                </div>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <a data-mini="true" data-role="button" data-icon="refresh" href='javascript:wsMakeRequest("lspeers");' data-inline="false" data-transition="slide">Refresh</a>
+                    </div>
+                    <div class="ui-block-b">
+                        <a data-mini="true" data-role="button" data-icon="home" href="#HAStartPage" data-inline="false" data-transition="slide">Home</a>
+                    </div>
+                </div>
+            </div>
+            <div data-role="footer">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <center><p>WS Server Status</p></center>
+                    </div>
+                    <div id="status_not_connected" class="ui-block-b">
+                        <center><img src="images/red_bullet.png" width="32" height="32"></center>
+                    </div>
+                    <div id="status_connected" class="ui-block-b">
+                        <center><img src="images/green_bullet.png" width="32" height="32"></center>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+
+        <!-- ############################################################### Light Peer Control Page ##################################################################################### -->
+        <div data-role="page" id="lightPeerPage" data-theme="b">
+            <div data-role="header">
+                <h1><!-- DYNAMIC CONTENT HERE: TITLE --></h1>
+            </div>
+            <div data-role="content">
+                <div data-role="header">
+                    <h4>Channels Control</h4>
+                </div>
+                <div class="ui-grid-a" id="lightPeerChannelsList">
+                    <!-- DYNAMIC CONTENT HERE: LIGHT PEER CHANNELS CURRENT STATE -->
+                </div>
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <a data-mini="true" data-role="button" data-icon="gear" href="javascript: goToLightPeerSettingsPage($.mobile.pageContainer.pagecontainer('getActivePage').children(':jqmData(role=header)').find('h1').html());" data-inline="false" data-transition="slide">Settings</a>
+                    </div>
+                    <div class="ui-block-b">
+                        <a data-mini="true" data-role="button" data-icon="step-backward" href="javascript: goToLightPeersListPage('Lights');" data-inline="false" data-transition="slide">Back</a>
+                    </div>
+                </div>
+            </div>
+            <div data-role="footer">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <center><p>WS Server Status</p></center>
+                    </div>
+                    <div id="status_not_connected" class="ui-block-b">
+                        <center><img src="images/red_bullet.png" width="32" height="32"></center>
+                    </div>
+                    <div id="status_connected" class="ui-block-b">
+                        <center><img src="images/green_bullet.png" width="32" height="32"></center>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+
+        <!-- ############################################################### Light Peer Settings Page ##################################################################################### -->
+        <div data-role="page" id="lightPeerSettingsPage" data-theme="b">
+            <div data-role="header">
+                <h1><!-- DYNAMIC CONTENT HERE: TITLE --></h1>
+            </div>
+            <div data-role="content">
+                <div data-role="collapsible" data-iconpos="right">
+                    <h4>Channels IR Learn</h4>
+                    <div class="ui-grid-a" id="lightPeerChannelsIRLearnList">
+                        <!-- DYNAMIC CONTENT HERE: LIGHT PEER CHANNELS IR LEARN -->
+                    </div>
+                </div>
+                
+                <div data-role="collapsible" data-iconpos="right">
+                    <h4>Name Settings</h4>
+                    <div class="ui-grid-a" id="lightPeerNameSettings">
+                        <!-- DYNAMIC CONTENT HERE: LIGHT PEER NAME SETTINGS -->
+                    </div>
+                </div>
+                
+                <div data-role="collapsible" data-iconpos="right">
+                    <h4>Scheduler Settings</h4>
+                    <div class="ui-grid-c" id="schedulerControl">
+                        <div class="ui-block-a">
+                            <center><h4>State</h4></center>
+                        </div>
+                        <div class="ui-block-b">
+                            <center><h4>Channel</h4></center>
+                        </div>
+                        <div class="ui-block-c">
+                            <center><h4>Date/Time</h4></center>
+                        </div>
+                        <div class="ui-block-a">
+                            <select data-native-menu="false" data-icon="chevron-down">
+                                <option value="OFF">OFF</option>
+                                <option value="ON">ON</option>
+                            </select>
+                        </div>
+                        <div class="ui-block-b">
+                            <select data-native-menu="false" data-icon="chevron-down" id="scheduledLightChannelList">
+                                <!-- DYNAMIC CONTENT HERE: CHANNELS ID's-->
+                            </select>
+                        </div>
+                        <div class="ui-block-c">
+                            <input type="text" data-role="datebox" data-options='{"mode":"timebox","useNewStyle":true,"showInitialValue":true,"centerHoriz":true,"themeHeader":"b", "themeDate":"b", "themeInput":"b", "themeButton":"b"}' id="dateTimePicker"/>
+                        </div>
+                    </div>
+                </div>
+                
+                <div data-role="collapsible" data-iconpos="right" id="statisticsSection">
+                    <h4>Statistics</h4>
+                    <div class="ui-grid-a">
+                        <div class="ui-block-a">
+                            <center><p>SRAM Usage</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="lightPeerFreeSRAM">Pending...</p></center>
+                        </div>
+                        <div class="ui-block-a">
+                            <center><p>Peer Date/Time</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="lightPeerDateTime">Pending...</p></center>
+                        </div>
+                        <div class="ui-block-a">
+                            <center><p>Peer Uptime</p></center>
+                        </div>
+                        <div  class="ui-block-b">
+                            <center><p id="lightPeerUptime">Pending...</p></center>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <a data-mini="true" data-role="button" data-icon="home" href="#HAStartPage" data-inline="false" data-transition="slide">Home</a>
+                    </div>
+                    <div class="ui-block-b">
+                        <a data-mini="true" data-role="button" data-icon="step-backward" href="javascript: goToLightPeerPage($.mobile.pageContainer.pagecontainer('getActivePage').children(':jqmData(role=header)').find('h1').html());" data-inline="false" data-transition="slide">Back</a>
+                    </div>
+                </div>
+            </div>
+            <div data-role="footer">
+                <div class="ui-grid-a">
+                    <div class="ui-block-a">
+                        <center><p>WS Server Status</p></center>
+                    </div>
+                    <div id="status_not_connected" class="ui-block-b">
+                        <center><img src="images/red_bullet.png" width="32" height="32"></center>
+                    </div>
+                    <div id="status_connected" class="ui-block-b">
+                        <center><img src="images/green_bullet.png" width="32" height="32"></center>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ############################################################################################################################################################################# -->
+
+    </body>
+</html>
