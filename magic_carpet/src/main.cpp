@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <Arduino.h>
 #include <MPR121.h>
 #include <Wire.h>
+#include <LowPower.h>
 
 #define DEBUG
 
@@ -33,6 +34,9 @@ const uint8_t MPR121_I2C_ADDRESS = 0x5A;
 const uint8_t MPR121_INTERRUPT_PIN = 2;
 const uint8_t MPR121_TOUCH_THRESHOLD = 2;
 const uint8_t MPR121_RELEASE_THRESHOLD = 1;
+
+const uint8_t LED1_PIN = 4;
+const uint8_t LED2_PIN = 5;
 
 const uint8_t TOUCH_CHANNEL_MAX_COMBINATIONS = 2;
 const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
@@ -48,13 +52,20 @@ void setup() {
   Serial.begin(9600);
   #endif
 
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+
   Wire.begin();
 
   if(!MPR121.begin(MPR121_I2C_ADDRESS)){
     #ifdef DEBUG
     Serial.print(F("MPR121 init failed! "));
-    while(true);
     #endif
+    while(true) {
+      digitalWrite(LED1_PIN, !digitalRead(LED1_PIN));
+      digitalWrite(LED2_PIN, !digitalRead(LED2_PIN));
+      LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF);
+    }
   }
 
   MPR121.setInterruptPin(MPR121_INTERRUPT_PIN);
