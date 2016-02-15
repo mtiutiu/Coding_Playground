@@ -5,17 +5,17 @@
 
 #define DEBUG
 
-const uint8_t TOUCH_CHANNELS = 12;
-const uint8_t MPR121_I2C_ADDRESS = 0x5A;
-const uint8_t MPR121_INTERRUPT_PIN = 2;
-const uint8_t MPR121_TOUCH_THRESHOLD = 2;
-const uint8_t MPR121_RELEASE_THRESHOLD = 1;
+static const uint8_t TOUCH_CHANNELS = 12;
+static const uint8_t MPR121_I2C_ADDRESS = 0x5A;
+static const uint8_t MPR121_INTERRUPT_PIN = 2;
+static const uint8_t MPR121_TOUCH_THRESHOLD = 2;
+static const uint8_t MPR121_RELEASE_THRESHOLD = 1;
 
-const uint8_t LED1_PIN = 4;
-const uint8_t LED2_PIN = 5;
+static const uint8_t LED1_PIN = 4;
+static const uint8_t LED2_PIN = 5;
 
-const uint8_t TOUCH_CHANNEL_MAX_COMBINATIONS = 2;
-const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
+static const uint8_t TOUCH_CHANNEL_MAX_COMBINATIONS = 2;
+static const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
   {5, 10},
   {5, 11},
   {8, 10}
@@ -23,38 +23,8 @@ const uint8_t TOUCH_CHANNELS_MATRIX[][TOUCH_CHANNEL_MAX_COMBINATIONS] = {
 
 static uint8_t currentTouchData[TOUCH_CHANNEL_MAX_COMBINATIONS] = { 0, 0 };
 
-void setup() {
-  #ifdef DEBUG
-  Serial.begin(9600);
-  #endif
-
-  pinMode(LED1_PIN, OUTPUT);
-  pinMode(LED2_PIN, OUTPUT);
-
-  Wire.begin();
-
-  if(!MPR121.begin(MPR121_I2C_ADDRESS)){
-    #ifdef DEBUG
-    Serial.print(F("MPR121 init failed! "));
-    #endif
-    while(true) {
-      digitalWrite(LED1_PIN, !digitalRead(LED1_PIN));
-      digitalWrite(LED2_PIN, !digitalRead(LED2_PIN));
-      LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF);
-    }
-  }
-
-  MPR121.setInterruptPin(MPR121_INTERRUPT_PIN);
-
-  // touch threshold - lower means more sensitivity
-  MPR121.setTouchThreshold(MPR121_TOUCH_THRESHOLD);
-
-  // release threshold - must ALWAYS be smaller than the touch threshold
-  MPR121.setReleaseThreshold(MPR121_RELEASE_THRESHOLD);
-
-  // initial data update
-  MPR121.updateTouchData();
-}
+static volatile bool wakeUp = false;
+static const uint32_t INACTIVITY_SLEEP_INTERVAL_MS = 4000;
 
 static uint8_t pushTouchChannel(uint8_t channel) {
   static uint8_t touchDataIndex = 0;
@@ -127,6 +97,72 @@ static void checkMPR121Touch() {
   }
 }
 
+static void pinChangeExternalInterrupt() {
+  wakeUp = true;
+}
+
+static void checkSleep(uint32_t sleepIntervalMs) {
+  static uint32_t lastSleepCheckTimestamp = 0;
+
+  if(wakeUp) {
+    lastSleepCheckTimestamp = millis();
+    wakeUp = false;
+  }
+
+  if((millis() - lastSleepCheckTimestamp) >= sleepIntervalMs) {
+    #ifdef DEBUG
+    Serial.println(F(" -> going to sleep..."));
+    #endif
+
+    MPR121.stop();
+    LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+
+    #ifdef DEBUG
+    Serial.println(F(" -> waking up ..."));
+    #endif
+
+    MPR121.run();
+    lastSleepCheckTimestamp = millis();
+  }
+}
+
+void setup() {
+  #ifdef DEBUG
+  Serial.begin(9600);
+  #endif
+
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(MPR121_INTERRUPT_PIN, INPUT_PULLUP);
+
+  Wire.begin();
+
+  if(!MPR121.begin(MPR121_I2C_ADDRESS)){
+    #ifdef DEBUG
+    Serial.print(F("MPR121 init failed! "));
+    #endif
+    while(true) {
+      digitalWrite(LED1_PIN, !digitalRead(LED1_PIN));
+      digitalWrite(LED2_PIN, !digitalRead(LED2_PIN));
+      LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF);
+    }
+  }
+
+  attachInterrupt(2, pinChangeExternalInterrupt, CHANGE);
+
+  MPR121.setInterruptPin(MPR121_INTERRUPT_PIN);
+
+  // touch threshold - lower means more sensitivity
+  MPR121.setTouchThreshold(MPR121_TOUCH_THRESHOLD);
+
+  // release threshold - must ALWAYS be smaller than the touch threshold
+  MPR121.setReleaseThreshold(MPR121_RELEASE_THRESHOLD);
+
+  // initial data update
+  MPR121.updateTouchData();
+}
+
 void loop() {
   checkMPR121Touch();
+  checkSleep(INACTIVITY_SLEEP_INTERVAL_MS);
 }
