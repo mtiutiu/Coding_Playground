@@ -56,13 +56,19 @@ void setup() {
   MPR121.updateTouchData();
 }
 
-static void pushTouchChannel(uint8_t channel) {
+static uint8_t pushTouchChannel(uint8_t channel) {
   static uint8_t touchDataIndex = 0;
+  static uint8_t channelDataCount = 0;
 
   currentTouchData[touchDataIndex] = channel;
+  ++channelDataCount;
+
   if(++touchDataIndex >= TOUCH_CHANNEL_MAX_COMBINATIONS) {
     touchDataIndex = 0;
+    channelDataCount = 0;
   }
+
+  return channelDataCount;
 }
 
 static int8_t checkTouchCombination() {
@@ -81,6 +87,12 @@ static int8_t checkTouchCombination() {
   return -1;
 }
 
+static void resetTouchDataBuffer() {
+  for(uint8_t i = 0; i < TOUCH_CHANNEL_MAX_COMBINATIONS; i++) {
+    currentTouchData[i] = 0;
+  }
+}
+
 static void checkMPR121Touch() {
   if(MPR121.touchStatusChanged()){
     MPR121.updateTouchData();
@@ -91,19 +103,24 @@ static void checkMPR121Touch() {
         Serial.print(channel, DEC);
         Serial.println(F(" touched "));
         #endif
-        pushTouchChannel(channel);
       } else if(MPR121.isNewRelease(channel)){
         #ifdef DEBUG
         Serial.print(F("electrode "));
         Serial.print(channel, DEC);
         Serial.println(F(" released"));
         #endif
-        int8_t combination = checkTouchCombination();
-        if(combination >= 0) {
-          #ifdef DEBUG
-          Serial.print(F("Found combination index: "));
-          Serial.println(combination);
-          #endif
+        // check if channel data buffer is filled
+        // we need to get 2 consecutive readings before continuing
+        if(pushTouchChannel(channel) == TOUCH_CHANNEL_MAX_COMBINATIONS) {
+          // we got 2 consecutive readings - check if it's a known combination
+          int8_t combination = checkTouchCombination();
+          if(combination >= 0) {
+            #ifdef DEBUG
+            Serial.print(F("Found combination index: "));
+            Serial.println(combination);
+            #endif
+          }
+          resetTouchDataBuffer();
         }
       }
     }
