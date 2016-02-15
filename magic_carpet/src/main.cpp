@@ -77,15 +77,13 @@ static void checkMPR121Touch() {
     for(uint8_t channel = 0; channel < TOUCH_CHANNELS; channel++) {
       if(MPR121.isNewTouch(channel)){
         #ifdef DEBUG
-        Serial.print(F("electrode "));
-        Serial.print(channel, DEC);
-        Serial.println(F(" touched "));
+        Serial.print(F("-> electrode touch index: "));
+        Serial.println(channel, DEC);
         #endif
       } else if(MPR121.isNewRelease(channel)){
         #ifdef DEBUG
-        Serial.print(F("electrode "));
-        Serial.print(channel, DEC);
-        Serial.println(F(" released"));
+        Serial.print(F("-> electrode release index: "));
+        Serial.println(channel, DEC);
         #endif
         // check if channel data buffer is filled
         // we need to get 2 consecutive readings before continuing
@@ -94,7 +92,7 @@ static void checkMPR121Touch() {
           int8_t combination = checkTouchCombination();
           if(combination >= 0) {
             #ifdef DEBUG
-            Serial.print(F("Found combination index: "));
+            Serial.print(F("-> found combination index: "));
             Serial.println(combination);
             #endif
           }
@@ -150,12 +148,13 @@ void setup() {
 
   if(!MPR121.begin(MPR121_I2C_ADDRESS)){
     #ifdef DEBUG
-    Serial.print(F("MPR121 init failed! "));
+    Serial.print(F("-> MPR121 init failed! "));
     #endif
     while(true) {
+      // signal MPR121 init error
       digitalWrite(LED1_PIN, !digitalRead(LED1_PIN));
       digitalWrite(LED2_PIN, !digitalRead(LED2_PIN));
-      LowPower.powerDown(SLEEP_500MS, ADC_OFF, BOD_OFF);
+      LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
     }
   }
 
@@ -173,6 +172,10 @@ void setup() {
 
   // initial data update
   MPR121.updateTouchData();
+
+  #ifdef DEBUG
+  Serial.print(F("-> Started... "));
+  #endif
 }
 
 void loop() {
