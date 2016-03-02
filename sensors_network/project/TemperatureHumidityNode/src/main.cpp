@@ -62,6 +62,7 @@ Vcc vcc(VCC_CORRECTION);
 #include <SparkFunHTU21D.h>
 #endif
 
+const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
 
@@ -96,7 +97,7 @@ static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define MAX_NODE_PAYLOAD_LENGTH 25
 //we add 1 for storing the string terminating character also
 #define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
-#define DEFAULT_NODE_METADATA "Unknown:Unknown"
+#define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
 // was this node metadata configuration processed already ?
 bool metadataConfigRequestProcessed = false;
 // ---------------------------------------------------------------------------------------------------
@@ -147,29 +148,31 @@ bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
   return (EEPROM.read(index) != mark);
 }
 
-void parseNodeMetadata(char* metadata, char* nodeName, char* sensorName) {
-  if (!metadata || !nodeName || !sensorName) {
+void parseNodeMetadata(char* metadata, char** nodeInfo, uint8_t maxFields) {
+  if (!metadata || !nodeInfo) {
     return;
   }
 
-  if (nodeName && sensorName) {
-    strncpy(nodeName, strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
-    strncpy(sensorName, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+  for(uint8_t i = 0; i < maxFields; i++) {
+      if(i == 0) {
+          strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
+          continue;
+      }
+      strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
   }
 }
 
-void loadNodeDefaultMetadata(char* nodeName, char* sensorName) {
+void loadNodeDefaultMetadata(char** nodeInfo, uint8_t maxFields) {
   char metadata[MAX_NODE_METADATA_LENGTH];
   memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
   strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
 
-  parseNodeMetadata(metadata, nodeName, sensorName);
+  parseNodeMetadata(metadata, nodeInfo, maxFields);
 }
 
-void loadNodeEepromMetadata(char* nodeName, char* sensorName) {
-  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) ||
-      (!nodeName && !sensorName)) {
-    loadNodeDefaultMetadata(nodeName, sensorName);
+void loadNodeEepromMetadata(char** nodeInfo, uint8_t maxFields) {
+  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) || !nodeInfo) {
+    loadNodeDefaultMetadata(nodeInfo, maxFields);
     return;
   }
 
@@ -179,7 +182,7 @@ void loadNodeEepromMetadata(char* nodeName, char* sensorName) {
     metadata[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
   }
 
-  parseNodeMetadata(metadata, nodeName, sensorName);
+  parseNodeMetadata(metadata, nodeInfo, maxFields);
 }
 
 void saveNodeEepromMetadata(const char* metadata) {
@@ -208,15 +211,24 @@ void incomingConfigRequestProcessing(const MyMessage &message) {
 
 void presentNodeMetadata() {
   char nodeName[MAX_NODE_METADATA_LENGTH];
-  char sensorName[MAX_NODE_METADATA_LENGTH];
+  char temperatureSensorName[MAX_NODE_METADATA_LENGTH];
+  char humiditySensorName[MAX_NODE_METADATA_LENGTH];
   memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-  memset(sensorName, '\0', MAX_NODE_METADATA_LENGTH);
+  memset(temperatureSensorName, '\0', MAX_NODE_METADATA_LENGTH);
+  memset(humiditySensorName, '\0', MAX_NODE_METADATA_LENGTH);
 
-  loadNodeEepromMetadata(nodeName, sensorName);
+  char* nodeInfo[] = {
+      nodeName,                 // node friendly name
+      temperatureSensorName,    // temperature sensor friendly name
+      humiditySensorName        // humidity sensor friendly name
+  };
+
+  // load node metadata based on attached sensors count + the node name
+  loadNodeEepromMetadata(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
   gw.sendSketchInfo(nodeName, "");
-  gw.present(TEMPERATURE_SENSOR_ID, S_TEMP, sensorName);
-  gw.present(HUMIDITY_SENSOR_ID, S_HUM, sensorName);
+  gw.present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
+  gw.present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
 }
 
 void sendKnockKnockMessage() {
