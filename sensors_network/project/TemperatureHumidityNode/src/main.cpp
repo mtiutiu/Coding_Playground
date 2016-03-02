@@ -43,7 +43,7 @@ const float ANALOG_REF_V = 3.3;
 // ---------------------------------------- VOLTAGE REGULATOR SECTION --------------------------------
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
 // we need to read the battery direclty
-const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A2; 
+const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A2;
 #else
 // here we read the battery level using the MCU internal voltage reference
 #include <Vcc.h>
@@ -59,16 +59,20 @@ Vcc vcc(VCC_CORRECTION);
 // ----------------------------------- TMP102 TEMPERATURE SENSOR SECTION ----------------------------
 #ifndef MOCK_SENSOR_DATA
 #include <Wire.h>
-#include <Tmp102.h>
+#include <SparkFunHTU21D.h>
 #endif
 
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
-const uint32_t SENSOR_SLEEP_INTERVAL_MS = 12000;  // 12s sensor data report interval
+const uint8_t HUMIDITY_SENSOR_ID = 2;
+
+const uint32_t SENSOR_SLEEP_INTERVAL_MS = 55000;  // ~55s sensor data report interval
 const uint8_t SENSOR_DATA_SEND_RETRIES = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
 
 const uint32_t SENSOR_CONFIG_DATA_TIMEOUT_MS = 3000;
 const uint32_t SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS = 10;
+
+HTU21D tempHumSensor;
 // ---------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
@@ -121,7 +125,7 @@ MySensor gw(radio, hw);
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
   float batteryLvlPcnt = 0;
-  
+
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
   float vBattAnalogRead = 0;
 
@@ -132,10 +136,10 @@ uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
   batteryLvlPcnt = 100.0 * (vBattAnalogRead - LOW_VBATT_THRESHOLD_V) / (CHARGED_VBATT_THRESHOLD_V - LOW_VBATT_THRESHOLD_V);
   batteryLvlPcnt = constrain(batteryLvlPcnt, 0.0, 100.0);
 
-#else  
+#else
   batteryLvlPcnt = vcc.Read_Perc(LOW_VBATT_THRESHOLD_V, CHARGED_VBATT_THRESHOLD_V);
 #endif
-  
+
   return round(batteryLvlPcnt);
 }
 
@@ -163,7 +167,7 @@ void loadNodeDefaultMetadata(char* nodeName, char* sensorName) {
 }
 
 void loadNodeEepromMetadata(char* nodeName, char* sensorName) {
-  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) || 
+  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) ||
       (!nodeName && !sensorName)) {
     loadNodeDefaultMetadata(nodeName, sensorName);
     return;
@@ -174,7 +178,7 @@ void loadNodeEepromMetadata(char* nodeName, char* sensorName) {
   for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
     metadata[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
   }
-  
+
   parseNodeMetadata(metadata, nodeName, sensorName);
 }
 
@@ -191,12 +195,12 @@ void saveNodeEepromMetadata(const char* metadata) {
 }
 
 // this gets called when we receive a setup request from the gateway
-void incomingConfigRequestProcessing(const MyMessage &message) {  
+void incomingConfigRequestProcessing(const MyMessage &message) {
   if (message.type == V_VAR1) {
     char recvMetadata[MAX_NODE_METADATA_LENGTH];
     memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
     strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-    
+
     saveNodeEepromMetadata(recvMetadata);
     metadataConfigRequestProcessed = true;
   }
@@ -207,11 +211,12 @@ void presentNodeMetadata() {
   char sensorName[MAX_NODE_METADATA_LENGTH];
   memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
   memset(sensorName, '\0', MAX_NODE_METADATA_LENGTH);
-  
+
   loadNodeEepromMetadata(nodeName, sensorName);
-    
+
   gw.sendSketchInfo(nodeName, "");
   gw.present(TEMPERATURE_SENSOR_ID, S_TEMP, sensorName);
+  gw.present(HUMIDITY_SENSOR_ID, S_HUM, sensorName);
 }
 
 void sendKnockKnockMessage() {
@@ -219,10 +224,10 @@ void sendKnockKnockMessage() {
   gw.send(controllerSetupRequestMsg.set("knock"));
 }
 
-void waitForControllerConfigRequestReply(uint32_t timeout, uint32_t checkInterval, 
+void waitForControllerConfigRequestReply(uint32_t timeout, uint32_t checkInterval,
                                           bool& requestProcessingFinishedFlag) {
   uint32_t maxRetries = timeout / checkInterval;
-  
+
   for (uint32_t retries = 0; !requestProcessingFinishedFlag && (retries < maxRetries); ++retries) {
     gw.wait(checkInterval); // we wanted sleep here..but it doesn't work - don't know why yet
     if (retries == 0) {
@@ -241,7 +246,7 @@ void setup() {
     clock_prescale_set(clock_div_2);
   #else
     #error "Don't know how to handle this BOARD_XTAL_FREQUENCY!"
-  #endif  
+  #endif
 #elif defined(WANT_4MHZ_SYSCLK)
   #if BOARD_XTAL_FREQUENCY == 8000000UL
     clock_prescale_set(clock_div_2);
@@ -304,36 +309,46 @@ void setup() {
 #endif
 
   #ifndef MOCK_SENSOR_DATA
-  Wire.begin();
-  Tmp102.init();
+  tempHumSensor.begin();
   #endif
 
   // process incoming config requests
   gw.begin(incomingConfigRequestProcessing, THIS_NODE_ID);
-  
-  waitForControllerConfigRequestReply(SENSOR_CONFIG_DATA_TIMEOUT_MS, 
-                                      SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS, 
+
+  waitForControllerConfigRequestReply(SENSOR_CONFIG_DATA_TIMEOUT_MS,
+                                      SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS,
                                       metadataConfigRequestProcessed);
 
   presentNodeMetadata();
+
+  // send battery level at startup also
+  gw.sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
+}
+
+void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
+    MyMessage sensorDataMsg(sensorId, dataType);
+
+    for (uint8_t retries = 0; !gw.send(sensorDataMsg.set(sensorData, 2)) &&
+          (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
+
+      // random sleep interval between retries for collisions
+      gw.sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
+    }
 }
 
 void loop()  {
   #ifdef MOCK_SENSOR_DATA
   float currentTemperature = random(20.0, 40.0);
+  float currentHumidity = random(20.0, 40.0);
   uint8_t currentBatteryLvlPcnt = random(0, 100);
   #else
-  float currentTemperature = Tmp102.readTemperature();
+  float currentTemperature = tempHumSensor.readTemperature();
+  float currentHumidity = tempHumSensor.readHumidity();
   uint8_t currentBatteryLvlPcnt = getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES);
-  #endif  
+  #endif
 
-  MyMessage tempDataMsg(TEMPERATURE_SENSOR_ID, V_TEMP);
-  for (uint8_t retries = 0; !gw.send(tempDataMsg.set(currentTemperature, 2)) &&
-        (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-  
-    // random sleep interval between retries for collisions
-    gw.sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
-  }
+  sendSensorData(TEMPERATURE_SENSOR_ID, currentTemperature, V_TEMP);
+  sendSensorData(HUMIDITY_SENSOR_ID, currentHumidity, V_HUM);
 
   // send battery state after BATTERY_LVL_REPORT_INTERVAL_MS interval elapsed
   //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts SENSOR_SLEEP_INTERVAL_MS cycles
@@ -342,6 +357,6 @@ void loop()  {
     gw.sendBatteryLevel(currentBatteryLvlPcnt);
     batteryLvlReportCyclesCounter = 0;
   }
-  
+
   gw.sleep(SENSOR_SLEEP_INTERVAL_MS);
 }
