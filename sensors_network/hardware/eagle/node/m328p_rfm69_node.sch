@@ -3702,7 +3702,7 @@ by exp-lbrs.ulp</description>
 <part name="JP3" library="SparkFun-Connectors" deviceset="AVR_SPI_PRG_6" device="NS" value="ISP"/>
 <part name="GND11" library="supply1" deviceset="GND" device=""/>
 <part name="+3V6" library="supply1" deviceset="+3V3" device=""/>
-<part name="JP1" library="SparkFun-Connectors" deviceset="M01" device="SMD" value="ANT"/>
+<part name="JP1" library="SparkFun-Connectors" deviceset="M01" device="SMD" value="ANTENNA"/>
 <part name="+3V7" library="supply1" deviceset="+3V3" device=""/>
 <part name="GND8" library="supply1" deviceset="GND" device=""/>
 <part name="JP4" library="pinhead" deviceset="PINHD-1X4" device="" value="OTHER"/>
