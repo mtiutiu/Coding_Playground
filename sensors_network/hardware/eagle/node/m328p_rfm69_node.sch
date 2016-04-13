@@ -2135,18 +2135,18 @@ You are welcome to use this library for commercial purposes. For attribution, we
 <wire x1="17.526" y1="-4.826" x2="17.526" y2="4.826" width="0.254" layer="41"/>
 <wire x1="-24.0157" y1="-0.0482" x2="-18.9129" y2="-0.0457" width="0.4064" layer="49"/>
 <wire x1="18.9103" y1="-0.0482" x2="24.0131" y2="-0.0457" width="0.4064" layer="49"/>
-<wire x1="13.97" y1="2.54" x2="-12.7" y2="2.54" width="0.4064" layer="21"/>
-<wire x1="-12.7" y1="2.54" x2="-12.7" y2="0.5842" width="0.4064" layer="21"/>
-<wire x1="-12.7" y1="0.5842" x2="-12.7" y2="-0.6858" width="0.4064" layer="21"/>
-<wire x1="-12.7" y1="-0.6858" x2="-12.7" y2="-2.54" width="0.4064" layer="21"/>
-<wire x1="-12.7" y1="-2.54" x2="13.97" y2="-2.54" width="0.4064" layer="21"/>
-<wire x1="13.97" y1="-2.54" x2="13.97" y2="2.54" width="0.4064" layer="21"/>
-<wire x1="-12.7" y1="0.5842" x2="-13.97" y2="0.5842" width="0.4064" layer="21"/>
-<wire x1="-13.97" y1="0.5842" x2="-13.97" y2="-0.6858" width="0.4064" layer="21"/>
-<wire x1="-13.97" y1="-0.6858" x2="-12.7" y2="-0.6858" width="0.4064" layer="21"/>
-<wire x1="12.065" y1="0" x2="10.795" y2="0" width="0.4064" layer="21"/>
-<wire x1="-9.525" y1="0" x2="-10.795" y2="0" width="0.4064" layer="21"/>
-<wire x1="-10.16" y1="0.635" x2="-10.16" y2="-0.635" width="0.4064" layer="21"/>
+<wire x1="6.35" y1="2.54" x2="-6.35" y2="2.54" width="0.4064" layer="21"/>
+<wire x1="-6.35" y1="2.54" x2="-6.35" y2="0.5842" width="0.4064" layer="21"/>
+<wire x1="-6.35" y1="0.5842" x2="-6.35" y2="-0.6858" width="0.4064" layer="21"/>
+<wire x1="-6.35" y1="-0.6858" x2="-6.35" y2="-2.54" width="0.4064" layer="21"/>
+<wire x1="-6.35" y1="-2.54" x2="6.35" y2="-2.54" width="0.4064" layer="21"/>
+<wire x1="6.35" y1="-2.54" x2="6.35" y2="2.54" width="0.4064" layer="21"/>
+<wire x1="-6.35" y1="0.5842" x2="-7.62" y2="0.5842" width="0.4064" layer="21"/>
+<wire x1="-7.62" y1="0.5842" x2="-7.62" y2="-0.6858" width="0.4064" layer="21"/>
+<wire x1="-7.62" y1="-0.6858" x2="-6.35" y2="-0.6858" width="0.4064" layer="21"/>
+<wire x1="4.445" y1="0" x2="3.175" y2="0" width="0.4064" layer="21"/>
+<wire x1="-3.175" y1="0" x2="-4.445" y2="0" width="0.4064" layer="21"/>
+<wire x1="-3.81" y1="0.635" x2="-3.81" y2="-0.635" width="0.4064" layer="21"/>
 <pad name="GND@1" x="25.146" y="0" drill="1.8542" stop="no"/>
 <pad name="GND@2" x="18.034" y="0" drill="1.8542" stop="no"/>
 <pad name="PWR@1" x="-25.146" y="0" drill="1.8542" stop="no"/>
@@ -3665,7 +3665,7 @@ by exp-lbrs.ulp</description>
 <part name="C8" library="SparkFun-Capacitors" deviceset="47UF-TANT" device="" value="47uF"/>
 <part name="C9" library="SparkFun-Capacitors" deviceset="47UF-TANT" device="" value="47uF"/>
 <part name="L1" library="dlj-4018" deviceset="DLJ-4018" device="" value="10uH"/>
-<part name="IC2" library="l6920" deviceset="L6920" device="TSSOP8" value="L6920TSSOP8"/>
+<part name="IC2" library="l6920" deviceset="L6920" device="TSSOP8" value="L6920"/>
 <part name="GND2" library="supply1" deviceset="GND" device=""/>
 <part name="GND3" library="supply1" deviceset="GND" device=""/>
 <part name="GND5" library="supply1" deviceset="GND" device=""/>
@@ -3699,7 +3699,7 @@ by exp-lbrs.ulp</description>
 <part name="BAT4" library="SparkFun-Electromechanical" deviceset="BATTERY" device="AA-KIT" value="1.5V - AA"/>
 <part name="Y1" library="SparkFun-FreqCtrl" deviceset="RESONATOR" device="4MHZ" value="8MHz"/>
 <part name="GND10" library="supply1" deviceset="GND" device=""/>
-<part name="JP3" library="SparkFun-Connectors" deviceset="AVR_SPI_PRG_6" device="NS"/>
+<part name="JP3" library="SparkFun-Connectors" deviceset="AVR_SPI_PRG_6" device="NS" value="ISP"/>
 <part name="GND11" library="supply1" deviceset="GND" device=""/>
 <part name="+3V6" library="supply1" deviceset="+3V3" device=""/>
 <part name="JP1" library="SparkFun-Connectors" deviceset="M01" device="SMD" value="ANT"/>
@@ -3717,7 +3717,7 @@ by exp-lbrs.ulp</description>
 <part name="GND20" library="supply1" deviceset="GND" device=""/>
 <part name="R1" library="SparkFun-Resistors" deviceset="RESISTOR" device="0805-RES" value="100K"/>
 <part name="R2" library="SparkFun-Resistors" deviceset="RESISTOR" device="0805-RES" value="100K"/>
-<part name="U1" library="SparkFun-DigitalIC" deviceset="ATMEGA328P_TQFP" device="" value="ATMEGA328P_TQFP"/>
+<part name="U1" library="SparkFun-DigitalIC" deviceset="ATMEGA328P_TQFP" device="" value="M328P"/>
 <part name="JP5" library="pinhead" deviceset="PINHD-1X4" device="" value="OTHER"/>
 <part name="JP6" library="pinhead" deviceset="PINHD-1X4" device="" value="OTHER"/>
 <part name="GND21" library="supply1" deviceset="GND" device=""/>
@@ -4380,6 +4380,12 @@ by exp-lbrs.ulp</description>
 </nets>
 </sheet>
 </sheets>
+<errors>
+<approved hash="104,1,164.338,41.91,BAT3,-,N$8,,,"/>
+<approved hash="104,1,164.338,52.07,BAT3,+,BATT_LVL,,,"/>
+<approved hash="104,1,164.338,31.75,BAT4,-,GND,,,"/>
+<approved hash="104,1,164.338,41.91,BAT4,+,N$8,,,"/>
+</errors>
 </schematic>
 </drawing>
 </eagle>

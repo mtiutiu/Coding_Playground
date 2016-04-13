@@ -1,0 +1,5 @@
+Parts not found in 3dpack.dat or 3dusrpac.dat are:
+//BAT3	1.5V - AA	BATTERY-AA-KIT
+//BAT4	1.5V - AA	BATTERY-AA-KIT
+//CT1	MUTUAL	MUTUAL
+//JP1	ANT	LUXEON-PAD
