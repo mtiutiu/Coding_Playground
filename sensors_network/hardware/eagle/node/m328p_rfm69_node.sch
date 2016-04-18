@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.01" unitdist="inch" unit="inch" style="dots" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.01" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -3724,6 +3724,7 @@ by exp-lbrs.ulp</description>
 <part name="GND22" library="supply1" deviceset="GND" device=""/>
 <part name="+3V10" library="supply1" deviceset="+3V3" device=""/>
 <part name="+3V11" library="supply1" deviceset="+3V3" device=""/>
+<part name="GND23" library="supply1" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -3876,6 +3877,7 @@ by exp-lbrs.ulp</description>
 <instance part="GND22" gate="1" x="120.142" y="71.882" rot="R270"/>
 <instance part="+3V10" gate="G$1" x="96.266" y="61.214" rot="MR180"/>
 <instance part="+3V11" gate="G$1" x="121.666" y="60.706" rot="MR180"/>
+<instance part="GND23" gate="1" x="218.694" y="113.538"/>
 </instances>
 <busses>
 </busses>
@@ -4049,6 +4051,11 @@ by exp-lbrs.ulp</description>
 <pinref part="JP6" gate="A" pin="3"/>
 <wire x1="128.27" y1="71.882" x2="122.682" y2="71.882" width="0.1524" layer="91"/>
 <pinref part="GND22" gate="1" pin="GND"/>
+</segment>
+<segment>
+<pinref part="U2" gate="G$1" pin="GND@1"/>
+<pinref part="GND23" gate="1" pin="GND"/>
+<wire x1="218.694" y1="116.078" x2="218.694" y2="117.856" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="INT" class="0">
@@ -4400,12 +4407,6 @@ by exp-lbrs.ulp</description>
 </nets>
 </sheet>
 </sheets>
-<errors>
-<approved hash="104,1,164.338,41.91,BAT3,-,N$8,,,"/>
-<approved hash="104,1,164.338,52.07,BAT3,+,BATT_LVL,,,"/>
-<approved hash="104,1,164.338,31.75,BAT4,-,GND,,,"/>
-<approved hash="104,1,164.338,41.91,BAT4,+,N$8,,,"/>
-</errors>
 </schematic>
 </drawing>
 </eagle>
