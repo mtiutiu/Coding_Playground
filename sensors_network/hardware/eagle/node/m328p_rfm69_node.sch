@@ -3860,7 +3860,7 @@ by exp-lbrs.ulp</description>
 <attribute name="NAME" x="138.557" y="25.4" size="1.778" layer="95" rot="MR270"/>
 <attribute name="VALUE" x="144.145" y="26.924" size="1.778" layer="96" rot="MR270"/>
 </instance>
-<instance part="GND20" gate="1" x="139.7" y="19.304"/>
+<instance part="GND20" gate="1" x="139.7" y="19.558"/>
 <instance part="R1" gate="G$1" x="136.906" y="39.37" smashed="yes">
 <attribute name="NAME" x="136.144" y="41.1226" size="1.778" layer="95"/>
 <attribute name="VALUE" x="134.874" y="35.814" size="1.778" layer="96"/>
@@ -4034,7 +4034,7 @@ by exp-lbrs.ulp</description>
 <segment>
 <pinref part="C2" gate="G$1" pin="-"/>
 <pinref part="GND20" gate="1" pin="GND"/>
-<wire x1="139.7" y1="21.844" x2="139.7" y2="23.876" width="0.1524" layer="91"/>
+<wire x1="139.7" y1="22.098" x2="139.7" y2="23.876" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="GND19" gate="1" pin="GND"/>
