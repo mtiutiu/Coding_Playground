@@ -759,26 +759,28 @@ Standard 0603 ceramic capacitor, and 0.1" leaded capacitor.</description>
 <library name="dlj-4018">
 <packages>
 <package name="DLJ-4018">
-<wire x1="-2" y1="2" x2="-2" y2="-2" width="0.127" layer="21"/>
-<wire x1="-2" y1="-2" x2="2" y2="-2" width="0.127" layer="21"/>
-<wire x1="2" y1="2" x2="-2" y2="2" width="0.127" layer="21"/>
 <smd name="P$1" x="0" y="-1.5" dx="2" dy="4" layer="1" rot="R90"/>
 <smd name="P$2" x="0" y="1.5" dx="2" dy="4" layer="1" rot="R90"/>
-<text x="0" y="2.54" size="1.27" layer="25">&gt;NAME</text>
-<text x="0" y="-3.81" size="1.27" layer="27">&gt;VALUE</text>
-<wire x1="2" y1="2" x2="2" y2="-2" width="0.127" layer="21"/>
+<text x="0" y="3.048" size="1.27" layer="25">&gt;NAME</text>
+<text x="0" y="-4.318" size="1.27" layer="27">&gt;VALUE</text>
+<wire x1="-2.286" y1="2.032" x2="-2.286" y2="-2.032" width="0.127" layer="21"/>
+<wire x1="2.286" y1="2.032" x2="2.286" y2="-2.032" width="0.127" layer="21"/>
+<wire x1="-2.286" y1="2.0574" x2="-2.0828" y2="2.0574" width="0.127" layer="21"/>
+<wire x1="-2.286" y1="-2.032" x2="-2.0828" y2="-2.032" width="0.127" layer="21"/>
+<wire x1="2.0828" y1="2.032" x2="2.286" y2="2.032" width="0.127" layer="21"/>
+<wire x1="2.0828" y1="-2.032" x2="2.286" y2="-2.032" width="0.127" layer="21"/>
 </package>
 </packages>
 <symbols>
 <symbol name="DLJ-4018">
-<text x="5.08" y="-5.08" size="1.27" layer="95" rot="R90">&gt;NAME</text>
-<text x="7.62" y="-2.54" size="1.27" layer="96" rot="R90">&gt;VALUE</text>
 <wire x1="0" y1="5.08" x2="0" y2="2.54" width="0.254" layer="94" curve="-270"/>
 <wire x1="0" y1="2.54" x2="0" y2="0" width="0.254" layer="94" curve="-270"/>
 <wire x1="0" y1="0" x2="0" y2="-2.54" width="0.254" layer="94" curve="-270"/>
 <wire x1="0" y1="-2.54" x2="0" y2="-5.08" width="0.254" layer="94" curve="-270"/>
 <pin name="1" x="0" y="10.16" visible="off" length="middle" rot="R270"/>
 <pin name="2" x="0" y="-10.16" visible="off" length="middle" rot="R90"/>
+<text x="5.08" y="-5.08" size="1.27" layer="95" rot="R90">&gt;NAME</text>
+<text x="7.62" y="-2.54" size="1.27" layer="96" rot="R90">&gt;VALUE</text>
 </symbol>
 </symbols>
 <devicesets>
@@ -3725,6 +3727,8 @@ by exp-lbrs.ulp</description>
 <part name="+3V10" library="supply1" deviceset="+3V3" device=""/>
 <part name="+3V11" library="supply1" deviceset="+3V3" device=""/>
 <part name="GND23" library="supply1" deviceset="GND" device=""/>
+<part name="R3" library="SparkFun-Resistors" deviceset="RESISTOR" device="0805-RES" value="10K"/>
+<part name="+3V12" library="supply1" deviceset="+3V3" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -3745,6 +3749,8 @@ by exp-lbrs.ulp</description>
 <text x="162.56" y="111.76" size="1.778" layer="94">RFM69 radio communications</text>
 <text x="216.662" y="29.464" size="1.778" layer="94">Voltage booster power supply</text>
 <text x="132.588" y="6.096" size="1.778" layer="94">AC energy measurement</text>
+<text x="183.642" y="149.86" size="1.778" layer="94" rot="R90">Pull-up resistor
+for ICSP interference</text>
 </plain>
 <instances>
 <instance part="FRAME1" gate="G$1" x="0" y="0"/>
@@ -3878,6 +3884,11 @@ by exp-lbrs.ulp</description>
 <instance part="+3V10" gate="G$1" x="96.266" y="61.214" rot="MR180"/>
 <instance part="+3V11" gate="G$1" x="121.666" y="60.706" rot="MR180"/>
 <instance part="GND23" gate="1" x="218.694" y="113.538"/>
+<instance part="R3" gate="G$1" x="188.976" y="157.226" smashed="yes" rot="R90">
+<attribute name="NAME" x="187.2234" y="156.464" size="1.778" layer="95" rot="R90"/>
+<attribute name="VALUE" x="192.532" y="155.194" size="1.778" layer="96" rot="R90"/>
+</instance>
+<instance part="+3V12" gate="G$1" x="188.976" y="167.894"/>
 </instances>
 <busses>
 </busses>
@@ -3936,8 +3947,12 @@ by exp-lbrs.ulp</description>
 <net name="SS" class="0">
 <segment>
 <pinref part="U2" gate="G$1" pin="NSS"/>
-<wire x1="190.754" y1="145.796" x2="188.214" y2="145.796" width="0.1524" layer="91"/>
-<label x="188.214" y="145.796" size="1.778" layer="95" rot="R180" xref="yes"/>
+<wire x1="190.754" y1="145.796" x2="188.976" y2="145.796" width="0.1524" layer="91"/>
+<label x="185.42" y="145.796" size="1.778" layer="95" rot="R180" xref="yes"/>
+<pinref part="R3" gate="G$1" pin="1"/>
+<wire x1="188.976" y1="145.796" x2="185.42" y2="145.796" width="0.1524" layer="91"/>
+<wire x1="188.976" y1="152.146" x2="188.976" y2="145.796" width="0.1524" layer="91"/>
+<junction x="188.976" y="145.796"/>
 </segment>
 <segment>
 <wire x1="102.362" y1="101.854" x2="103.378" y2="101.854" width="0.1524" layer="91"/>
@@ -4153,6 +4168,11 @@ by exp-lbrs.ulp</description>
 <wire x1="128.27" y1="69.342" x2="121.666" y2="69.342" width="0.1524" layer="91"/>
 <wire x1="121.666" y1="69.342" x2="121.666" y2="63.246" width="0.1524" layer="91"/>
 <pinref part="+3V11" gate="G$1" pin="+3V3"/>
+</segment>
+<segment>
+<pinref part="R3" gate="G$1" pin="2"/>
+<pinref part="+3V12" gate="G$1" pin="+3V3"/>
+<wire x1="188.976" y1="165.354" x2="188.976" y2="162.306" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$1" class="0">
@@ -4407,6 +4427,18 @@ by exp-lbrs.ulp</description>
 </nets>
 </sheet>
 </sheets>
+<errors>
+<approved hash="104,1,176.53,47.244,BAT3,-,N$8,,,"/>
+<approved hash="104,1,176.53,57.404,BAT3,+,BATT_LVL,,,"/>
+<approved hash="104,1,176.53,34.798,BAT4,-,GND,,,"/>
+<approved hash="104,1,176.53,44.958,BAT4,+,N$8,,,"/>
+</errors>
 </schematic>
 </drawing>
+<compatibility>
+<note version="6.3" minversion="6.2.2" severity="warning">
+Since Version 6.2.2 text objects can contain more than one line,
+which will not be processed correctly with this version.
+</note>
+</compatibility>
 </eagle>
