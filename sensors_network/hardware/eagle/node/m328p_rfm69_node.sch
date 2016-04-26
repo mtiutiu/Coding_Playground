@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.01" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -2127,16 +2127,16 @@ You are welcome to use this library for commercial purposes. For attribution, we
 <wire x1="17.526" y1="-4.826" x2="17.526" y2="4.826" width="0.254" layer="41"/>
 <wire x1="-24.0157" y1="-0.0482" x2="-18.9129" y2="-0.0457" width="0.4064" layer="49"/>
 <wire x1="18.9103" y1="-0.0482" x2="24.0131" y2="-0.0457" width="0.4064" layer="49"/>
-<wire x1="11.43" y1="2.54" x2="-8.636" y2="2.54" width="0.4064" layer="21"/>
+<wire x1="10.16" y1="2.54" x2="-8.636" y2="2.54" width="0.4064" layer="21"/>
 <wire x1="-8.636" y1="2.54" x2="-8.636" y2="0.5842" width="0.4064" layer="21"/>
 <wire x1="-8.636" y1="0.5842" x2="-8.636" y2="-0.6858" width="0.4064" layer="21"/>
 <wire x1="-8.636" y1="-0.6858" x2="-8.636" y2="-2.54" width="0.4064" layer="21"/>
-<wire x1="-8.636" y1="-2.54" x2="11.43" y2="-2.54" width="0.4064" layer="21"/>
-<wire x1="11.43" y1="-2.54" x2="11.43" y2="2.54" width="0.4064" layer="21"/>
+<wire x1="-8.636" y1="-2.54" x2="10.16" y2="-2.54" width="0.4064" layer="21"/>
+<wire x1="10.16" y1="-2.54" x2="10.16" y2="2.54" width="0.4064" layer="21"/>
 <wire x1="-8.636" y1="0.5842" x2="-9.906" y2="0.5842" width="0.4064" layer="21"/>
 <wire x1="-9.906" y1="0.5842" x2="-9.906" y2="-0.6858" width="0.4064" layer="21"/>
 <wire x1="-9.906" y1="-0.6858" x2="-8.636" y2="-0.6858" width="0.4064" layer="21"/>
-<wire x1="10.287" y1="0" x2="9.017" y2="0" width="0.4064" layer="21"/>
+<wire x1="9.017" y1="0" x2="7.747" y2="0" width="0.4064" layer="21"/>
 <wire x1="-5.969" y1="0" x2="-7.239" y2="0" width="0.4064" layer="21"/>
 <wire x1="-6.604" y1="0.635" x2="-6.604" y2="-0.635" width="0.4064" layer="21"/>
 <pad name="GND@1" x="25.146" y="0" drill="1.8542" stop="no"/>
