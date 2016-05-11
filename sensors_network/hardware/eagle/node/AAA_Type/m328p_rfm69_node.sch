@@ -5582,21 +5582,21 @@ for ICSP interference</text>
 <pinref part="U1" gate="U$1" pin="PD3(INT1)"/>
 </segment>
 <segment>
-<pinref part="SJ1" gate="G$1" pin="2"/>
-<wire x1="144.78" y1="119.38" x2="139.7" y2="119.38" width="0.1524" layer="91"/>
-<label x="139.7" y="119.38" size="1.778" layer="95" rot="R180" xref="yes"/>
+<pinref part="JP5" gate="A" pin="1"/>
+<wire x1="79.248" y1="76.454" x2="74.422" y2="76.454" width="0.1524" layer="91"/>
+<label x="74.422" y="76.454" size="1.778" layer="95" rot="R180" xref="yes"/>
 </segment>
 </net>
 <net name="D6" class="0">
 <segment>
-<pinref part="JP5" gate="A" pin="2"/>
-<wire x1="79.248" y1="73.914" x2="62.738" y2="73.914" width="0.1524" layer="91"/>
-<label x="62.738" y="73.914" size="1.778" layer="95" rot="R180" xref="yes"/>
-</segment>
-<segment>
 <wire x1="102.362" y1="119.634" x2="104.648" y2="119.634" width="0.1524" layer="91"/>
 <label x="104.648" y="119.634" size="1.778" layer="95" xref="yes"/>
 <pinref part="U1" gate="U$1" pin="PD4(XCK/T0)"/>
+</segment>
+<segment>
+<pinref part="SJ1" gate="G$1" pin="2"/>
+<wire x1="144.78" y1="119.38" x2="139.7" y2="119.38" width="0.1524" layer="91"/>
+<label x="139.7" y="119.38" size="1.778" layer="95" rot="R180" xref="yes"/>
 </segment>
 </net>
 <net name="B0" class="0">
@@ -5752,16 +5752,17 @@ for ICSP interference</text>
 <wire x1="149.86" y1="112.268" x2="149.86" y2="114.3" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="D5_EXT" class="0">
+<net name="D6_EXT" class="0">
+<segment>
+<pinref part="JP5" gate="A" pin="2"/>
+<wire x1="79.248" y1="73.914" x2="66.548" y2="73.914" width="0.1524" layer="91"/>
+<wire x1="66.548" y1="73.914" x2="66.548" y2="81.28" width="0.1524" layer="91"/>
+<label x="66.548" y="81.28" size="1.778" layer="95" rot="R180" xref="yes"/>
+</segment>
 <segment>
 <pinref part="SJ1" gate="G$1" pin="1"/>
 <wire x1="149.86" y1="124.46" x2="149.86" y2="130.048" width="0.1524" layer="91"/>
 <label x="149.86" y="130.048" size="1.778" layer="95" rot="R180" xref="yes"/>
-</segment>
-<segment>
-<pinref part="JP5" gate="A" pin="1"/>
-<wire x1="79.248" y1="76.454" x2="74.422" y2="76.454" width="0.1524" layer="91"/>
-<label x="74.422" y="76.454" size="1.778" layer="95" rot="R180" xref="yes"/>
 </segment>
 </net>
 </nets>
