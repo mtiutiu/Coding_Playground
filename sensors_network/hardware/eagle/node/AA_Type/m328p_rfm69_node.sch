@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.01" unitdist="inch" unit="inch" style="dots" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.01" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -4936,6 +4936,7 @@ for ICSP interference</text>
 <wire x1="161.29" y1="134.874" x2="130.048" y2="134.874" width="0.1016" layer="94"/>
 <wire x1="130.048" y1="134.874" x2="130.048" y2="85.852" width="0.1016" layer="94"/>
 <text x="134.874" y="88.9" size="1.778" layer="94" rot="R90">Node activity LED</text>
+<text x="247.142" y="5.08" size="1.778" layer="94">Rev 1.3</text>
 </plain>
 <instances>
 <instance part="FRAME1" gate="G$1" x="0" y="0"/>
