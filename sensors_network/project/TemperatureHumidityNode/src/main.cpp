@@ -1,8 +1,5 @@
 #include <Arduino.h>
 #include <SPI.h>
-#include <MyTransportNRF24.h>
-#include <MyHwATMega328.h>
-#include <MySensor.h>
 #include <EEPROM.h>
 
 // -------------------------------- CHANGE THIS SECTION ACCORDINGLY ---------------------------------
@@ -11,7 +8,6 @@
 #define HAS_FIXED_VOLTAGE_REGULATOR
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
-const uint8_t THIS_NODE_ID = 4;
 // ---------------------------------------------------------------------------------------------------
 
 // ------------------------------------- CPU FREQUECNY SCALING SECTION -------------------------------
@@ -104,24 +100,22 @@ bool metadataConfigRequestProcessed = false;
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // NRF24L01 radio driver
-#ifndef RF24_RADIO_CE_PIN
-  #define RF24_RADIO_CE_PIN 7
+//#define MY_RADIO_NRF24
+
+// RFM69 radio driver
+#ifndef MY_RADIO_RFM69
+    #define MY_RADIO_RFM69
 #endif
 
-#ifndef RF24_RADIO_CS_PIN
-  #define RF24_RADIO_CS_PIN 6
+#ifndef MY_RFM69_FREQUENCY
+    #define MY_RFM69_FREQUENCY   RF69_868MHZ
 #endif
 
-#ifndef RF24_RADIO_PA_LEVEL
-  #define RF24_RADIO_PA_LEVEL RF24_PA_HIGH
-#endif
+#ifndef MY_NODE_ID
+    #define MY_NODE_ID 1
+#endif    
 
-MyTransportNRF24 radio(RF24_RADIO_CE_PIN, RF24_RADIO_CS_PIN, RF24_RADIO_PA_LEVEL);
-
-// Select AtMega328 hardware profile
-MyHwATMega328 hw;
-
-MySensor gw(radio, hw);
+#include <MySensors.h>
 // ---------------------------------------------------------------------------------------------------
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
@@ -198,7 +192,7 @@ void saveNodeEepromMetadata(const char* metadata) {
 }
 
 // this gets called when we receive a setup request from the gateway
-void incomingConfigRequestProcessing(const MyMessage &message) {
+void receive(const MyMessage &message) {
   if (message.type == V_VAR1) {
     char recvMetadata[MAX_NODE_METADATA_LENGTH];
     memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
@@ -226,14 +220,14 @@ void presentNodeMetadata() {
   // load node metadata based on attached sensors count + the node name
   loadNodeEepromMetadata(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-  gw.sendSketchInfo(nodeName, "");
-  gw.present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
-  gw.present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
+  sendSketchInfo(nodeName, "");
+  present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
+  present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
 }
 
 void sendKnockKnockMessage() {
   MyMessage controllerSetupRequestMsg(TEMPERATURE_SENSOR_ID, V_VAR1);
-  gw.send(controllerSetupRequestMsg.set("knock"));
+  send(controllerSetupRequestMsg.set("knock"));
 }
 
 void waitForControllerConfigRequestReply(uint32_t timeout, uint32_t checkInterval,
@@ -241,7 +235,7 @@ void waitForControllerConfigRequestReply(uint32_t timeout, uint32_t checkInterva
   uint32_t maxRetries = timeout / checkInterval;
 
   for (uint32_t retries = 0; !requestProcessingFinishedFlag && (retries < maxRetries); ++retries) {
-    gw.wait(checkInterval); // we wanted sleep here..but it doesn't work - don't know why yet
+    wait(checkInterval); // we wanted sleep here..but it doesn't work - don't know why yet
     if (retries == 0) {
       // for synchronization with the controller so that it knows when to send configuration data
       sendKnockKnockMessage();
@@ -324,9 +318,6 @@ void setup() {
   tempHumSensor.begin();
   #endif
 
-  // process incoming config requests
-  gw.begin(incomingConfigRequestProcessing, THIS_NODE_ID);
-
   waitForControllerConfigRequestReply(SENSOR_CONFIG_DATA_TIMEOUT_MS,
                                       SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS,
                                       metadataConfigRequestProcessed);
@@ -334,17 +325,21 @@ void setup() {
   presentNodeMetadata();
 
   // send battery level at startup also
-  gw.sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
+  sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
+}
+
+void presentation() {
+    presentNodeMetadata();
 }
 
 void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
     MyMessage sensorDataMsg(sensorId, dataType);
 
-    for (uint8_t retries = 0; !gw.send(sensorDataMsg.set(sensorData, 2)) &&
+    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 2)) &&
           (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
 
       // random sleep interval between retries for collisions
-      gw.sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
+      sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
     }
 }
 
@@ -366,9 +361,9 @@ void loop()  {
   //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts SENSOR_SLEEP_INTERVAL_MS cycles
   static uint32_t batteryLvlReportCyclesCounter = 0;
   if(batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
-    gw.sendBatteryLevel(currentBatteryLvlPcnt);
+    sendBatteryLevel(currentBatteryLvlPcnt);
     batteryLvlReportCyclesCounter = 0;
   }
 
-  gw.sleep(SENSOR_SLEEP_INTERVAL_MS);
+  sleep(SENSOR_SLEEP_INTERVAL_MS);
 }
