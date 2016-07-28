@@ -2,6 +2,23 @@
 #include <SPI.h>
 #include <EEPROM.h>
 
+// ----------------------------------------- MYSENSORS SECTION ---------------------------------------
+// RFM69 radio driver
+#define MY_RADIO_RFM69
+
+#define MY_RFM69_FREQUENCY   RF69_868MHZ
+
+#define MY_NODE_ID 1
+
+#define MY_DISABLED_SERIAL
+
+//#define MY_SMART_SLEEP_WAIT_DURATION 500
+
+#define MY_SENSOR_NODE_SKETCH_VERSION   "0.1"
+
+#include <MySensors.h>
+// ---------------------------------------------------------------------------------------------------
+
 // -------------------------------- CHANGE THIS SECTION ACCORDINGLY ---------------------------------
 #define BOARD_XTAL_FREQUENCY  8000000UL  // pro mini board xtal frequency
 #define FAST_ADC
@@ -66,15 +83,12 @@ const uint32_t SENSOR_SLEEP_INTERVAL_MS = 55000;  // ~55s sensor data report int
 const uint8_t SENSOR_DATA_SEND_RETRIES = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
 
-const uint32_t SENSOR_CONFIG_DATA_TIMEOUT_MS = 3000;
-const uint32_t SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS = 10;
-
 HTU21D tempHumSensor;
 // ---------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 const float CHARGED_VBATT_THRESHOLD_V = 3.3;
-const float LOW_VBATT_THRESHOLD_V = 1.5;
+const float LOW_VBATT_THRESHOLD_V = 1.1;
 const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 
 // battery level report interval
@@ -96,26 +110,6 @@ static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
 // was this node metadata configuration processed already ?
 bool metadataConfigRequestProcessed = false;
-// ---------------------------------------------------------------------------------------------------
-
-// ----------------------------------------- MYSENSORS SECTION ---------------------------------------
-// NRF24L01 radio driver
-//#define MY_RADIO_NRF24
-
-// RFM69 radio driver
-#ifndef MY_RADIO_RFM69
-    #define MY_RADIO_RFM69
-#endif
-
-#ifndef MY_RFM69_FREQUENCY
-    #define MY_RFM69_FREQUENCY   RF69_868MHZ
-#endif
-
-#ifndef MY_NODE_ID
-    #define MY_NODE_ID 1
-#endif    
-
-#include <MySensors.h>
 // ---------------------------------------------------------------------------------------------------
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
@@ -164,19 +158,23 @@ void loadNodeDefaultMetadata(char** nodeInfo, uint8_t maxFields) {
   parseNodeMetadata(metadata, nodeInfo, maxFields);
 }
 
-void loadNodeEepromMetadata(char** nodeInfo, uint8_t maxFields) {
+void loadNodeEepromRawMetadata(char* destBuffer, uint8_t len) {
+    memset(destBuffer, '\0', len);
+    for (uint16_t i = 0; i < len; i++) {
+      destBuffer[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
+    }
+}
+
+void loadNodeEepromMetadataFields(char** nodeInfo, uint8_t maxFields) {
   if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) || !nodeInfo) {
     loadNodeDefaultMetadata(nodeInfo, maxFields);
     return;
   }
 
-  char metadata[MAX_NODE_METADATA_LENGTH];
-  memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
-  for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
-    metadata[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
-  }
+  char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+  loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-  parseNodeMetadata(metadata, nodeInfo, maxFields);
+  parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
 }
 
 void saveNodeEepromMetadata(const char* metadata) {
@@ -188,18 +186,6 @@ void saveNodeEepromMetadata(const char* metadata) {
     for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++ ) {
       EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
     }
-  }
-}
-
-// this gets called when we receive a setup request from the gateway
-void receive(const MyMessage &message) {
-  if (message.type == V_VAR1) {
-    char recvMetadata[MAX_NODE_METADATA_LENGTH];
-    memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-    strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-
-    saveNodeEepromMetadata(recvMetadata);
-    metadataConfigRequestProcessed = true;
   }
 }
 
@@ -218,29 +204,11 @@ void presentNodeMetadata() {
   };
 
   // load node metadata based on attached sensors count + the node name
-  loadNodeEepromMetadata(nodeInfo, (NODE_SENSORS_COUNT + 1));
+  loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-  sendSketchInfo(nodeName, "");
+  sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
   present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
   present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
-}
-
-void sendKnockKnockMessage() {
-  MyMessage controllerSetupRequestMsg(TEMPERATURE_SENSOR_ID, V_VAR1);
-  send(controllerSetupRequestMsg.set("knock"));
-}
-
-void waitForControllerConfigRequestReply(uint32_t timeout, uint32_t checkInterval,
-                                          bool& requestProcessingFinishedFlag) {
-  uint32_t maxRetries = timeout / checkInterval;
-
-  for (uint32_t retries = 0; !requestProcessingFinishedFlag && (retries < maxRetries); ++retries) {
-    wait(checkInterval); // we wanted sleep here..but it doesn't work - don't know why yet
-    if (retries == 0) {
-      // for synchronization with the controller so that it knows when to send configuration data
-      sendKnockKnockMessage();
-    }
-  }
 }
 
 void setup() {
@@ -318,18 +286,33 @@ void setup() {
   tempHumSensor.begin();
   #endif
 
-  waitForControllerConfigRequestReply(SENSOR_CONFIG_DATA_TIMEOUT_MS,
-                                      SENSOR_CONFIG_DATA_RETRIES_INTERVAL_MS,
-                                      metadataConfigRequestProcessed);
-
-  presentNodeMetadata();
-
+  // send initial hearbeat at startup
+  sendHeartbeat();
   // send battery level at startup also
   sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
 }
 
+// called automatically by mysensors core for doing node presentation
 void presentation() {
     presentNodeMetadata();
+}
+
+// // called automatically by mysensors core for incomming messages
+void receive(const MyMessage &message) {
+  if (message.type == V_VAR1) {
+    char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+    loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+
+    // save new node metadata only when they differ
+    if(strncmp(message.getString(), rawNodeMetadata, MAX_NODE_METADATA_LENGTH) != 0) {
+        char recvMetadata[MAX_NODE_METADATA_LENGTH];
+        memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+        strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+        saveNodeEepromMetadata(recvMetadata);
+    }
+
+    presentNodeMetadata();
+  }
 }
 
 void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
@@ -365,5 +348,7 @@ void loop()  {
     batteryLvlReportCyclesCounter = 0;
   }
 
-  sleep(SENSOR_SLEEP_INTERVAL_MS);
+  // this does message processing too so we can receive incoming data
+  // the wait period for incoming messages processing is set by MY_SMART_SLEEP_WAIT_DURATION(defaults to 500ms)
+  smartSleep(SENSOR_SLEEP_INTERVAL_MS);
 }
