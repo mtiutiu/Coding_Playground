@@ -8,7 +8,7 @@
 
 #define MY_RFM69_FREQUENCY   RF69_868MHZ
 
-#define MY_NODE_ID 1
+#define MY_NODE_ID 1  // this needs to be set explicitly
 
 #define MY_DISABLED_SERIAL
 
@@ -25,6 +25,7 @@
 #define HAS_FIXED_VOLTAGE_REGULATOR
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
+#define HAS_NODE_ID_SET_SWITCH
 // ---------------------------------------------------------------------------------------------------
 
 // ------------------------------------- CPU FREQUECNY SCALING SECTION -------------------------------
@@ -73,6 +74,8 @@ Vcc vcc(VCC_CORRECTION);
 #ifndef MOCK_SENSOR_DATA
 #include <Wire.h>
 #include <SparkFunHTU21D.h>
+
+HTU21D tempHumSensor;
 #endif
 
 const uint8_t NODE_SENSORS_COUNT = 2;
@@ -82,8 +85,6 @@ const uint8_t HUMIDITY_SENSOR_ID = 2;
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 55000;  // ~55s sensor data report interval
 const uint8_t SENSOR_DATA_SEND_RETRIES = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
-
-HTU21D tempHumSensor;
 // ---------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
@@ -211,6 +212,32 @@ void presentNodeMetadata() {
   present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
 }
 
+
+#ifdef HAS_NODE_ID_SET_SWITCH
+/*
+  C0 | C1 | C2 | C3 | C4 | C5 | C6
+  A1 | A0 |   5   |   6   |   7  |  8   |   9
+*/
+
+const uint8_t NODE_ID_SWITCH_PINS[] = {A1, A0, 5, 6, 7, 8, 9};
+
+uint8_t readNodeIdSwitch() {
+  uint8_t nodeId = 0;
+
+  for(uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+    nodeId |= digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
+  }
+
+  return nodeId;
+}
+#endif
+
+
+// called before mysensors transport init
+void before() {
+
+}
+
 void setup() {
 // compute the sysclk divider based on the board xtal frequency
 #if defined(WANT_8MHZ_SYSCLK)
@@ -282,19 +309,27 @@ void setup() {
   #endif
 #endif
 
-  #ifndef MOCK_SENSOR_DATA
+#ifndef MOCK_SENSOR_DATA
   tempHumSensor.begin();
-  #endif
+#endif
 
-  // send initial hearbeat at startup
-  sendHeartbeat();
-  // send battery level at startup also
-  sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
+#ifdef HAS_NODE_ID_SET_SWITCH
+  for(uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+    pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+  }
+
+  transportAssignNodeID(readNodeIdSwitch());
+#endif
 }
 
 // called automatically by mysensors core for doing node presentation
 void presentation() {
-    presentNodeMetadata();
+  presentNodeMetadata();
+
+    // send initial hearbeat at startup
+  sendHeartbeat();
+  // send battery level at startup also
+  sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
 }
 
 // // called automatically by mysensors core for incomming messages
