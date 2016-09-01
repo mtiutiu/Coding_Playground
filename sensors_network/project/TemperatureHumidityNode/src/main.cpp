@@ -2,6 +2,16 @@
 #include <SPI.h>
 #include <EEPROM.h>
 
+// -------------------------------- CHANGE THIS SECTION ACCORDINGLY ----------------------------
+#define BOARD_XTAL_FREQUENCY  8000000UL  // pro mini board xtal frequency
+#define FAST_ADC
+#define HAS_FIXED_VOLTAGE_REGULATOR
+//#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
+//#define MOCK_SENSOR_DATA
+#define HAS_NODE_ID_SET_SWITCH
+#define NODE_ACTIVITY_LED_SIGNAL
+// -------------------------------------------------------------------------------------------------------------
+
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // RFM69 radio driver
 #define MY_RADIO_RFM69
@@ -14,21 +24,16 @@
 
 //#define MY_SMART_SLEEP_WAIT_DURATION 500
 
+#ifdef NODE_ACTIVITY_LED_SIGNAL
+#define NODE_ACTIVITY_LED_PIN 4
+#endif
+
 #define MY_SENSOR_NODE_SKETCH_VERSION   "0.1"
 
 #include <MySensors.h>
-// ---------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------
 
-// -------------------------------- CHANGE THIS SECTION ACCORDINGLY ---------------------------------
-#define BOARD_XTAL_FREQUENCY  8000000UL  // pro mini board xtal frequency
-#define FAST_ADC
-#define HAS_FIXED_VOLTAGE_REGULATOR
-//#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
-//#define MOCK_SENSOR_DATA
-#define HAS_NODE_ID_SET_SWITCH
-// ---------------------------------------------------------------------------------------------------
-
-// ------------------------------------- CPU FREQUECNY SCALING SECTION -------------------------------
+// ------------------------------------- CPU FREQUECNY SCALING SECTION -------------------------
 #if F_CPU == 8000000UL
   #define WANT_8MHZ_SYSCLK
 #elif F_CPU == 4000000UL
@@ -38,23 +43,23 @@
 #elif F_CPU == 1000000UL
   #define WANT_1MHZ_SYSCLK
 #endif
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
-// ------------------------------------- CPU CLOCK EXTERNAL INSPECTION -------------------------------
+// ------------------------------------- CPU CLOCK EXTERNAL INSPECTION -------------------------
 #ifdef INSPECT_SYSTEM_CLOCK
 // system clock value can be seen on this pin using a digital probe
 const uint8_t SYS_CLKOUT_PIN = 8;
 #endif
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
-// --------------------------------------------- MCU ADC SECTION -------------------------------------
+// --------------------------------------------- MCU ADC SECTION --------------------------------------
 const uint16_t ADC_MAX_SCALE = 1023;
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
 const float ANALOG_REF_V = 3.3;
 #endif
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
-// ---------------------------------------- VOLTAGE REGULATOR SECTION --------------------------------
+// ---------------------------------------- VOLTAGE REGULATOR SECTION -----------------------------
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
 // we need to read the battery direclty
 const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A2;
@@ -68,9 +73,9 @@ const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A2;
 const float VCC_CORRECTION = 1.0;
 Vcc vcc(VCC_CORRECTION);
 #endif
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
-// ----------------------------------- TMP102 TEMPERATURE SENSOR SECTION ----------------------------
+// ----------------------------------- TMP102 TEMPERATURE SENSOR SECTION --------------------
 #ifndef MOCK_SENSOR_DATA
 #include <Wire.h>
 #include <SparkFunHTU21D.h>
@@ -85,7 +90,7 @@ const uint8_t HUMIDITY_SENSOR_ID = 2;
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 55000;  // ~55s sensor data report interval
 const uint8_t SENSOR_DATA_SEND_RETRIES = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 const float CHARGED_VBATT_THRESHOLD_V = 3.3;
@@ -96,9 +101,9 @@ const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000; // 5min(5 * 60 * 1000)
 const uint32_t BATTERY_LVL_REPORT_CYCLES = BATTERY_LVL_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
-// --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION -------------------------------
+// --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
 // eeprom start address index for our custom data saving
 // mysensors api uses eeprom addresses including 512 so we pick 514 for safety
 #define EEPROM_CUSTOM_START_INDEX 514
@@ -111,7 +116,7 @@ static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
 // was this node metadata configuration processed already ?
 bool metadataConfigRequestProcessed = false;
-// ---------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
   float batteryLvlPcnt = 0;
@@ -317,8 +322,11 @@ void setup() {
   for(uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
     pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
   }
-
   transportAssignNodeID(readNodeIdSwitch());
+#endif
+
+#ifdef NODE_ACTIVITY_LED_SIGNAL
+  pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
 #endif
 }
 
@@ -353,12 +361,20 @@ void receive(const MyMessage &message) {
 void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
     MyMessage sensorDataMsg(sensorId, dataType);
 
+#ifdef NODE_ACTIVITY_LED_SIGNAL
+    digitalWrite(NODE_ACTIVITY_LED_PIN, HIGH);
+#endif
+
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 2)) &&
           (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
 
       // random sleep interval between retries for collisions
       sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
     }
+
+    #ifdef NODE_ACTIVITY_LED_SIGNAL
+        digitalWrite(NODE_ACTIVITY_LED_PIN, LOW);
+    #endif
 }
 
 void loop()  {
