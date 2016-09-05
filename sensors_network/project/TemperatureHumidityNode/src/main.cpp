@@ -230,13 +230,13 @@ void presentNodeMetadata() {
    A1 | A0 |   5   |   6   |   7  |  8   |   9
  */
 
-const uint8_t NODE_ID_SWITCH_PINS[] = {9, 8, 7, 6, 5, A0, A1};
+const uint8_t NODE_ID_SWITCH_PINS[] = {A1, A0, 5, 6, 7, 8, 9};
 
 uint8_t readNodeIdSwitch() {
         uint8_t nodeId = 0;
 
         for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-                nodeId |= !(digitalRead(NODE_ID_SWITCH_PINS[i]) << i);
+                nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
         }
 
         return nodeId;
