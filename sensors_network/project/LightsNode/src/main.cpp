@@ -306,7 +306,7 @@ uint8_t readAcSensorState() {
 void sendKnockSyncMsg() {
         MyMessage knockMsg(AC_SENSOR_ID, V_VAR2);
 
-        send(knockMsg.set("knock"), true);
+        send(knockMsg.set("knock"), false);
         wait(KNOCK_MSG_WAIT_INTERVAL_MS);
 }
 

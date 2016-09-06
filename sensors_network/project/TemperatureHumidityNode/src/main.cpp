@@ -289,7 +289,7 @@ void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
 void sendKnockSyncMsg() {
         MyMessage knockMsg(TEMPERATURE_SENSOR_ID, V_VAR2);
 
-        send(knockMsg.set("knock"), true);
+        send(knockMsg.set("knock"), false);
         wait(KNOCK_MSG_WAIT_INTERVAL_MS);
 }
 
