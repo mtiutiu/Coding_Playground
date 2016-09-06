@@ -28,10 +28,22 @@
 #define NODE_ACTIVITY_LED_PIN 4
 #endif
 
-#define MY_SENSOR_NODE_SKETCH_VERSION "0.1"
+#define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
+
+// ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
+#ifdef HAS_NODE_ID_SET_SWITCH
+/*
+   C0 | C1 | C2 | C3 | C4 | C5 | C6
+   A1 | A0 |   5   |   6   |   7  |  8   |   9
+ */
+const uint8_t NODE_ID_SWITCH_PINS[] = {A1, A0, 5, 6, 7, 8, 9};
+#endif
+
+const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
+// -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------- CPU FREQUECNY SCALING SECTION-------------------------
 #if F_CPU == 8000000UL
@@ -55,7 +67,7 @@ const uint8_t SYS_CLKOUT_PIN = 8;
 // --------------------------------------------- MCU ADC SECTION --------------------------------------
 const uint16_t ADC_MAX_SCALE = 1023;
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
-const float ANALOG_REF_V = 3.3;
+const float ANALOG_REF_V = 3.33;
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
@@ -82,6 +94,9 @@ Vcc vcc(VCC_CORRECTION);
 EnergyMonitor emonSensor;
 #endif
 
+// sensor data report interval when light state changes
+const uint32_t SENSOR_SLEEP_INTERVAL_MS = 1000;
+
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t AC_SENSOR_ID = 1;
 const uint8_t AC_SENSOR_READ_PIN = A3;
@@ -89,8 +104,7 @@ const float AC_SENSOR_TURNS_RATIO = 2000.0; // using TA12-200 current transforme
 const float AC_SENSOR_BURDEN_RESISTOR_OHM = 440.0;
 const float AC_SENSOR_CALIBRATION_FACTOR =
         AC_SENSOR_TURNS_RATIO / AC_SENSOR_BURDEN_RESISTOR_OHM;
-const uint16_t AC_SENSOR_SAMPLES = 100;
-const uint32_t SENSOR_SLEEP_INTERVAL_MS = 1000;  // sensor data report interval when light state changes
+const uint16_t AC_SENSOR_SAMPLES = 50;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
 
@@ -100,13 +114,20 @@ const uint8_t LIGHT_OFF = 0;
 
 // sensor data report interval when light state doesn't change
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
-const uint32_t LIGHT_STATUS_REPORT_INTERVAL_MS = 10000; // 10s interval
+const uint32_t LIGHT_STATUS_REPORT_INTERVAL_MS = 45000; // 45s interval
 const uint32_t LIGHT_STATUS_REPORT_CYCLES =
-        LIGHT_STATUS_REPORT_INTERVAL_MS / (SENSOR_SLEEP_INTERVAL_MS + MY_SMART_SLEEP_WAIT_DURATION);
+        LIGHT_STATUS_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+// -------------------------------------------------------------------------------------------------------------
+
+// --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
+//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
+const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 45000;  // 45s interval
+const uint32_t HEARTBEAT_SEND_CYCLES =
+        HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
-const float CHARGED_VBATT_THRESHOLD_V = 3.3;
+const float CHARGED_VBATT_THRESHOLD_V = 3.33;
 const float LOW_VBATT_THRESHOLD_V = 1.1;
 const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 
@@ -133,15 +154,15 @@ bool metadataConfigRequestProcessed = false;
 // -------------------------------------------------------------------------------------------------------------
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
-        float batteryLvlPcnt = 0;
+        float batteryLvlPcnt = 0.0;
 
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
-        float vBattAnalogRead = 0;
+        float vBattAnalogRead = 0.0;
 
         for (uint8_t i = 0; i < samples; i++) {
                 vBattAnalogRead += analogRead(analogReadPin) / (float)samples;
         }
-        vBattAnalogRead = (vBattAnalogRead * ANALOG_REF_V) / (float)ADC_MAX_SCALE;
+        vBattAnalogRead = (vBattAnalogRead  * ANALOG_REF_V) / (float)ADC_MAX_SCALE;
         batteryLvlPcnt = 100.0 * (vBattAnalogRead - LOW_VBATT_THRESHOLD_V) /
                          (CHARGED_VBATT_THRESHOLD_V - LOW_VBATT_THRESHOLD_V);
         batteryLvlPcnt = constrain(batteryLvlPcnt, 0.0, 100.0);
@@ -233,18 +254,18 @@ void presentNodeMetadata() {
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
-/*
-   C0 | C1 | C2 | C3 | C4 | C5 | C6
-   A1 | A0 |   5   |   6   |   7  |  8   |   9
- */
-
-const uint8_t NODE_ID_SWITCH_PINS[] = {A1, A0, 5, 6, 7, 8, 9};
-
 uint8_t readNodeIdSwitch() {
         uint8_t nodeId = 0;
 
         for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+                pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
                 nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
+        }
+
+        // after reading the switch revert the pins to output and set them low for power savings
+        for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+                pinMode(NODE_ID_SWITCH_PINS[i], OUTPUT);
+                digitalWrite(NODE_ID_SWITCH_PINS[i], LOW);
         }
 
         return nodeId;
@@ -280,6 +301,13 @@ uint8_t readAcSensorState() {
         // what's under AC_LOAD_IRMS_MIN_THRESHOLD we cannot measure so it's noise only
         //  otherwise we have a real measurement
         return (round((iRMS * 1000.0) / NOISE_LVL_MA) > 1.0) ? LIGHT_ON : LIGHT_OFF;
+}
+
+void sendKnockSyncMsg() {
+        MyMessage knockMsg(AC_SENSOR_ID, V_VAR2);
+
+        send(knockMsg.set("knock"), true);
+        wait(KNOCK_MSG_WAIT_INTERVAL_MS);
 }
 
 // called before mysensors transport init
@@ -363,9 +391,6 @@ void setup() {
   #endif
 
 #ifdef HAS_NODE_ID_SET_SWITCH
-        for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-                pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
-        }
         transportAssignNodeID(readNodeIdSwitch());
 #endif
 
@@ -402,21 +427,18 @@ void receive(const MyMessage &message) {
                 }
                 presentNodeMetadata();
                 break;
-        case V_STATUS:
-                sendSensorData(AC_SENSOR_ID,
-#ifdef MOCK_SENSOR_DATA
-                               random(0, 1),
-#else
-                               readAcSensorState(),
-#endif
-                               V_STATUS);
-                break;
         default:;
         }
 }
 
 void loop() {
-        static bool sendState = false;
+        static bool firstInit = false;
+        if(!firstInit) {
+                sendKnockSyncMsg();
+                firstInit = true;
+        }
+
+        static bool sendLightState = false;
 
         #ifdef MOCK_SENSOR_DATA
         uint8_t currentBatteryLvlPcnt = random(0, 100);
@@ -430,20 +452,19 @@ void loop() {
         static float lastLightState;
         if (currentLightState != lastLightState) {
                 lastLightState = currentLightState;
-                sendState = true;
+                sendLightState = true;
         }
 
         // send new state on a predefined interval also(to have it refreshed on the controller)
         static uint32_t lightStatusReportCounter;
         if (lightStatusReportCounter++ >= LIGHT_STATUS_REPORT_CYCLES) {
                 lightStatusReportCounter = 0;
-                sendState = true;
+                sendLightState = true;
         }
 
-        if (sendState) {
+        if (sendLightState) {
                 sendSensorData(AC_SENSOR_ID, currentLightState, V_STATUS);
-                sendHeartbeat();  // send heartbeat also
-                sendState = false;
+                sendLightState = false;
         }
 
         // send battery state after BATTERY_LVL_REPORT_INTERVAL_MS interval elapsed
@@ -454,7 +475,12 @@ void loop() {
                 batteryLvlReportCyclesCounter = 0;
         }
 
-        // we don't use smart sleep here as we wake up pretty often and don't want to send heartbeat so often
-        wait(MY_SMART_SLEEP_WAIT_DURATION);
+        // send heartbeat on a regular interval too
+        static uint32_t heartbeatCounter = 0;
+        if (heartbeatCounter++ >= HEARTBEAT_SEND_CYCLES) {
+                sendHeartbeat();
+                heartbeatCounter = 0;
+        }
+
         sleep(SENSOR_SLEEP_INTERVAL_MS);
 }
