@@ -19,6 +19,8 @@
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
 #define MY_NODE_ID 1  // this needs to be set explicitly
+#define MY_PARENT_NODE_ID 0
+#define MY_PARENT_NODE_IS_STATIC
 
 #define MY_DISABLED_SERIAL
 
