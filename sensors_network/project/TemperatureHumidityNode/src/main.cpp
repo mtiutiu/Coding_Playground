@@ -6,10 +6,12 @@
 #define BOARD_XTAL_FREQUENCY 8000000UL  // pro mini board xtal frequency
 #define FAST_ADC
 #define HAS_FIXED_VOLTAGE_REGULATOR
+#define USE_ANALOG_INTERNAL_VREF
+#define USE_VBATT_RESISTOR_DIVIDER
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
 #define HAS_NODE_ID_SET_SWITCH
-#define NODE_ACTIVITY_LED_SIGNAL
+//#define NODE_ACTIVITY_LED_SIGNAL
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -27,7 +29,7 @@
 //#define MY_SMART_SLEEP_WAIT_DURATION 500
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
-#define NODE_ACTIVITY_LED_PIN 4
+#define NODE_ACTIVITY_LED_PIN 1
 #endif
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
@@ -38,11 +40,11 @@
 // ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
-   C0 | C1 | C2 | C3 | C4 | C5 | C6
-   A1 | A0 |   5   |   6   |   7  |  8   |   9
- */
+| C0 | C1 | C2 | C3 | C4 | C5 | C6 |
+|  3 |  4 | 5  |  6 |  7 |  8 |  9 |
+*/
 
-const uint8_t NODE_ID_SWITCH_PINS[] = {A1, A0, 5, 6, 7, 8, 9};
+const uint8_t NODE_ID_SWITCH_PINS[] = {3, 4, 5, 6, 7, 8, 9};
 #endif
 
 const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
@@ -69,8 +71,11 @@ const uint8_t SYS_CLKOUT_PIN = 8;
 
 // --------------------------------------------- MCU ADC SECTION --------------------------------------
 const uint16_t ADC_MAX_SCALE = 1023;
-#ifdef HAS_FIXED_VOLTAGE_REGULATOR
-const float ANALOG_REF_V = 3.33;
+
+#ifdef USE_ANALOG_INTERNAL_VREF
+const float ANALOG_REF_V = 1.1;
+#else
+const float ANALOG_REF_V = 3.0;
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
@@ -90,12 +95,12 @@ Vcc vcc(VCC_CORRECTION);
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
-// ------------------------------------- TMP102  SENSOR SECTION -------------------------------------
+// ------------------------------------- TEMP/HUM SENSOR SECTION -------------------------------------
 #ifndef MOCK_SENSOR_DATA
 #include <Wire.h>
-#include <SparkFunHTU21D.h>
+#include <Si7021.h>
 
-HTU21D tempHumSensor;
+SI7021 tempHumSensor;
 #endif
 
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 20000;
@@ -109,18 +114,24 @@ const uint8_t HUMIDITY_SENSOR_ID = 2;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 5;
 const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
 const uint32_t SENSOR_DATA_REPORT_CYCLES =
-        SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+    SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 40000;  // 40s interval
 const uint32_t HEARTBEAT_SEND_CYCLES =
-        HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+    HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
-const float CHARGED_VBATT_THRESHOLD_V = 3.33;
+#ifdef USE_VBATT_RESISTOR_DIVIDER
+const uint32_t DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470UL;
+const uint32_t DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000UL;
+const uint32_t RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
+    (float)(DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
+#endif
+const float CHARGED_VBATT_THRESHOLD_V = 3.0;
 const float LOW_VBATT_THRESHOLD_V = 1.1;
 const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 
@@ -128,7 +139,7 @@ const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 const uint32_t BATTERY_LVL_REPORT_CYCLES =
-        BATTERY_LVL_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+    BATTERY_LVL_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -147,152 +158,157 @@ bool metadataConfigRequestProcessed = false;
 // -------------------------------------------------------------------------------------------------------------
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
-        float batteryLvlPcnt = 0;
+    float batteryLvlPcnt = 0;
 
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
-        float vBattAnalogRead = 0;
+    float vBattAnalogRead = 0;
 
-        for (uint8_t i = 0; i < samples; i++) {
-                vBattAnalogRead += analogRead(analogReadPin) / (float)samples;
-        }
-        vBattAnalogRead = (vBattAnalogRead * ANALOG_REF_V) / (float)ADC_MAX_SCALE;
-        batteryLvlPcnt = 100.0 * (vBattAnalogRead - LOW_VBATT_THRESHOLD_V) /
-                         (CHARGED_VBATT_THRESHOLD_V - LOW_VBATT_THRESHOLD_V);
-        batteryLvlPcnt = constrain(batteryLvlPcnt, 0.0, 100.0);
+    for (uint8_t i = 0; i < samples; i++) {
+        vBattAnalogRead += analogRead(analogReadPin) / (float)samples;
+    }
 
+#ifdef USE_VBATT_RESISTOR_DIVIDER
+    vBattAnalogRead = ((vBattAnalogRead * ANALOG_REF_V) / ADC_MAX_SCALE) /
+        RESISTOR_DIVIDER_RATIO;
 #else
-        batteryLvlPcnt =
-                vcc.Read_Perc(LOW_VBATT_THRESHOLD_V, CHARGED_VBATT_THRESHOLD_V);
+    vBattAnalogRead = (vBattAnalogRead * ANALOG_REF_V) / ADC_MAX_SCALE;
 #endif
 
-        return round(batteryLvlPcnt);
+    batteryLvlPcnt = 100.0 * (vBattAnalogRead - LOW_VBATT_THRESHOLD_V) /
+                     (CHARGED_VBATT_THRESHOLD_V - LOW_VBATT_THRESHOLD_V);
+#else
+    batteryLvlPcnt =
+            vcc.Read_Perc(LOW_VBATT_THRESHOLD_V, CHARGED_VBATT_THRESHOLD_V);
+#endif
+
+    return round(constrain(batteryLvlPcnt, 0.0, 100.0));
 }
 
 bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
-        return (EEPROM.read(index) != mark);
+    return (EEPROM.read(index) != mark);
 }
 
 void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
-        if (!metadata || !nodeInfo) {
-                return;
-        }
+    if (!metadata || !nodeInfo) {
+        return;
+    }
 
-        for (uint8_t i = 0; i < maxFields; i++) {
-                if (i == 0) {
-                        strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
-                        continue;
-                }
-                strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+    for (uint8_t i = 0; i < maxFields; i++) {
+        if (i == 0) {
+            strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
+            continue;
         }
+        strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+    }
 }
 
 void loadNodeDefaultMetadata(char **nodeInfo, uint8_t maxFields) {
-        char metadata[MAX_NODE_METADATA_LENGTH];
-        memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
-        strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
+    char metadata[MAX_NODE_METADATA_LENGTH];
+    memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
+    strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
 
-        parseNodeMetadata(metadata, nodeInfo, maxFields);
+    parseNodeMetadata(metadata, nodeInfo, maxFields);
 }
 
 void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
-        memset(destBuffer, '\0', len);
-        for (uint16_t i = 0; i < len; i++) {
-                destBuffer[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
-        }
+    memset(destBuffer, '\0', len);
+    for (uint16_t i = 0; i < len; i++) {
+        destBuffer[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
+    }
 }
 
 void loadNodeEepromMetadataFields(char **nodeInfo, uint8_t maxFields) {
-        if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
-                                  EEPROM_FIRST_WRITE_MARK) ||
-            !nodeInfo) {
-                loadNodeDefaultMetadata(nodeInfo, maxFields);
-                return;
-        }
+    if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
+                              EEPROM_FIRST_WRITE_MARK) ||
+        !nodeInfo) {
+        loadNodeDefaultMetadata(nodeInfo, maxFields);
+        return;
+    }
 
-        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+    char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+    loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-        parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
+    parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
 }
 
 void saveNodeEepromMetadata(const char *metadata) {
-        if (metadata) {
-                if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
-                                          EEPROM_FIRST_WRITE_MARK)) {
-                        EEPROM.write(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
-                }
-
-                for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
-                        EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
-                }
+    if (metadata) {
+        if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
+                                  EEPROM_FIRST_WRITE_MARK)) {
+            EEPROM.write(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
         }
+
+        for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
+            EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
+        }
+    }
 }
 
 void presentNodeMetadata() {
-        char nodeName[MAX_NODE_METADATA_LENGTH];
-        char temperatureSensorName[MAX_NODE_METADATA_LENGTH];
-        char humiditySensorName[MAX_NODE_METADATA_LENGTH];
-        memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-        memset(temperatureSensorName, '\0', MAX_NODE_METADATA_LENGTH);
-        memset(humiditySensorName, '\0', MAX_NODE_METADATA_LENGTH);
+    char nodeName[MAX_NODE_METADATA_LENGTH];
+    char temperatureSensorName[MAX_NODE_METADATA_LENGTH];
+    char humiditySensorName[MAX_NODE_METADATA_LENGTH];
+    memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
+    memset(temperatureSensorName, '\0', MAX_NODE_METADATA_LENGTH);
+    memset(humiditySensorName, '\0', MAX_NODE_METADATA_LENGTH);
 
-        char *nodeInfo[] = {
-                nodeName,     // node friendly name
-                temperatureSensorName, // temperature sensor friendly name
-                humiditySensorName // humidity sensor friendly name
-        };
+    char *nodeInfo[] = {
+        nodeName,     // node friendly name
+        temperatureSensorName, // temperature sensor friendly name
+        humiditySensorName // humidity sensor friendly name
+    };
 
-        // load node metadata based on attached sensors count + the node name
-        loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
+    // load node metadata based on attached sensors count + the node name
+    loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-        sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-        present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
-        present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
+    sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
+    present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
 uint8_t readNodeIdSwitch() {
-        uint8_t nodeId = 0;
+    uint8_t nodeId = 0;
 
-        for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-                pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
-                nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
-        }
+    for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+        pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+        nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
+    }
 
-        // after reading the switch revert the pins to output and set them low for power savings
-        for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-                pinMode(NODE_ID_SWITCH_PINS[i], OUTPUT);
-                digitalWrite(NODE_ID_SWITCH_PINS[i], LOW);
-        }
+    // after reading the switch revert the pins to output and set them low for power savings
+    for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+        pinMode(NODE_ID_SWITCH_PINS[i], OUTPUT);
+        digitalWrite(NODE_ID_SWITCH_PINS[i], LOW);
+    }
 
-        return nodeId;
+    return nodeId;
 }
 #endif
 
 void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
-        MyMessage sensorDataMsg(sensorId, dataType);
+    MyMessage sensorDataMsg(sensorId, dataType);
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
-        digitalWrite(NODE_ACTIVITY_LED_PIN, HIGH);
+    digitalWrite(NODE_ACTIVITY_LED_PIN, HIGH);
 #endif
 
-        for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 1), false) &&
-             (retries < SENSOR_DATA_SEND_RETRIES);
-             ++retries) {
-                // random sleep interval between retries for collisions
-                sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
-        }
+    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 1), false) &&
+         (retries < SENSOR_DATA_SEND_RETRIES);
+         ++retries) {
+        // random sleep interval between retries for collisions
+        sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
+    }
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
-        digitalWrite(NODE_ACTIVITY_LED_PIN, LOW);
+    digitalWrite(NODE_ACTIVITY_LED_PIN, LOW);
 #endif
 }
 
 void sendKnockSyncMsg() {
-        MyMessage knockMsg(TEMPERATURE_SENSOR_ID, V_VAR2);
+    MyMessage knockMsg(TEMPERATURE_SENSOR_ID, V_VAR2);
 
-        send(knockMsg.set("knock"), false);
-        wait(KNOCK_MSG_WAIT_INTERVAL_MS);
+    send(knockMsg.set("knock"), false);
+    wait(KNOCK_MSG_WAIT_INTERVAL_MS);
 }
 
 // called before mysensors transport init
@@ -303,172 +319,177 @@ void setup() {
 // compute the sysclk divider based on the board xtal frequency
 #if defined(WANT_8MHZ_SYSCLK)
 #if BOARD_XTAL_FREQUENCY == 8000000UL
-        clock_prescale_set(clock_div_1);
+    clock_prescale_set(clock_div_1);
 #elif BOARD_XTAL_FREQUENCY == 16000000UL
-        clock_prescale_set(clock_div_2);
+    clock_prescale_set(clock_div_2);
 #else
 #error "Don't know how to handle this BOARD_XTAL_FREQUENCY!"
 #endif
 #elif defined(WANT_4MHZ_SYSCLK)
 #if BOARD_XTAL_FREQUENCY == 8000000UL
-        clock_prescale_set(clock_div_2);
+    clock_prescale_set(clock_div_2);
 #elif BOARD_XTAL_FREQUENCY == 16000000UL
-        clock_prescale_set(clock_div_4);
+    clock_prescale_set(clock_div_4);
 #else
 #error "Don't know how to handle this BOARD_XTAL_FREQUENCY!"
 #endif
 #elif defined(WANT_2MHZ_SYSCLK)
 #if BOARD_XTAL_FREQUENCY == 8000000UL
-        clock_prescale_set(clock_div_4);
+    clock_prescale_set(clock_div_4);
 #elif BOARD_XTAL_FREQUENCY == 16000000UL
-        clock_prescale_set(clock_div_8);
+    clock_prescale_set(clock_div_8);
 #else
 #error "Don't know how to handle this BOARD_XTAL_FREQUENCY!"
 #endif
 #elif defined(WANT_1MHZ_SYSCLK)
 #if BOARD_XTAL_FREQUENCY == 8000000UL
-        clock_prescale_set(clock_div_8);
+    clock_prescale_set(clock_div_8);
 #elif BOARD_XTAL_FREQUENCY == 16000000UL
-        clock_prescale_set(clock_div_16);
+    clock_prescale_set(clock_div_16);
 #else
 #error "Don't know how to handle this BOARD_XTAL_FREQUENCY!"
 #endif
 #endif
 
 #ifdef INSPECT_SYSTEM_CLOCK
-        pinMode(SYS_CLKOUT_PIN, OUTPUT);
+    pinMode(SYS_CLKOUT_PIN, OUTPUT);
 #endif
 
 #ifdef FAST_ADC
 #if F_CPU == 1000000UL
-        // ADC clock divided by 2 - 500KHz
-        bitClear(ADCSRA, ADPS2);
-        bitClear(ADCSRA, ADPS1);
-        bitClear(ADCSRA, ADPS0);
+    // ADC clock divided by 2 - 500KHz
+    bitClear(ADCSRA, ADPS2);
+    bitClear(ADCSRA, ADPS1);
+    bitClear(ADCSRA, ADPS0);
 #elif F_CPU == 2000000UL
-        // ADC clock divided by 4 - 500KHz
-        bitClear(ADCSRA, ADPS2);
-        bitSet(ADCSRA, ADPS1);
-        bitClear(ADCSRA, ADPS0);
+    // ADC clock divided by 4 - 500KHz
+    bitClear(ADCSRA, ADPS2);
+    bitSet(ADCSRA, ADPS1);
+    bitClear(ADCSRA, ADPS0);
 #elif F_CPU == 4000000UL
-        // ADC clock divided by 8 - 500KHz
-        bitClear(ADCSRA, ADPS2);
-        bitSet(ADCSRA, ADPS1);
-        bitSet(ADCSRA, ADPS0);
+    // ADC clock divided by 8 - 500KHz
+    bitClear(ADCSRA, ADPS2);
+    bitSet(ADCSRA, ADPS1);
+    bitSet(ADCSRA, ADPS0);
 #elif F_CPU == 8000000UL
-        // ADC clock divided by 16 - 500KHz
-        bitSet(ADCSRA, ADPS2);
-        bitClear(ADCSRA, ADPS1);
-        bitClear(ADCSRA, ADPS0);
+    // ADC clock divided by 16 - 500KHz
+    bitSet(ADCSRA, ADPS2);
+    bitClear(ADCSRA, ADPS1);
+    bitClear(ADCSRA, ADPS0);
 #elif F_CPU == 16000000UL
-        // ADC clock divided by 32 - 500KHz
-        bitSet(ADCSRA, ADPS2);
-        bitClear(ADCSRA, ADPS1);
-        bitSet(ADCSRA, ADPS0);
+    // ADC clock divided by 32 - 500KHz
+    bitSet(ADCSRA, ADPS2);
+    bitClear(ADCSRA, ADPS1);
+    bitSet(ADCSRA, ADPS0);
 #else
 #error "Don't know how to handle this F_CPU!"
 #endif
 #endif
 
+#ifdef USE_ANALOG_INTERNAL_VREF
+    analogReference(INTERNAL);
+#endif
+
 #ifndef MOCK_SENSOR_DATA
-        tempHumSensor.begin();
+    tempHumSensor.begin();
+    tempHumSensor.setHumidityRes(12); // Humidity = 12-bit / Temperature = 14-bit
 #endif
 
 #ifdef HAS_NODE_ID_SET_SWITCH
-        transportAssignNodeID(readNodeIdSwitch());
+    transportAssignNodeID(readNodeIdSwitch());
 #endif
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
-        pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
+    pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
 #endif
 }
 
 // called automatically by mysensors core for doing node presentation
 void presentation() {
-        presentNodeMetadata();
+    presentNodeMetadata();
 
-        // send initial hearbeat at startup
-        sendHeartbeat();
-        // send battery level at startup also
-        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
-                                           VBATT_THRESHOLD_SAMPLES));
+    // send initial hearbeat at startup
+    sendHeartbeat();
+    // send battery level at startup also
+    sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
+                                       VBATT_THRESHOLD_SAMPLES));
 }
 
 // // called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
-        switch (message.type) {
-        case V_VAR1:
-                char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-                loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+    switch (message.type) {
+    case V_VAR1:
+        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-                // save new node metadata only when they differ
-                if (strncmp(message.getString(), rawNodeMetadata,
-                            MAX_NODE_METADATA_LENGTH) != 0) {
-                        char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                        memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                        strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                        saveNodeEepromMetadata(recvMetadata);
-                }
-                presentNodeMetadata();
-                break;
-        default:;
+        // save new node metadata only when they differ
+        if (strncmp(message.getString(), rawNodeMetadata,
+                    MAX_NODE_METADATA_LENGTH) != 0) {
+            char recvMetadata[MAX_NODE_METADATA_LENGTH];
+            memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+            strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+            saveNodeEepromMetadata(recvMetadata);
         }
+        presentNodeMetadata();
+        break;
+    default:;
+    }
 }
 
 void loop() {
-        static bool firstInit = false;
-        if(!firstInit) {
-                sendKnockSyncMsg();
-                firstInit = true;
-        }
+    static bool firstInit = false;
+    if(!firstInit) {
+        sendKnockSyncMsg();
+        firstInit = true;
+    }
 
-        static float lastTemperature;
-        static float lastHumidity;
+    static float lastTemperature;
+    static float lastHumidity;
 
 #ifdef MOCK_SENSOR_DATA
-        float currentTemperature = random(20.0, 40.0);
-        float currentHumidity = random(20.0, 40.0);
-        uint8_t currentBatteryLvlPcnt = random(0, 100);
+    float currentTemperature = random(20.0, 40.0);
+    float currentHumidity = random(20.0, 40.0);
+    uint8_t currentBatteryLvlPcnt = random(0, 100);
 #else
-        float currentTemperature = tempHumSensor.readTemperature();
-        float currentHumidity = tempHumSensor.readHumidity();
-        uint8_t currentBatteryLvlPcnt =
-                getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES);
+    float currentTemperature = tempHumSensor.readTemp();
+    float currentHumidity = tempHumSensor.readHumidity();
+    uint8_t currentBatteryLvlPcnt =
+            getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES);
 #endif
 
-        static uint32_t sensorDataReportCyclesCounter = 0;
-        if (sensorDataReportCyclesCounter++ >= SENSOR_DATA_REPORT_CYCLES) {
-                // comparing floats -
-                //  we round them to the first decimal and then cast them to int to discard the fractional part
-                if ((uint32_t)(currentTemperature * 10) != (uint32_t)(lastTemperature * 10)) {
-                        sendSensorData(TEMPERATURE_SENSOR_ID, currentTemperature, V_TEMP);
-                        lastTemperature = currentTemperature;
-                }
-
-                // comparing floats -
-                //  we round them to the first decimal and then cast them to int to discard the fractional part
-                if ((uint32_t)(currentHumidity * 10) != (uint32_t)(lastHumidity * 10)) {
-                        sendSensorData(HUMIDITY_SENSOR_ID, currentHumidity, V_HUM);
-                        lastHumidity = currentHumidity;
-                }
-                sensorDataReportCyclesCounter = 0;
+    static uint32_t sensorDataReportCyclesCounter = 0;
+    if (sensorDataReportCyclesCounter++ >= SENSOR_DATA_REPORT_CYCLES) {
+        // comparing floats -
+        //  we round them to the first decimal and then cast them to int to discard the fractional part
+        if ((uint32_t)(currentTemperature * 10) != (uint32_t)(lastTemperature * 10)) {
+            sendSensorData(TEMPERATURE_SENSOR_ID, currentTemperature, V_TEMP);
+            lastTemperature = currentTemperature;
         }
 
-        // send battery state after BATTERY_LVL_REPORT_INTERVAL_MS interval elapsed
-        //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts
-        //  SENSOR_SLEEP_INTERVAL_MS cycles
-        static uint32_t batteryLvlReportCyclesCounter = 0;
-        if (batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
-                sendBatteryLevel(currentBatteryLvlPcnt);
-                batteryLvlReportCyclesCounter = 0;
+        // comparing floats -
+        //  we round them to the first decimal and then cast them to int to discard the fractional part
+        if ((uint32_t)(currentHumidity * 10) != (uint32_t)(lastHumidity * 10)) {
+            sendSensorData(HUMIDITY_SENSOR_ID, currentHumidity, V_HUM);
+            lastHumidity = currentHumidity;
         }
+        sensorDataReportCyclesCounter = 0;
+    }
 
-        // send heartbeat on a regular interval too
-        static uint32_t heartbeatCounter = 0;
-        if (heartbeatCounter++ >= HEARTBEAT_SEND_CYCLES) {
-                sendHeartbeat();
-                heartbeatCounter = 0;
-        }
+    // send battery state after BATTERY_LVL_REPORT_INTERVAL_MS interval elapsed
+    //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts
+    //  SENSOR_SLEEP_INTERVAL_MS cycles
+    static uint32_t batteryLvlReportCyclesCounter = 0;
+    if (batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
+        sendBatteryLevel(currentBatteryLvlPcnt);
+        batteryLvlReportCyclesCounter = 0;
+    }
 
-        sleep(SENSOR_SLEEP_INTERVAL_MS);
+    // send heartbeat on a regular interval too
+    static uint32_t heartbeatCounter = 0;
+    if (heartbeatCounter++ >= HEARTBEAT_SEND_CYCLES) {
+        sendHeartbeat();
+        heartbeatCounter = 0;
+    }
+
+    sleep(SENSOR_SLEEP_INTERVAL_MS);
 }
