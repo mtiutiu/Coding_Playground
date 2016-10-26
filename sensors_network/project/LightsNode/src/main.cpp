@@ -12,6 +12,7 @@
 //#define MOCK_SENSOR_DATA
 #define HAS_NODE_ID_SET_SWITCH
 //#define NODE_ACTIVITY_LED_SIGNAL
+//#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -20,7 +21,11 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
+#ifdef HAS_NODE_ID_SET_SWITCH
 #define MY_NODE_ID 1  // this needs to be set explicitly
+#else
+#define MY_NODE_ID AUTO
+#endif
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
 
@@ -36,6 +41,13 @@
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
+
+// ---------------------------- EXTERNAL PORTS/PLUGS -----------------------------------------
+const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
+const uint8_t P3_PLUG_PINS[] = {A3};
+const uint8_t P4_PLUG_PINS[] = {A0, A1, 0};
+const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
+// -------------------------------------------------------------------------------------------
 
 // ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -163,9 +175,14 @@ static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 // we add 1 for storing the string terminating character also
 #define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
-// was this node metadata configuration processed already ?
-bool metadataConfigRequestProcessed = false;
 // -------------------------------------------------------------------------------------------------------------
+
+void optimize_port_pins_low_power(const uint8_t* port, uint8_t len) {
+    for (uint8_t i = 0; i < len; i++) {
+        pinMode(port[i], OUTPUT);
+        digitalWrite(port[i], LOW);
+    }
+}
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
     float batteryLvlPcnt = 0;
@@ -282,10 +299,7 @@ uint8_t readNodeIdSwitch() {
     }
 
     // after reading the switch revert the pins to output and set them low for power savings
-    for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-        pinMode(NODE_ID_SWITCH_PINS[i], OUTPUT);
-        digitalWrite(NODE_ID_SWITCH_PINS[i], LOW);
-    }
+    optimize_port_pins_low_power(NODE_ID_SWITCH_PINS, sizeof(NODE_ID_SWITCH_PINS));
 
     return nodeId;
 }
@@ -323,10 +337,20 @@ uint8_t readAcSensorState() {
 }
 
 void sendKnockSyncMsg() {
-    MyMessage knockMsg(AC_SENSOR_ID, V_VAR2);
+    MyMessage knockMsg(AC_SENSOR_ID, V_VAR1);
 
     send(knockMsg.set("knock"), false);
     wait(KNOCK_MSG_WAIT_INTERVAL_MS);
+}
+
+// called by mysensors to set node id internally
+// this is useful to set node id at runtime and
+//  not at compile time with MY_NODE_ID preprocesor define
+// needs mysensors core patched
+uint8_t setNodeId() {
+#ifdef HAS_NODE_ID_SET_SWITCH
+  return readNodeIdSwitch();
+#endif
 }
 
 // called before mysensors transport init
@@ -413,44 +437,39 @@ void setup() {
     emonSensor.current(AC_SENSOR_READ_PIN, AC_SENSOR_CALIBRATION_FACTOR);
 #endif
 
-#ifdef HAS_NODE_ID_SET_SWITCH
-    transportAssignNodeID(readNodeIdSwitch());
-#endif
-
 #ifdef NODE_ACTIVITY_LED_SIGNAL
     pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
 #endif
+
+    // for even more power savings tie unused pins to ground
+    optimize_port_pins_low_power(P3_PLUG_PINS, sizeof(P3_PLUG_PINS));
+    optimize_port_pins_low_power(P4_PLUG_PINS, sizeof(P4_PLUG_PINS));
+    optimize_port_pins_low_power(OTHER_UNUSED_PINS, sizeof(OTHER_UNUSED_PINS));
 }
 
 // called automatically by mysensors core for doing node presentation
 void presentation() {
     presentNodeMetadata();
-
-    // send initial hearbeat at startup
-    sendHeartbeat();
-    // send battery level at startup also
-    sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
-                                       VBATT_THRESHOLD_SAMPLES));
 }
 
 // // called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
     switch (message.type) {
-    case V_VAR1:
-        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+        case V_VAR1:
+            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-        // save new node metadata only when they differ
-        if (strncmp(message.getString(), rawNodeMetadata,
-                    MAX_NODE_METADATA_LENGTH) != 0) {
-            char recvMetadata[MAX_NODE_METADATA_LENGTH];
-            memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-            strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-            saveNodeEepromMetadata(recvMetadata);
-        }
-        presentNodeMetadata();
-        break;
-    default:;
+            // save new node metadata only when they differ
+            if (strncmp(message.getString(), rawNodeMetadata,
+                        MAX_NODE_METADATA_LENGTH) != 0) {
+                char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                saveNodeEepromMetadata(recvMetadata);
+            }
+            presentNodeMetadata();
+            break;
+        default:;
     }
 }
 
@@ -462,12 +481,6 @@ void loop() {
     }
 
     static bool sendLightState = false;
-
-    #ifdef MOCK_SENSOR_DATA
-    uint8_t currentBatteryLvlPcnt = random(0, 100);
-    #else
-    uint8_t currentBatteryLvlPcnt = getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES);
-    #endif
 
     uint8_t currentLightState = readAcSensorState();
 
@@ -494,7 +507,7 @@ void loop() {
     //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts SENSOR_SLEEP_INTERVAL_MS cycles
     static uint32_t batteryLvlReportCyclesCounter = 0;
     if (batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
-        sendBatteryLevel(currentBatteryLvlPcnt);
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
         batteryLvlReportCyclesCounter = 0;
     }
 
@@ -505,5 +518,9 @@ void loop() {
         heartbeatCounter = 0;
     }
 
+#ifdef WANT_SMART_SLEEP
+    smartSleep(SENSOR_SLEEP_INTERVAL_MS);
+#else
     sleep(SENSOR_SLEEP_INTERVAL_MS);
+#endif
 }
