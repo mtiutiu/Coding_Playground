@@ -42,13 +42,6 @@
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
 
-// ---------------------------- EXTERNAL PORTS/PLUGS -----------------------------------------
-const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
-const uint8_t P3_PLUG_PINS[] = {A3};
-const uint8_t P4_PLUG_PINS[] = {A0, A1, 0};
-const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
-// -------------------------------------------------------------------------------------------
-
 // ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
@@ -114,21 +107,24 @@ Vcc vcc(VCC_CORRECTION);
 EnergyMonitor emonSensor;
 #endif
 
-// sensor data report interval when light state changes
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 1000;
 
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t AC_SENSOR_ID = 1;
-const uint8_t AC_SENSOR_READ_PIN = A0;
-const float AC_SENSOR_TURNS_RATIO = 2000.0; // using TA12-200 current transformer
-const float AC_SENSOR_BURDEN_RESISTOR_OHM = 440.0;
+const uint8_t AC_SENSOR_READ_PIN = A4;
+const float AC_SENSOR_TURNS_RATIO = 2000.0; // using ZMCT102 current transformer
+const float AC_SENSOR_BURDEN_RESISTOR_OHM = 680.0;
 const float AC_SENSOR_CALIBRATION_FACTOR =
     AC_SENSOR_TURNS_RATIO / AC_SENSOR_BURDEN_RESISTOR_OHM;
 const uint16_t AC_SENSOR_SAMPLES = 50;
-const uint8_t SENSOR_DATA_SEND_RETRIES = 5;
-const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
+const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
+const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 200;
 
-const float NOISE_LVL_MA = 80;
+const float NOISE_LVL_MA = 20.0;
+const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_TIME_MS = 60000;
+const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS = 1000;
+const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_LOOPS = 
+	EMONLIB_DIGITAL_FILTER_STABILIZE_TIME_MS / EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS;
 const uint8_t LIGHT_ON = 1;
 const uint8_t LIGHT_OFF = 0;
 
@@ -141,17 +137,24 @@ const uint32_t LIGHT_STATUS_REPORT_CYCLES =
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
-const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 45000;  // 45s interval
+const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 const uint32_t HEARTBEAT_SEND_CYCLES =
     HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
+// --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
+//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
+const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000;  // 10min interval
+const uint32_t PRESENTATION_SEND_CYCLES =
+    PRESENTATION_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+// -------------------------------------------------------------------------------------------------------------
+
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 #ifdef USE_VBATT_RESISTOR_DIVIDER
-const uint32_t DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470UL;
-const uint32_t DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000UL;
-const uint32_t RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
-    (float)(DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
+const float DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470.0;
+const float DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000.0;
+const float RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
+    (DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
 #endif
 const float CHARGED_VBATT_THRESHOLD_V = 3.0;
 const float LOW_VBATT_THRESHOLD_V = 1.1;
@@ -185,10 +188,10 @@ void optimize_port_pins_low_power(const uint8_t* port, uint8_t len) {
 }
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
-    float batteryLvlPcnt = 0;
-
+    float batteryLvlPcnt = 0.0;
+	
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
-    float vBattAnalogRead = 0;
+    float vBattAnalogRead = 0.0;
 
     for (uint8_t i = 0; i < samples; i++) {
         vBattAnalogRead += analogRead(analogReadPin) / (float)samples;
@@ -207,7 +210,7 @@ uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
     batteryLvlPcnt =
             vcc.Read_Perc(LOW_VBATT_THRESHOLD_V, CHARGED_VBATT_THRESHOLD_V);
 #endif
-
+	
     return round(constrain(batteryLvlPcnt, 0.0, 100.0));
 }
 
@@ -324,16 +327,16 @@ void sendSensorData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 #endif
 }
 
-uint8_t readAcSensorState() {
+uint8_t readAcSensorState() {	
 #ifdef MOCK_SENSOR_DATA
-    float iRMS = random(0.0, 300.0);
+    float iRMS_MilliAmps = random(NOISE_LVL_MA, 300.0);
 #else
-    float iRMS = emonSensor.calcIrms(AC_SENSOR_SAMPLES);
+    float iRMS_MilliAmps = emonSensor.calcIrms(AC_SENSOR_SAMPLES) * 1000.0;
 #endif
 
-    // what's under AC_LOAD_IRMS_MIN_THRESHOLD we cannot measure so it's noise only
+    // what's under NOISE_LVL_MA we cannot measure so it's noise only
     //  otherwise we have a real measurement
-    return (round((iRMS * 1000.0) / NOISE_LVL_MA) > 1.0) ? LIGHT_ON : LIGHT_OFF;
+    return (iRMS_MilliAmps > NOISE_LVL_MA) ? LIGHT_ON : LIGHT_OFF;
 }
 
 void sendKnockSyncMsg() {
@@ -349,12 +352,36 @@ void sendKnockSyncMsg() {
 // needs mysensors core patched
 uint8_t setNodeId() {
 #ifdef HAS_NODE_ID_SET_SWITCH
-  return readNodeIdSwitch();
+	return readNodeIdSwitch();
+#else
+	return MY_NODE_ID;
 #endif
 }
 
-// called before mysensors transport init
-void before() {
+// called automatically by mysensors core for doing node presentation
+void presentation() {
+    presentNodeMetadata();
+}
+
+// // called automatically by mysensors core for incomming messages
+void receive(const MyMessage &message) {
+    switch (message.type) {
+        case V_VAR1:
+            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+
+            // save new node metadata only when they differ
+            if (strncmp(message.getString(), rawNodeMetadata,
+                        MAX_NODE_METADATA_LENGTH) != 0) {
+                char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                saveNodeEepromMetadata(recvMetadata);
+            }
+            presentNodeMetadata();
+            break;
+        default:;
+    }
 }
 
 void setup() {
@@ -440,52 +467,30 @@ void setup() {
 #ifdef NODE_ACTIVITY_LED_SIGNAL
     pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
 #endif
-
-    // for even more power savings tie unused pins to ground
-    optimize_port_pins_low_power(P3_PLUG_PINS, sizeof(P3_PLUG_PINS));
-    optimize_port_pins_low_power(P4_PLUG_PINS, sizeof(P4_PLUG_PINS));
-    optimize_port_pins_low_power(OTHER_UNUSED_PINS, sizeof(OTHER_UNUSED_PINS));
-}
-
-// called automatically by mysensors core for doing node presentation
-void presentation() {
-    presentNodeMetadata();
-}
-
-// // called automatically by mysensors core for incomming messages
-void receive(const MyMessage &message) {
-    switch (message.type) {
-        case V_VAR1:
-            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
-
-            // save new node metadata only when they differ
-            if (strncmp(message.getString(), rawNodeMetadata,
-                        MAX_NODE_METADATA_LENGTH) != 0) {
-                char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                saveNodeEepromMetadata(recvMetadata);
-            }
-            presentNodeMetadata();
-            break;
-        default:;
-    }
 }
 
 void loop() {
+	static bool sendLightState = false;
     static bool firstInit = false;
     if(!firstInit) {
         sendKnockSyncMsg();
+        
+        // don't send data for about 60s to let the emonlib digital filter to stabilize
+        for(uint32_t i = 0; i < EMONLIB_DIGITAL_FILTER_STABILIZE_LOOPS; i++) {
+			readAcSensorState(); // dummy read
+			sleep(EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS);
+		}
         firstInit = true;
+        sendLightState = true;
+        sendHeartbeat();
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, 
+			VBATT_THRESHOLD_SAMPLES));
     }
-
-    static bool sendLightState = false;
 
     uint8_t currentLightState = readAcSensorState();
 
     // send new light state when it changes
-    static float lastLightState;
+    static uint8_t lastLightState;
     if (currentLightState != lastLightState) {
         lastLightState = currentLightState;
         sendLightState = true;
@@ -507,7 +512,8 @@ void loop() {
     //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts SENSOR_SLEEP_INTERVAL_MS cycles
     static uint32_t batteryLvlReportCyclesCounter = 0;
     if (batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
-        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, 
+			VBATT_THRESHOLD_SAMPLES));
         batteryLvlReportCyclesCounter = 0;
     }
 
@@ -516,6 +522,13 @@ void loop() {
     if (heartbeatCounter++ >= HEARTBEAT_SEND_CYCLES) {
         sendHeartbeat();
         heartbeatCounter = 0;
+    }
+
+	// send presentation on a regular interval too
+    static uint32_t presentationCounter = 0;
+    if (presentationCounter++ >= PRESENTATION_SEND_CYCLES) {
+        presentNodeMetadata();
+        presentationCounter = 0;
     }
 
 #ifdef WANT_SMART_SLEEP

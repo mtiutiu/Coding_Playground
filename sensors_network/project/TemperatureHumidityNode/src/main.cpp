@@ -120,25 +120,32 @@ const uint32_t SENSOR_DATA_REPORT_INTERVAL_MS = 40000;  // 40s interval
 const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
-const uint8_t SENSOR_DATA_SEND_RETRIES = 5;
-const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 20;
+const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
+const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 200;
 const uint32_t SENSOR_DATA_REPORT_CYCLES =
     SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
-const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 40000;  // 40s interval
+const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 const uint32_t HEARTBEAT_SEND_CYCLES =
     HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
+// --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
+//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
+const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000;  // 10min interval
+const uint32_t PRESENTATION_SEND_CYCLES =
+    PRESENTATION_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+// -------------------------------------------------------------------------------------------------------------
+
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 #ifdef USE_VBATT_RESISTOR_DIVIDER
-const uint32_t DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470UL;
-const uint32_t DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000UL;
-const uint32_t RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
-    (float)(DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
+const float DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470.0;
+const float DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000.0;
+const float RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
+    (DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
 #endif
 const float CHARGED_VBATT_THRESHOLD_V = 3.0;
 const float LOW_VBATT_THRESHOLD_V = 1.1;
@@ -172,10 +179,10 @@ void optimize_port_pins_low_power(const uint8_t* port, uint8_t len) {
 }
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
-    float batteryLvlPcnt = 0;
+    float batteryLvlPcnt = 0.0;
 
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
-    float vBattAnalogRead = 0;
+    float vBattAnalogRead = 0.0;
 
     for (uint8_t i = 0; i < samples; i++) {
         vBattAnalogRead += analogRead(analogReadPin) / (float)samples;
@@ -328,12 +335,36 @@ void sendKnockSyncMsg() {
 // needs mysensors core patched
 uint8_t setNodeId() {
 #ifdef HAS_NODE_ID_SET_SWITCH
-  return readNodeIdSwitch();
+	return readNodeIdSwitch();
+#else
+	return MY_NODE_ID;
 #endif
 }
 
-// called before mysensors transport init
-void before() {
+// called automatically by mysensors core for doing node presentation
+void presentation() {
+    presentNodeMetadata();
+}
+
+// // called automatically by mysensors core for incomming messages
+void receive(const MyMessage &message) {
+    switch (message.type) {
+        case V_VAR1:
+            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+
+            // save new node metadata only when they differ
+            if (strncmp(message.getString(), rawNodeMetadata,
+                        MAX_NODE_METADATA_LENGTH) != 0) {
+                char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                saveNodeEepromMetadata(recvMetadata);
+            }
+            presentNodeMetadata();
+            break;
+        default:;
+    }
 }
 
 void setup() {
@@ -419,37 +450,6 @@ void setup() {
 #ifdef NODE_ACTIVITY_LED_SIGNAL
     pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
 #endif
-
-    // for even more power savings tie unused pins to ground
-    optimize_port_pins_low_power(P3_PLUG_PINS, sizeof(P3_PLUG_PINS));
-    optimize_port_pins_low_power(P4_PLUG_PINS, sizeof(P4_PLUG_PINS));
-    optimize_port_pins_low_power(OTHER_UNUSED_PINS, sizeof(OTHER_UNUSED_PINS));
-}
-
-// called automatically by mysensors core for doing node presentation
-void presentation() {
-    presentNodeMetadata();
-}
-
-// // called automatically by mysensors core for incomming messages
-void receive(const MyMessage &message) {
-    switch (message.type) {
-        case V_VAR1:
-            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
-
-            // save new node metadata only when they differ
-            if (strncmp(message.getString(), rawNodeMetadata,
-                        MAX_NODE_METADATA_LENGTH) != 0) {
-                char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                saveNodeEepromMetadata(recvMetadata);
-            }
-            presentNodeMetadata();
-            break;
-        default:;
-    }
 }
 
 void loop() {
@@ -502,6 +502,13 @@ void loop() {
     if (heartbeatCounter++ >= HEARTBEAT_SEND_CYCLES) {
         sendHeartbeat();
         heartbeatCounter = 0;
+    }
+    
+    // send presentation on a regular interval too
+    static uint32_t presentationCounter = 0;
+    if (presentationCounter++ >= PRESENTATION_SEND_CYCLES) {
+        presentNodeMetadata();
+        presentationCounter = 0;
     }
 
 #ifdef WANT_SMART_SLEEP
