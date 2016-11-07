@@ -4,6 +4,7 @@
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 #define HAS_NODE_ID_SET_SWITCH
+//#define WANT_RELAY_SAFETY
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -59,9 +60,11 @@ const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
+#ifdef WANT_RELAY_SAFETY
 static uint32_t relaySafetyCounter = 0;
 const uint32_t HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS = 60000;
 const uint32_t HEATER_RELAY_SAFETY_MAX_COUNTER = 5;
+#endif
 
 bool sendHeaterActuatorState = false;
 // ------------------------------------------------------------------------------
@@ -246,12 +249,13 @@ void receive(const MyMessage &message) {
             // V_STATUS message type for heater get operations only
             if(message.getCommand() == C_REQ) {
                 sendHeaterActuatorState = true;
+                #ifdef WANT_RELAY_SAFETY
+                relaySafetyCounter = 0;
+                #endif
             }
             break;
         default:;
     }
-
-    relaySafetyCounter = 0;
 }
 
 uint8_t getHeaterState() {
@@ -266,10 +270,12 @@ void setHeaterState(uint8_t newState) {
     // signal heater state using a LED
     digitalWrite(HEATER_ON_LED, HEATER_OFF ? LOW : HIGH);
 
+#ifdef WANT_RELAY_SAFETY
     // reset heater safety counter if it's turned off
     if(newState == HEATER_OFF) {
         relaySafetyCounter = 0;
     }
+#endif
 }
 
 void setup() {
@@ -279,7 +285,9 @@ void setup() {
     // make sure the relay is off when starting up
     setHeaterState(HEATER_OFF);
 
+#ifdef WANT_RELAY_SAFETY
     relaySafetyCounter = 0;
+#endif
 }
 
 void loop()  {
@@ -291,6 +299,7 @@ void loop()  {
         sendBatteryLevel(100);
     }
 
+#ifdef WANT_RELAY_SAFETY
     static uint32_t lastRelaySafetyCheckTimestamp;
     // start heater safety counter when turning on
     if (getHeaterState() == HEATER_ON &&
@@ -298,6 +307,7 @@ void loop()  {
         ++relaySafetyCounter;
         lastRelaySafetyCheckTimestamp = millis();
     }
+#endif
 
     if (sendHeaterActuatorState) {
         MyMessage stateMsg(HEATER_CONTROL_RELAY_SENSOR_ID, V_STATUS);
@@ -306,12 +316,14 @@ void loop()  {
         sendHeaterActuatorState = false;
     }
 
+#ifdef WANT_RELAY_SAFETY
     if (relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
         // for safety turn off the heater if the controller doesn't reset the relay safety timer
         //  this is needed in case something bad happens and the controller looses control over this node
         //     so we need to shutdown the heater automatically
         setHeaterState(HEATER_OFF);
     }
+#endif
 
     static uint32_t lastHeartbeatReportTimestamp;
     if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
