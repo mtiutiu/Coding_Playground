@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <EEPROM.h>
 
-// -------------------------------- CHANGE THIS SECTION ACCORDINGLY ----------------------------
+// -------------------------------- NODE CUSTOM FEATURES ------------------------------------
 #define BOARD_XTAL_FREQUENCY 8000000UL  // pro mini board xtal frequency
 #define FAST_ADC
 #define HAS_FIXED_VOLTAGE_REGULATOR
@@ -13,7 +13,7 @@
 #define HAS_NODE_ID_SET_SWITCH
 //#define NODE_ACTIVITY_LED_SIGNAL
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
-// -------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // RFM69 radio driver
@@ -21,13 +21,13 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#ifdef HAS_NODE_ID_SET_SWITCH
 #define MY_NODE_ID 1  // this needs to be set explicitly
-#else
-#define MY_NODE_ID AUTO
-#endif
+
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
+#define MY_TRANSPORT_UPLINK_CHECK_DISABLED  //very important for battery powered nodes
+#define MY_TRANSPORT_DONT_CARE_MODE //very important for battery powered nodes
+#define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL
 
@@ -42,7 +42,14 @@
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
 
-// ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
+// ---------------------------- EXTERNAL PORTS/PLUGS -----------------------------------------
+//const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
+//const uint8_t P3_PLUG_PINS[] = {A3};
+//const uint8_t P4_PLUG_PINS[] = {A0, A1, 0};
+//const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
+// -------------------------------------------------------------------------------------------
+
+// ---------------------------------------- DIP SW NODE ID CONFIGURATION ------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
 | C0 | C1 | C2 | C3 | C4 | C5 | C6 |
@@ -51,8 +58,6 @@
 
 const uint8_t NODE_ID_SWITCH_PINS[] = {3, 4, 5, 6, 7, 8, 9};
 #endif
-
-const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 // -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------- CPU FREQUECNY SCALING SECTION-------------------------
@@ -118,12 +123,13 @@ const float AC_SENSOR_CALIBRATION_FACTOR =
     AC_SENSOR_TURNS_RATIO / AC_SENSOR_BURDEN_RESISTOR_OHM;
 const uint16_t AC_SENSOR_SAMPLES = 50;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 200;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
 const float NOISE_LVL_MA = 20.0;
 const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_TIME_MS = 60000;
 const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS = 1000;
-const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_LOOPS = 
+const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_LOOPS =
 	EMONLIB_DIGITAL_FILTER_STABILIZE_TIME_MS / EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS;
 const uint8_t LIGHT_ON = 1;
 const uint8_t LIGHT_OFF = 0;
@@ -165,6 +171,7 @@ const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 const uint32_t BATTERY_LVL_REPORT_CYCLES =
     BATTERY_LVL_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -189,7 +196,7 @@ void optimize_port_pins_low_power(const uint8_t* port, uint8_t len) {
 
 uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
     float batteryLvlPcnt = 0.0;
-	
+
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
     float vBattAnalogRead = 0.0;
 
@@ -210,7 +217,7 @@ uint8_t getBatteryLvlPcnt(uint8_t analogReadPin, uint8_t samples) {
     batteryLvlPcnt =
             vcc.Read_Perc(LOW_VBATT_THRESHOLD_V, CHARGED_VBATT_THRESHOLD_V);
 #endif
-	
+
     return round(constrain(batteryLvlPcnt, 0.0, 100.0));
 }
 
@@ -316,10 +323,10 @@ void sendSensorData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 #endif
 
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES);
-         ++retries) {
+         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
         // random sleep interval between retries for collisions
-        sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
+        sleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
@@ -327,7 +334,7 @@ void sendSensorData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 #endif
 }
 
-uint8_t readAcSensorState() {	
+uint8_t readAcSensorState() {
 #ifdef MOCK_SENSOR_DATA
     float iRMS_MilliAmps = random(NOISE_LVL_MA, 300.0);
 #else
@@ -474,7 +481,7 @@ void loop() {
     static bool firstInit = false;
     if(!firstInit) {
         sendKnockSyncMsg();
-        
+
         // don't send data for about 60s to let the emonlib digital filter to stabilize
         for(uint32_t i = 0; i < EMONLIB_DIGITAL_FILTER_STABILIZE_LOOPS; i++) {
 			readAcSensorState(); // dummy read
@@ -483,7 +490,7 @@ void loop() {
         firstInit = true;
         sendLightState = true;
         sendHeartbeat();
-        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, 
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
     }
 
@@ -512,7 +519,7 @@ void loop() {
     //  BATTERY_LVL_REPORT_CYCLES reflects that because it counts SENSOR_SLEEP_INTERVAL_MS cycles
     static uint32_t batteryLvlReportCyclesCounter = 0;
     if (batteryLvlReportCyclesCounter++ >= BATTERY_LVL_REPORT_CYCLES) {
-        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, 
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
         batteryLvlReportCyclesCounter = 0;
     }

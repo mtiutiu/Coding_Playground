@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <EEPROM.h>
 
-// -------------------------------- CHANGE THIS SECTION ACCORDINGLY ----------------------------
+// -------------------------------- NODE CUSTOM FEATURES ----------------------------
 #define BOARD_XTAL_FREQUENCY 8000000UL  // pro mini board xtal frequency
 #define FAST_ADC
 #define HAS_FIXED_VOLTAGE_REGULATOR
@@ -21,13 +21,14 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#ifdef HAS_NODE_ID_SET_SWITCH
 #define MY_NODE_ID 1  // this needs to be set explicitly
-#else
-#define MY_NODE_ID AUTO
-#endif
+
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
+#define MY_TRANSPORT_UPLINK_CHECK_DISABLED  //very important for battery powered nodes
+#define MY_TRANSPORT_DONT_CARE_MODE //very important for battery powered nodes
+#define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
+
 #define MY_DISABLED_SERIAL
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
@@ -40,13 +41,13 @@
 // --------------------------------------------------------------------------------------------------------------
 
 // ---------------------------- EXTERNAL PORTS/PLUGS -----------------------------------------
-const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
-const uint8_t P3_PLUG_PINS[] = {A3};
-const uint8_t P4_PLUG_PINS[] = {A0, A1, 0};
-const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
+//const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
+//const uint8_t P3_PLUG_PINS[] = {A3};
+//const uint8_t P4_PLUG_PINS[] = {A0, A1, 0};
+//const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
 // -------------------------------------------------------------------------------------------
 
-// ---------------------------------------- DYNAMIC NODE CONFIGURATION-------------------------
+// ---------------------------------------- DIP SW NODE ID CONFIGURATION ------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
 | C0 | C1 | C2 | C3 | C4 | C5 | C6 |
@@ -55,8 +56,6 @@ const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
 
 const uint8_t NODE_ID_SWITCH_PINS[] = {3, 4, 5, 6, 7, 8, 9};
 #endif
-
-const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 // -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------- CPU FREQUECNY SCALING SECTION-------------------------
@@ -121,9 +120,11 @@ const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_INTERVAL_MS = 200;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 const uint32_t SENSOR_DATA_REPORT_CYCLES =
     SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -311,10 +312,10 @@ void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
 #endif
 
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 1), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES);
-         ++retries) {
+         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
         // random sleep interval between retries for collisions
-        sleep(random(SENSOR_DATA_SEND_RETRIES_INTERVAL_MS) + 1);
+        sleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
 
 #ifdef NODE_ACTIVITY_LED_SIGNAL
@@ -503,7 +504,7 @@ void loop() {
         sendHeartbeat();
         heartbeatCounter = 0;
     }
-    
+
     // send presentation on a regular interval too
     static uint32_t presentationCounter = 0;
     if (presentationCounter++ >= PRESENTATION_SEND_CYCLES) {
