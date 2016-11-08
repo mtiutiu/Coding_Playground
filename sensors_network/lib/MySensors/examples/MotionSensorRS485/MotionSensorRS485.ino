@@ -27,8 +27,10 @@
  * Motion Sensor example using HC-SR501 
  * http://www.mysensors.org/build/motion
  * 
- * The transport uses AltSoftSerial to handle two serial links 
- * on one Arduino. Use the following pins for RS485 link
+ * If your Arduino board has additional serial ports
+ * you can use to connect the RS485 module.
+ * Otherwise, the transport uses AltSoftSerial to handle two serial
+ * links on one Arduino. Use the following pins for RS485 link
  * 
  *  Board          Transmit  Receive   PWM Unusable
  * -----          --------  -------   ------------
@@ -43,6 +45,8 @@
  * 
  */
 
+// Enable debug prints to serial monitor
+#define MY_DEBUG
 
 // Enable RS485 transport layer
 #define MY_RS485
@@ -53,7 +57,9 @@
 // Set RS485 baud rate to use
 #define MY_RS485_BAUD_RATE 9600
 
-#include <SPI.h>
+// Enable this if RS485 is connected to a hardware serial port
+//#define MY_RS485_HWSERIAL Serial1
+
 #include <MySensors.h>
 
 unsigned long SLEEP_TIME = 120000; // Sleep time between reports (in milliseconds)
@@ -79,7 +85,7 @@ void presentation()  {
 void loop()     
 {     
   // Read digital motion value
-  boolean tripped = digitalRead(DIGITAL_INPUT_SENSOR) == HIGH; 
+  bool tripped = digitalRead(DIGITAL_INPUT_SENSOR) == HIGH;
         
   Serial.println(tripped);
   send(msg.set(tripped?"1":"0"));  // Send tripped value to gw 

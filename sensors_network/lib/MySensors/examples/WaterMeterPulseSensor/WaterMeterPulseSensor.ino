@@ -41,7 +41,6 @@
 #define MY_RADIO_NRF24
 //#define MY_RADIO_RFM69
 
-#include <SPI.h>
 #include <MySensors.h>  
 
 #define DIGITAL_INPUT_SENSOR 3                  // The digital input you attached your sensor.  (Only 2 and 3 generates interrupt!)
@@ -65,7 +64,7 @@ double ppl = ((double)PULSE_FACTOR)/1000;        // Pulses per liter
 volatile unsigned long pulseCount = 0;   
 volatile unsigned long lastBlink = 0;
 volatile double flow = 0;  
-boolean pcReceived = false;
+bool pcReceived = false;
 unsigned long oldPulseCount = 0;
 unsigned long newBlink = 0;   
 double oldflow = 0;

@@ -1,3 +1,5 @@
+//#pragma GCC optimize ("-O2")
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>

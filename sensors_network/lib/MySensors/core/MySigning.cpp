@@ -33,6 +33,9 @@
 #if defined(MY_SIGNING_REQUEST_SIGNATURES) && (!defined(MY_SIGNING_ATSHA204) && !defined(MY_SIGNING_SOFT))
 #error You have to pick either MY_SIGNING_ATSHA204 or MY_SIGNING_SOFT in order to require signatures!
 #endif
+#if defined(MY_SIGNING_GW_REQUEST_SIGNATURES_FROM_ALL) && !defined(MY_SIGNING_REQUEST_SIGNATURES)
+#error You have to require signatures if you want to require signatures from all (also enable MY_SIGNING_REQUEST_SIGNATURES in your gateway)
+#endif
 #ifdef MY_SIGNING_FEATURE
 uint8_t _doSign[32];      // Bitfield indicating which sensors require signed communication
 uint8_t _doWhitelist[32]; // Bitfield indicating which sensors require serial salted signatures
@@ -84,11 +87,11 @@ static bool skipSign(MyMessage &msg) {
 		SIGN_DEBUG(PSTR("Skipping security for ACK on command %d type %d\n"), mGetCommand(msg), msg.type);
 		return true;
 	}	else if (mGetCommand(msg) == C_INTERNAL &&
-		(msg.type == I_NONCE_REQUEST	|| msg.type == I_NONCE_RESPONSE			|| msg.type == I_SIGNING_PRESENTATION ||
-		msg.type == I_ID_REQUEST		|| msg.type == I_ID_RESPONSE			||
-		msg.type == I_FIND_PARENT		|| msg.type == I_FIND_PARENT_RESPONSE	||
-		msg.type == I_HEARTBEAT			|| msg.type == I_HEARTBEAT_RESPONSE		||
-		msg.type == I_PING				|| msg.type == I_PONG					||
+		(msg.type == I_NONCE_REQUEST		|| msg.type == I_NONCE_RESPONSE			|| msg.type == I_SIGNING_PRESENTATION ||
+		msg.type == I_ID_REQUEST			|| msg.type == I_ID_RESPONSE			||
+		msg.type == I_FIND_PARENT_REQUEST	|| msg.type == I_FIND_PARENT_RESPONSE	||
+		msg.type == I_HEARTBEAT_REQUEST			|| msg.type == I_HEARTBEAT_RESPONSE		||
+		msg.type == I_PING					|| msg.type == I_PONG					||
 		msg.type == I_REGISTRATION_REQUEST	)) {
 		SIGN_DEBUG(PSTR("Skipping security for command %d type %d\n"), mGetCommand(msg), msg.type);
 		return true;
@@ -106,7 +109,7 @@ static bool skipSign(MyMessage &msg) {
 // Helper to prepare a signing presentation message
 static void prepareSigningPresentation(MyMessage &msg, uint8_t destination) {
 	// Only supports version 1 for now
-	build(msg, _nc.nodeId, destination, NODE_SENSOR_ID, C_INTERNAL, I_SIGNING_PRESENTATION, false).set("");
+	(void)build(msg, destination, NODE_SENSOR_ID, C_INTERNAL, I_SIGNING_PRESENTATION).set("");
 	mSetLength(msg, 2);
 	mSetPayloadType(msg, P_CUSTOM);		// displayed as hex
 	msg.data[0] = SIGNING_PRESENTATION_VERSION_1;
@@ -188,8 +191,7 @@ bool signerProcessInternal(MyMessage &msg) {
 #if defined(MY_SIGNING_ATSHA204)
 			if (signerAtsha204GetNonce(msg)) {
 #endif
-				if (!_sendRoute(build(msg, _nc.nodeId, msg.sender, NODE_SENSOR_ID,
-					C_INTERNAL, I_NONCE_RESPONSE, false))) {
+				if (!_sendRoute(build(msg, msg.sender, NODE_SENSOR_ID, C_INTERNAL, I_NONCE_RESPONSE))) {
 					SIGN_DEBUG(PSTR("Failed to transmit nonce!\n"));
 				} else {
 					SIGN_DEBUG(PSTR("Transmitted nonce\n"));
@@ -232,20 +234,26 @@ bool signerProcessInternal(MyMessage &msg) {
 				sizeof(_doWhitelist));
 
 			// Inform sender about our preference if we are a gateway, but only require signing if the sender
-			// required signing
+			// required signing unless we explicitly configure it to
 			// We do not want a gateway to require signing from all nodes in a network just because it wants one node
-			// to sign it's messages
+			// to sign it's messages unless we explicitly configure it to
 #if defined(MY_GATEWAY_FEATURE)
 			prepareSigningPresentation(msg, sender);
 #if defined(MY_SIGNING_REQUEST_SIGNATURES)
 			if (DO_SIGN(sender)) {
 				msg.data[1] |= SIGNING_PRESENTATION_REQUIRE_SIGNATURES;
 			}
+#if defined(MY_SIGNING_GW_REQUEST_SIGNATURES_FROM_ALL)
+			msg.data[1] |= SIGNING_PRESENTATION_REQUIRE_SIGNATURES;
+#endif
 #endif
 #if defined(MY_SIGNING_NODE_WHITELISTING)
 			if (DO_WHITELIST(sender)) {
 				msg.data[1] |= SIGNING_PRESENTATION_REQUIRE_WHITELISTING;
 			}
+#if defined(MY_SIGNING_GW_REQUEST_SIGNATURES_FROM_ALL)
+			msg.data[1] |= SIGNING_PRESENTATION_REQUIRE_WHITELISTING;
+#endif
 #endif
 			if (msg.data[1] & SIGNING_PRESENTATION_REQUIRE_SIGNATURES) {
 				SIGN_DEBUG(PSTR("Informing node %d that we require signatures\n"), sender);
@@ -315,8 +323,7 @@ bool signerSignMsg(MyMessage &msg) {
 		} else {
 			// Send nonce-request
 			_signingNonceStatus=SIGN_WAITING_FOR_NONCE;
-			if (!_sendRoute(build(_msgSign, _nc.nodeId, msg.destination, msg.sensor,
-				C_INTERNAL, I_NONCE_REQUEST, false).set(""))) {
+			if (!_sendRoute(build(_msgSign, msg.destination, msg.sensor, C_INTERNAL, I_NONCE_REQUEST).set(""))) {
 				SIGN_DEBUG(PSTR("Failed to transmit nonce request!\n"));
 				return false;
 			}
@@ -358,9 +365,13 @@ bool signerVerifyMsg(MyMessage &msg) {
 	// (if it is signed and addressed to us)
 	// Note that we do not care at all about any signature found if we do not require signing
 #if defined(MY_SIGNING_FEATURE) && defined(MY_SIGNING_REQUEST_SIGNATURES)
-	// If we are a node, or we are a gateway and the sender require signatures
+	// If we are a node, or we are a gateway and the sender require signatures (or just a strict gw)
 	// and we are the destination...
+#if defined(MY_SIGNING_GW_REQUEST_SIGNATURES_FROM_ALL)
+	if (msg.destination == _nc.nodeId) {
+#else
 	if ((!MY_IS_GATEWAY || DO_SIGN(msg.sender)) && msg.destination == _nc.nodeId) {
+#endif
 		// Internal messages of certain types are not verified
 		if (skipSign(msg)) {
 			verificationResult = true;

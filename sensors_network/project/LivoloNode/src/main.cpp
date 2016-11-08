@@ -1,3 +1,5 @@
+//#pragma GCC optimize ("-O2")
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
@@ -171,6 +173,29 @@ void presentNodeMetadata() {
     present(LIVOLO_ACTUATOR_SENSOR_ID, S_CUSTOM, livoloSensorName);
 }
 
+void parseLivoloCmdMessage(const MyMessage &message, struct LivoloCmd& cmd) {
+	char recvLivoloCmdData[MAX_NODE_METADATA_LENGTH];
+    memset(recvLivoloCmdData, '\0', MAX_NODE_METADATA_LENGTH);
+    strncpy(recvLivoloCmdData, message.getString(), MAX_NODE_METADATA_LENGTH);
+
+    char remoteIdStr[MAX_NODE_METADATA_LENGTH];
+    memset(remoteIdStr, '\0', MAX_NODE_METADATA_LENGTH);
+
+    char remoteKeyStr[MAX_NODE_METADATA_LENGTH];
+    memset(remoteKeyStr, '\0', MAX_NODE_METADATA_LENGTH);
+
+    char txRetriesStr[MAX_NODE_METADATA_LENGTH];
+    memset(txRetriesStr, '\0', MAX_NODE_METADATA_LENGTH);
+
+    strncpy(remoteIdStr, strtok(recvLivoloCmdData, ":"), MAX_NODE_METADATA_LENGTH);
+    strncpy(remoteKeyStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+    strncpy(txRetriesStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+
+    cmd.remoteId = (uint16_t)strtoul(remoteIdStr, NULL, 0);
+    cmd.remoteKey = (uint8_t)strtoul(remoteKeyStr, NULL, 0);
+    cmd.txRetries = (uint8_t)strtoul(txRetriesStr, NULL, 0);
+}
+
 #ifdef HAS_NODE_ID_SET_SWITCH
 uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
@@ -242,29 +267,6 @@ void receive(const MyMessage &message) {
             break;
         default:;
     }
-}
-
-void parseLivoloCmdMessage(const MyMessage &message, struct LivoloCmd& cmd) {
-	char recvLivoloCmdData[MAX_NODE_METADATA_LENGTH];
-    memset(recvLivoloCmdData, '\0', MAX_NODE_METADATA_LENGTH);
-    strncpy(recvLivoloCmdData, message.getString(), MAX_NODE_METADATA_LENGTH);
-
-    char remoteIdStr[MAX_NODE_METADATA_LENGTH];
-    memset(remoteIdStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char remoteKeyStr[MAX_NODE_METADATA_LENGTH];
-    memset(remoteKeyStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char txRetriesStr[MAX_NODE_METADATA_LENGTH];
-    memset(txRetriesStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    strncpy(remoteIdStr, strtok(recvLivoloCmdData, ":"), MAX_NODE_METADATA_LENGTH);
-    strncpy(remoteKeyStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
-    strncpy(txRetriesStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
-
-    cmd.remoteId = (uint16_t)strtoul(remoteIdStr, NULL, 0);
-    cmd.remoteKey = (uint8_t)strtoul(remoteKeyStr, NULL, 0);
-    cmd.txRetries = (uint8_t)strtoul(txRetriesStr, NULL, 0);
 }
 
 void setup() {

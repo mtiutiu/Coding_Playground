@@ -41,7 +41,6 @@
 #define MY_RADIO_NRF24
 //#define MY_RADIO_RFM69
 
-#include <SPI.h>
 #include <MySensors.h>  
 
 #define DIGITAL_INPUT_SENSOR 3  // The digital input you attached your light sensor.  (Only 2 and 3 generates interrupt!)
@@ -52,7 +51,7 @@
 
 unsigned long SEND_FREQUENCY = 20000; // Minimum time between send (in milliseconds). We don't wnat to spam the gateway.
 double ppwh = ((double)PULSE_FACTOR)/1000; // Pulses per watt hour
-boolean pcReceived = false;
+bool pcReceived = false;
 volatile unsigned long pulseCount = 0;   
 volatile unsigned long lastBlink = 0;
 volatile unsigned long watt = 0;

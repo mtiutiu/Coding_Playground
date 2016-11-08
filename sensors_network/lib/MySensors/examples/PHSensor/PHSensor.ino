@@ -29,15 +29,14 @@
 #define MY_RADIO_NRF24
 //#define MY_RADIO_RFM69
 
-#include <SPI.h>
 #include <MySensors.h>
 
 #define COMPARE_PH 1 // Send PH only if changed? 1 = Yes 0 = No
 
 unsigned long SLEEP_TIME = 60000; // Sleep time between reads (in milliseconds)
 float lastPH;
-boolean receivedConfig = false;
-boolean metric = true;
+bool receivedConfig = false;
+bool metric = true;
 // Initialize PH message
 MyMessage msg(0, V_PH);
 

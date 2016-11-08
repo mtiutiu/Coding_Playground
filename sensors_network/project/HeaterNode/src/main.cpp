@@ -1,3 +1,5 @@
+//#pragma GCC optimize ("-O2")
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
@@ -169,6 +171,26 @@ void presentNodeMetadata() {
     present(HEATER_CONTROL_RELAY_SENSOR_ID, S_HEATER, heaterSensorName);
 }
 
+uint8_t getHeaterState() {
+    // we have inverse logic so we negate what we read from the relay pin
+    return !digitalRead(HEATER_CONTROL_RELAY_PIN);
+}
+
+void setHeaterState(uint8_t newState) {
+    // we have inverse logic so we negate what we read from incoming message regarding new state
+    digitalWrite(HEATER_CONTROL_RELAY_PIN, !newState);
+
+    // signal heater state using a LED
+    digitalWrite(HEATER_ON_LED, HEATER_OFF ? LOW : HIGH);
+
+#ifdef WANT_RELAY_SAFETY
+    // reset heater safety counter if it's turned off
+    if(newState == HEATER_OFF) {
+        relaySafetyCounter = 0;
+    }
+#endif
+}
+
 #ifdef HAS_NODE_ID_SET_SWITCH
 uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
@@ -217,7 +239,7 @@ void presentation() {
     presentNodeMetadata();
 }
 
-// // called automatically by mysensors core for incomming messages
+// called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
     switch (message.type) {
         case V_VAR1:
@@ -256,26 +278,6 @@ void receive(const MyMessage &message) {
             break;
         default:;
     }
-}
-
-uint8_t getHeaterState() {
-    // we have inverse logic so we negate what we read from the relay pin
-    return !digitalRead(HEATER_CONTROL_RELAY_PIN);
-}
-
-void setHeaterState(uint8_t newState) {
-    // we have inverse logic so we negate what we read from incoming message regarding new state
-    digitalWrite(HEATER_CONTROL_RELAY_PIN, !newState);
-
-    // signal heater state using a LED
-    digitalWrite(HEATER_ON_LED, HEATER_OFF ? LOW : HIGH);
-
-#ifdef WANT_RELAY_SAFETY
-    // reset heater safety counter if it's turned off
-    if(newState == HEATER_OFF) {
-        relaySafetyCounter = 0;
-    }
-#endif
 }
 
 void setup() {

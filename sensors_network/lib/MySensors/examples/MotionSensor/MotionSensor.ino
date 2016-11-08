@@ -34,7 +34,6 @@
 #define MY_RADIO_NRF24
 //#define MY_RADIO_RFM69
 
-#include <SPI.h>
 #include <MySensors.h>
 
 unsigned long SLEEP_TIME = 120000; // Sleep time between reports (in milliseconds)
@@ -60,7 +59,7 @@ void presentation()  {
 void loop()     
 {     
   // Read digital motion value
-  boolean tripped = digitalRead(DIGITAL_INPUT_SENSOR) == HIGH; 
+  bool tripped = digitalRead(DIGITAL_INPUT_SENSOR) == HIGH;
         
   Serial.println(tripped);
   send(msg.set(tripped?"1":"0"));  // Send tripped value to gw 

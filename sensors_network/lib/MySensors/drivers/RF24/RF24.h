@@ -34,13 +34,10 @@
 #define MY_RF24_SPI_DATA_MODE SPI_MODE0
 
 #if defined (ARDUINO) && !defined (__arm__) && !defined (_SPI)
+	#include <SPI.h>
 	#if defined(MY_SOFTSPI)
 		SoftSPI<MY_SOFT_SPI_MISO_PIN, MY_SOFT_SPI_MOSI_PIN, MY_SOFT_SPI_SCK_PIN, MY_RF24_SPI_DATA_MODE> _SPI;
-	#elif defined(ARDUINO_ARCH_SAMD)
-		#include <SPI.h>
-		#define _SPI SPI1
 	#else	    
-		#include <SPI.h>
 		#define _SPI SPI
 	#endif
 #else
@@ -61,8 +58,35 @@
 	#endif
 #endif
 
+// verify RF24 IRQ defs
+#if defined(MY_RX_MESSAGE_BUFFER_FEATURE)
+	#if !defined(MY_RF24_IRQ_PIN)
+		#error Message buffering feature requires MY_RF24_IRQ_PIN to be defined!
+	#endif
+	// SoftSPI does not support usingInterrupt()
+	#ifdef MY_SOFTSPI
+		#error RF24 IRQ usage cannot be used with Soft SPI
+	#endif
+	// ESP8266 does not support usingInterrupt()
+	#ifdef ARDUINO_ARCH_ESP8266
+		#error RF24 IRQ usage cannot be used with ESP8266
+	#endif
+	#ifndef SPI_HAS_TRANSACTION
+		#error RF24 IRQ usage requires transactional SPI support
+	#endif
+#else
+	#ifdef MY_RX_MESSAGE_BUFFER_SIZE
+		#error Receive message buffering requires RF24 IRQ usage
+	#endif
+#endif
+
+
 // RF24 settings
-#define MY_RF24_CONFIGURATION (uint8_t) (RF24_CRC_16 << 2)
+#if defined(MY_RX_MESSAGE_BUFFER_FEATURE)
+	#define MY_RF24_CONFIGURATION (uint8_t) ((RF24_CRC_16 << 2) | (1 << MASK_TX_DS) | (1 << MASK_MAX_RT))
+#else
+	#define MY_RF24_CONFIGURATION (uint8_t) (RF24_CRC_16 << 2)
+#endif
 #define MY_RF24_FEATURE (uint8_t)( _BV(EN_DPL) | _BV(EN_ACK_PAY) )
 #define MY_RF24_RF_SETUP (uint8_t)( ((MY_RF24_DATARATE & 0b10 ) << 4) | ((MY_RF24_DATARATE & 0b01 ) << 3) | (MY_RF24_PA_LEVEL << 1) ) + 1 // +1 for Si24R1
 
@@ -222,6 +246,7 @@ LOCAL uint8_t RF24_RAW_writeByteRegister(uint8_t cmd, uint8_t value);
 LOCAL void RF24_flushRX(void);
 LOCAL void RF24_flushTX(void);
 LOCAL uint8_t RF24_getStatus(void);
+LOCAL uint8_t RF24_getFIFOStatus(void);
 LOCAL void RF24_openWritingPipe(uint8_t recipient);
 LOCAL void RF24_startListening(void);
 LOCAL void RF24_stopListening(void);
@@ -245,7 +270,19 @@ LOCAL void RF24_setDynamicPayload(uint8_t pipe);
 LOCAL void RF24_setRFConfiguration(uint8_t configuration);
 LOCAL void RF24_setPipeAddress(uint8_t pipe, uint8_t* address, uint8_t width);
 LOCAL void RF24_setPipeLSB(uint8_t pipe, uint8_t LSB);
+LOCAL uint8_t RF24_getObserveTX(void);
 LOCAL void RF24_setStatus(uint8_t status);
 LOCAL void RF24_enableFeatures(void);
+
+#if defined(MY_RX_MESSAGE_BUFFER_FEATURE)
+	typedef void (*RF24_receiveCallbackType)(void);
+  /**
+	 * Register a callback, which will be called (from interrupt context) for every message received.
+	 * @note When a callback is registered, it _must_ retrieve the message from the nRF24
+	 * by calling RF24_readMessage(). Otherwise the interrupt will not get deasserted
+	 * and message reception will stop.
+	 */
+	LOCAL void RF24_registerReceiveCallback( RF24_receiveCallbackType cb );
+#endif
 
 #endif // __RF24_H__
