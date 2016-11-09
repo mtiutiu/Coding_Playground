@@ -309,7 +309,7 @@ void loop() {
 
         MyMessage statusMsg(LIVOLO_ACTUATOR_SENSOR_ID, V_VAR2);
         // send new state back to controller
-        sendData(LIVOLO_ACTUATOR_SENSOR_ID, recvLivoloCmdData, S_CUSTOM);
+        sendData(LIVOLO_ACTUATOR_SENSOR_ID, recvLivoloCmdData, V_VAR2);
 
         sendStatus = false;
     }

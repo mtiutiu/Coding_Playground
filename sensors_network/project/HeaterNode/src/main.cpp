@@ -168,7 +168,7 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_HEATER, heaterSensorName);
+    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_BINARY, heaterSensorName);
 }
 
 uint8_t getHeaterState() {
@@ -256,6 +256,14 @@ void receive(const MyMessage &message) {
             }
             presentNodeMetadata();
             break;
+        #ifdef WANT_RELAY_SAFETY
+        case V_VAR2:
+            if((getHeaterState() == HEATER_ON) &&
+                    (strcasecmp_P(message.getString(), PSTR("reset")) == 0)) {
+                relaySafetyCounter = 0;
+            }
+            break;
+        #endif
         case V_STATUS:
             // V_STATUS message type for heater set operations only
             if (message.getCommand() == C_SET) {
@@ -271,9 +279,6 @@ void receive(const MyMessage &message) {
             // V_STATUS message type for heater get operations only
             if(message.getCommand() == C_REQ) {
                 sendHeaterActuatorState = true;
-                #ifdef WANT_RELAY_SAFETY
-                relaySafetyCounter = 0;
-                #endif
             }
             break;
         default:;
@@ -304,8 +309,8 @@ void loop()  {
 #ifdef WANT_RELAY_SAFETY
     static uint32_t lastRelaySafetyCheckTimestamp;
     // start heater safety counter when turning on
-    if (getHeaterState() == HEATER_ON &&
-            (millis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS) {
+    if ((getHeaterState() == HEATER_ON) &&
+            ((millis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
         ++relaySafetyCounter;
         lastRelaySafetyCheckTimestamp = millis();
     }
@@ -314,7 +319,7 @@ void loop()  {
     if (sendHeaterActuatorState) {
         MyMessage stateMsg(HEATER_CONTROL_RELAY_SENSOR_ID, V_STATUS);
         // send new state back to controller
-        sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), S_HEATER);
+        sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
         sendHeaterActuatorState = false;
     }
 
