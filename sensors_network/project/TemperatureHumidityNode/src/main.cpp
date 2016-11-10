@@ -13,7 +13,7 @@
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
 #define HAS_NODE_ID_SET_SWITCH
-//#define NODE_ACTIVITY_LED_SIGNAL
+#define WANT_TX_FAILURES_MONITORING
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
 // -------------------------------------------------------------------------------------------------------------
 
@@ -32,10 +32,6 @@
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-#define NODE_ACTIVITY_LED_PIN 1
-#endif
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
@@ -121,12 +117,14 @@ const uint32_t SENSOR_DATA_REPORT_INTERVAL_MS = 40000;  // 40s interval
 const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
-const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 const uint32_t SENSOR_DATA_REPORT_CYCLES =
     SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
+
+#ifdef WANT_TX_FAILURES_MONITORING
+const uint8_t MAX_TX_FAILS_COUNT = 5;
+const uint32_t TX_FAIL_SLEEP_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+#endif
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -307,21 +305,27 @@ uint8_t readNodeIdSwitch() {
 #endif
 
 void sendSensorData(uint8_t sensorId, float sensorData, uint8_t dataType) {
-    MyMessage sensorDataMsg(sensorId, dataType);
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    digitalWrite(NODE_ACTIVITY_LED_PIN, HIGH);
+#ifdef WANT_TX_FAILURES_MONITORING
+    static uint8_t txFails = 0;
 #endif
 
-    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData, 1), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random sleep interval between retries for collisions
-        sleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
-            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
-    }
+    MyMessage sensorDataMsg(sensorId, dataType);
 
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    digitalWrite(NODE_ACTIVITY_LED_PIN, LOW);
+    bool txSuccess = send(sensorDataMsg.set(sensorData, 1), false);
+
+#ifdef WANT_TX_FAILURES_MONITORING
+    if(!txSuccess) {
+        // if data sending failed after all the retries for about MAX_TX_FAILS_COUNT
+        //  then sleep node for a longer period of time to conserve battery
+        //  this situation can happen when connection with gw is lost for a long time
+        if(++txFails >= MAX_TX_FAILS_COUNT) {
+            txFails = 0;
+            sleep(TX_FAIL_SLEEP_INTERVAL_MS);
+        }
+    } else {
+        // reset tx failures counter if gw connection is established meanwhile
+        txFails = 0;
+    }
 #endif
 }
 
@@ -449,16 +453,17 @@ void setup() {
     tempHumSensor.begin();
     tempHumSensor.setHumidityRes(12); // Humidity = 12-bit / Temperature = 14-bit
 #endif
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
-#endif
 }
 
 void loop() {
     static bool firstInit = false;
     if(!firstInit) {
         sendKnockSyncMsg();
+        sendHeartbeat();
+        sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
+			VBATT_THRESHOLD_SAMPLES));
+        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemp(), V_TEMP);
+        sendSensorData(HUMIDITY_SENSOR_ID, tempHumSensor.readHumidity(), V_HUM);
         firstInit = true;
     }
 

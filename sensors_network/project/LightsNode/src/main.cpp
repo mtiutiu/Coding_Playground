@@ -13,7 +13,7 @@
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
 #define HAS_NODE_ID_SET_SWITCH
-//#define NODE_ACTIVITY_LED_SIGNAL
+#define WANT_TX_FAILURES_MONITORING
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
 // ------------------------------------------------------------------------------------------
 
@@ -34,10 +34,6 @@
 #define MY_DISABLED_SERIAL
 
 //#define MY_SMART_SLEEP_WAIT_DURATION 500
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-#define NODE_ACTIVITY_LED_PIN 1
-#endif
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
@@ -124,9 +120,6 @@ const float AC_SENSOR_BURDEN_RESISTOR_OHM = 680.0;
 const float AC_SENSOR_CALIBRATION_FACTOR =
     AC_SENSOR_TURNS_RATIO / AC_SENSOR_BURDEN_RESISTOR_OHM;
 const uint16_t AC_SENSOR_SAMPLES = 50;
-const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
 const float NOISE_LVL_MA = 20.0;
 const uint32_t EMONLIB_DIGITAL_FILTER_STABILIZE_TIME_MS = 60000;
@@ -141,6 +134,11 @@ const uint8_t LIGHT_OFF = 0;
 const uint32_t LIGHT_STATUS_REPORT_INTERVAL_MS = 45000; // 45s interval
 const uint32_t LIGHT_STATUS_REPORT_CYCLES =
     LIGHT_STATUS_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+
+#ifdef WANT_TX_FAILURES_MONITORING
+const uint8_t MAX_TX_FAILS_COUNT = 5;
+const uint32_t TX_FAIL_SLEEP_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+#endif
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -318,21 +316,27 @@ uint8_t readNodeIdSwitch() {
 #endif
 
 void sendSensorData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
-    MyMessage sensorDataMsg(sensorId, dataType);
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    digitalWrite(NODE_ACTIVITY_LED_PIN, HIGH);
+#ifdef WANT_TX_FAILURES_MONITORING
+    static uint8_t txFails = 0;
 #endif
 
-    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random sleep interval between retries for collisions
-        sleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
-            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
-    }
+    MyMessage sensorDataMsg(sensorId, dataType);
 
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    digitalWrite(NODE_ACTIVITY_LED_PIN, LOW);
+    bool txSuccess = send(sensorDataMsg.set(sensorData), false);
+
+#ifdef WANT_TX_FAILURES_MONITORING
+    if(!txSuccess) {
+        // if data sending failed after all the retries for about MAX_TX_FAILS_COUNT
+        //  then sleep node for a longer period of time to conserve battery
+        //  this situation can happen when connection with gw is lost for a long time
+        if(++txFails >= MAX_TX_FAILS_COUNT) {
+            txFails = 0;
+            sleep(TX_FAIL_SLEEP_INTERVAL_MS);
+        }
+    } else {
+        // reset tx failures counter if gw connection is established meanwhile
+        txFails = 0;
+    }
 #endif
 }
 
@@ -472,10 +476,6 @@ void setup() {
     // monitoring current only
     emonSensor.current(AC_SENSOR_READ_PIN, AC_SENSOR_CALIBRATION_FACTOR);
 #endif
-
-#ifdef NODE_ACTIVITY_LED_SIGNAL
-    pinMode(NODE_ACTIVITY_LED_PIN, OUTPUT);
-#endif
 }
 
 void loop() {
@@ -489,11 +489,12 @@ void loop() {
 			readAcSensorState(); // dummy read
 			sleep(EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS);
 		}
-        firstInit = true;
-        sendLightState = true;
         sendHeartbeat();
         sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
+
+        sendLightState = true;
+        firstInit = true;
     }
 
     uint8_t currentLightState = readAcSensorState();
