@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
+#define WANT_LIVOLO_ACTIVITY_LED
 //#define HAS_NODE_ID_SET_SWITCH
 // -----------------------------------------------------------------------------------
 
@@ -22,6 +23,15 @@
 #define MY_DISABLED_SERIAL
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
+
+// Flash leds on rx/tx/err
+#define MY_DEFAULT_ERR_LED_PIN 4
+#define MY_DEFAULT_RX_LED_PIN  6
+#define MY_DEFAULT_TX_LED_PIN  5
+// Set blinking period
+#define MY_DEFAULT_LED_BLINK_PERIOD 300
+// Inverses the behavior of leds
+#define MY_WITH_LEDS_BLINKING_INVERSE
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
@@ -46,13 +56,17 @@ LivoloCmd livoloCmdData;
 bool livoloCmdMsgReceived = false;
 bool sendStatus = false;
 
-// transmitter connected to PC0(Arduino A0 - Rboard)
-const uint8_t TX_DATA_PIN = A0;
+// transmitter data pin connected to A1(Arduino uno board)
+const uint8_t TX_DATA_PIN = A1;
 
 // transmitter power supply pin
-const uint8_t TX_POWER_SUPPLY_ENABLE_PIN = 0;
+const uint8_t TX_POWER_SUPPLY_ENABLE_PIN = A0;
 const uint32_t TX_POWER_SUPPLY_SETTLE_TIME_MS = 50;
 const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
+
+#ifdef WANT_LIVOLO_ACTIVITY_LED
+const uint8_t LIVOLO_ACTIVITY_LED_PIN = 3;
+#endif
 
 #define TX_ENABLE_POWER_SUPPLY()   digitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, HIGH)
 #define TX_DISABLE_POWER_SUPPLY()  digitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, LOW)
@@ -66,10 +80,10 @@ Livolo livolo(TX_DATA_PIN);
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
 | C0 | C1 | C2 | C3 | C4 | C5 | C6 |
-|  3 |  4 | 5  |  6 |  7 |  8 |  9 |
+| A2 | A3 | A4 | A5 |  7 |  8 |  9 |
 */
 
-const uint8_t NODE_ID_SWITCH_PINS[] = {3, 4, 5, 6, 7, 8, 9};
+const uint8_t NODE_ID_SWITCH_PINS[] = {A2, A3, A4, A5, 7, 8, 9};
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
@@ -173,29 +187,6 @@ void presentNodeMetadata() {
     present(LIVOLO_ACTUATOR_SENSOR_ID, S_CUSTOM, livoloSensorName);
 }
 
-void parseLivoloCmdMessage(const MyMessage &message, struct LivoloCmd& cmd) {
-	char recvLivoloCmdData[MAX_NODE_METADATA_LENGTH];
-    memset(recvLivoloCmdData, '\0', MAX_NODE_METADATA_LENGTH);
-    strncpy(recvLivoloCmdData, message.getString(), MAX_NODE_METADATA_LENGTH);
-
-    char remoteIdStr[MAX_NODE_METADATA_LENGTH];
-    memset(remoteIdStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char remoteKeyStr[MAX_NODE_METADATA_LENGTH];
-    memset(remoteKeyStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char txRetriesStr[MAX_NODE_METADATA_LENGTH];
-    memset(txRetriesStr, '\0', MAX_NODE_METADATA_LENGTH);
-
-    strncpy(remoteIdStr, strtok(recvLivoloCmdData, ":"), MAX_NODE_METADATA_LENGTH);
-    strncpy(remoteKeyStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
-    strncpy(txRetriesStr, strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
-
-    cmd.remoteId = (uint16_t)strtoul(remoteIdStr, NULL, 0);
-    cmd.remoteKey = (uint8_t)strtoul(remoteKeyStr, NULL, 0);
-    cmd.txRetries = (uint8_t)strtoul(txRetriesStr, NULL, 0);
-}
-
 #ifdef HAS_NODE_ID_SET_SWITCH
 uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
@@ -220,12 +211,12 @@ void sendData(uint8_t sensorId, const char sensorData[], uint8_t dataType) {
     }
 }
 
-void sendKnockSyncMsg() {
+/*void sendKnockSyncMsg() {
     MyMessage knockMsg(LIVOLO_ACTUATOR_SENSOR_ID, V_VAR1);
 
     send(knockMsg.set("knock"), false);
     wait(KNOCK_MSG_WAIT_INTERVAL_MS);
-}
+}*/
 
 // called by mysensors to set node id internally
 // this is useful to set node id at runtime and
@@ -248,22 +239,29 @@ void presentation() {
 void receive(const MyMessage &message) {
     switch (message.type) {
         case V_VAR1:
-            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+            if(message.getCommand() == C_SET) {
+                char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+                loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-            // save new node metadata only when they differ
-            if (strncmp(message.getString(), rawNodeMetadata,
-                        MAX_NODE_METADATA_LENGTH) != 0) {
-                char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                saveNodeEepromMetadata(recvMetadata);
+                // save new node metadata only when they differ
+                if (strncmp(message.getString(), rawNodeMetadata,
+                            MAX_NODE_METADATA_LENGTH) != 0) {
+                    char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                    memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                    strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                    saveNodeEepromMetadata(recvMetadata);
+                }
+                presentNodeMetadata();
             }
-            presentNodeMetadata();
             break;
         case V_VAR2:
-            parseLivoloCmdMessage(message, livoloCmdData);
-            livoloCmdMsgReceived = true;
+            if(message.getCommand() == C_SET) {
+                sscanf(message.getString(), "%d:%hhu:%hhu",
+                    &livoloCmdData.remoteId,
+                    &livoloCmdData.remoteKey,
+                    &livoloCmdData.txRetries);
+                livoloCmdMsgReceived = true;
+            }
             break;
         default:;
     }
@@ -271,25 +269,34 @@ void receive(const MyMessage &message) {
 
 void setup() {
     pinMode(TX_POWER_SUPPLY_ENABLE_PIN, OUTPUT);
+
+    #ifdef WANT_LIVOLO_ACTIVITY_LED
+    pinMode(LIVOLO_ACTIVITY_LED_PIN, OUTPUT);
+    #endif
 }
 
 void loop() {
     static bool firstInit = false;
     if(!firstInit) {
-        sendKnockSyncMsg();
-        firstInit = true;
+        //sendKnockSyncMsg();
         sendHeartbeat();
         sendBatteryLevel(100);
+        firstInit = true;
     }
 
     if (livoloCmdMsgReceived) {
         TX_ENABLE_POWER_SUPPLY(); //enable tx power supply line
+        #ifdef WANT_LIVOLO_ACTIVITY_LED
+        digitalWrite(LIVOLO_ACTIVITY_LED_PIN, HIGH);
+        #endif
         wait(TX_POWER_SUPPLY_SETTLE_TIME_MS);  // give it some time to settle
 
         livolo.sendButton(livoloCmdData.remoteId,
         				  livoloCmdData.remoteKey,
         				  livoloCmdData.txRetries);
-
+        #ifdef WANT_LIVOLO_ACTIVITY_LED
+        digitalWrite(LIVOLO_ACTIVITY_LED_PIN, LOW);
+        #endif
         TX_DISABLE_POWER_SUPPLY();  // disable tx power supply line
 
         // send reply
@@ -302,7 +309,7 @@ void loop() {
         char recvLivoloCmdData[MAX_NODE_METADATA_LENGTH];
         memset(recvLivoloCmdData, '\0', MAX_NODE_METADATA_LENGTH);
         sprintf_P(recvLivoloCmdData,
-        		PSTR("sent:%d:%d:%d"),
+        		PSTR("sent:%d:%hhu:%hhu"),
         		livoloCmdData.remoteId,
         		livoloCmdData.remoteKey,
         		livoloCmdData.txRetries);

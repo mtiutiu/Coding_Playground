@@ -357,18 +357,20 @@ void presentation() {
 void receive(const MyMessage &message) {
     switch (message.type) {
         case V_VAR1:
-            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+            if(message.getCommand() == C_SET) {
+                char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+                loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-            // save new node metadata only when they differ
-            if (strncmp(message.getString(), rawNodeMetadata,
-                        MAX_NODE_METADATA_LENGTH) != 0) {
-                char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                saveNodeEepromMetadata(recvMetadata);
+                // save new node metadata only when they differ
+                if (strncmp(message.getString(), rawNodeMetadata,
+                            MAX_NODE_METADATA_LENGTH) != 0) {
+                    char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                    memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                    strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                    saveNodeEepromMetadata(recvMetadata);
+                }
+                presentNodeMetadata();
             }
-            presentNodeMetadata();
             break;
         default:;
     }

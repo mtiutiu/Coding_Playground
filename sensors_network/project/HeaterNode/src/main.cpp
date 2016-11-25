@@ -5,8 +5,9 @@
 #include <EEPROM.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
-#define HAS_NODE_ID_SET_SWITCH
-//#define WANT_RELAY_SAFETY
+#define WANT_HEATER_ACTIVITY_LED
+//#define HAS_NODE_ID_SET_SWITCH
+#define WANT_RELAY_SAFETY
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -15,7 +16,7 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#define MY_NODE_ID 1  // this needs to be set explicitly
+#define MY_NODE_ID 251  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
@@ -25,15 +26,13 @@
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
 // Flash leds on rx/tx/err
-#define MY_DEFAULT_ERR_LED_PIN A2
-#define MY_DEFAULT_RX_LED_PIN  A0
-#define MY_DEFAULT_TX_LED_PIN  A1
+#define MY_DEFAULT_ERR_LED_PIN 4
+#define MY_DEFAULT_RX_LED_PIN  6
+#define MY_DEFAULT_TX_LED_PIN  5
 // Set blinking period
 #define MY_DEFAULT_LED_BLINK_PERIOD 300
 // Inverses the behavior of leds
 #define MY_WITH_LEDS_BLINKING_INVERSE
-
-const uint8_t HEATER_ON_LED = A3;
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
@@ -42,17 +41,17 @@ const uint8_t HEATER_ON_LED = A3;
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
 | C0 | C1 | C2 | C3 | C4 | C5 | C6 |
-|  3 |  4 | 5  |  6 |  7 |  8 |  9 |
+| A0 | A1 | A2 | A3 | A4 | A5 |  7 |
 */
 
-const uint8_t NODE_ID_SWITCH_PINS[] = {3, 4, 5, 6, 7, 8, 9};
+const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------- HEATER ACTUATOR SENSOR SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t HEATER_CONTROL_RELAY_SENSOR_ID = 1;
-const uint8_t HEATER_CONTROL_RELAY_PIN = A4;
+const uint8_t HEATER_CONTROL_RELAY_PIN = A0;
 const uint8_t HEATER_OFF = 0;
 const uint8_t HEATER_ON = 1;
 
@@ -64,11 +63,17 @@ const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
 #ifdef WANT_RELAY_SAFETY
 static uint32_t relaySafetyCounter = 0;
+const uint32_t HEATER_RELAY_SAFETY_TIMEOUT_MS = 300000; // 5 min
 const uint32_t HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS = 60000;
-const uint32_t HEATER_RELAY_SAFETY_MAX_COUNTER = 5;
+const uint32_t HEATER_RELAY_SAFETY_MAX_COUNTER = HEATER_RELAY_SAFETY_TIMEOUT_MS /
+    HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS;
 #endif
 
 bool sendHeaterActuatorState = false;
+
+#ifdef WANT_HEATER_ACTIVITY_LED
+const uint8_t HEATER_ON_LED_PIN = 3;
+#endif
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -172,23 +177,22 @@ void presentNodeMetadata() {
 }
 
 uint8_t getHeaterState() {
-    // we have inverse logic so we negate what we read from the relay pin
-    return !digitalRead(HEATER_CONTROL_RELAY_PIN);
+    return digitalRead(HEATER_CONTROL_RELAY_PIN);
 }
 
 void setHeaterState(uint8_t newState) {
-    // we have inverse logic so we negate what we read from incoming message regarding new state
-    digitalWrite(HEATER_CONTROL_RELAY_PIN, !newState);
+    digitalWrite(HEATER_CONTROL_RELAY_PIN, newState);
 
+    #ifdef WANT_HEATER_ACTIVITY_LED
     // signal heater state using a LED
-    digitalWrite(HEATER_ON_LED, HEATER_OFF ? LOW : HIGH);
+    digitalWrite(HEATER_ON_LED_PIN, (newState == HEATER_ON));
+    #endif
 
-#ifdef WANT_RELAY_SAFETY
-    // reset heater safety counter if it's turned off
+    #ifdef WANT_RELAY_SAFETY
     if(newState == HEATER_OFF) {
         relaySafetyCounter = 0;
     }
-#endif
+    #endif
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -215,12 +219,12 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     }
 }
 
-void sendKnockSyncMsg() {
+/*void sendKnockSyncMsg() {
     MyMessage knockMsg(HEATER_CONTROL_RELAY_SENSOR_ID, V_VAR1);
 
     send(knockMsg.set("knock"), false);
     wait(KNOCK_MSG_WAIT_INTERVAL_MS);
-}
+}*/
 
 // called by mysensors to set node id internally
 // this is useful to set node id at runtime and
@@ -243,22 +247,25 @@ void presentation() {
 void receive(const MyMessage &message) {
     switch (message.type) {
         case V_VAR1:
-            char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-            loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+            if (message.getCommand() == C_SET) {
+                char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+                loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-            // save new node metadata only when they differ
-            if (strncmp(message.getString(), rawNodeMetadata,
-                        MAX_NODE_METADATA_LENGTH) != 0) {
-                char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                saveNodeEepromMetadata(recvMetadata);
+                // save new node metadata only when they differ
+                if (strncmp(message.getString(), rawNodeMetadata,
+                            MAX_NODE_METADATA_LENGTH) != 0) {
+                    char recvMetadata[MAX_NODE_METADATA_LENGTH];
+                    memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+                    strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+                    saveNodeEepromMetadata(recvMetadata);
+                }
+                presentNodeMetadata();
             }
-            presentNodeMetadata();
             break;
         #ifdef WANT_RELAY_SAFETY
         case V_VAR2:
             if((getHeaterState() == HEATER_ON) &&
+                    (message.getCommand() == C_SET) &&
                     (strcasecmp_P(message.getString(), PSTR("reset")) == 0)) {
                 relaySafetyCounter = 0;
             }
@@ -267,18 +274,19 @@ void receive(const MyMessage &message) {
         case V_STATUS:
             // V_STATUS message type for heater set operations only
             if (message.getCommand() == C_SET) {
-                uint8_t newState = message.getBool();
-
-                // set heater state only if it differs from previous one
-                if (getHeaterState() != newState) {
-                  setHeaterState(newState);
-                  sendHeaterActuatorState = true;
-                }
+                uint8_t newState = 0;
+                sscanf(message.getString(), "%hhu", &newState);
+                setHeaterState(newState);
+                sendHeaterActuatorState = true;
             }
 
             // V_STATUS message type for heater get operations only
             if(message.getCommand() == C_REQ) {
                 sendHeaterActuatorState = true;
+
+                #ifdef WANT_RELAY_SAFETY
+                relaySafetyCounter = 0;
+                #endif
             }
             break;
         default:;
@@ -287,7 +295,10 @@ void receive(const MyMessage &message) {
 
 void setup() {
     pinMode(HEATER_CONTROL_RELAY_PIN, OUTPUT);
-    pinMode(HEATER_ON_LED, OUTPUT);
+
+    #ifdef WANT_HEATER_ACTIVITY_LED
+    pinMode(HEATER_ON_LED_PIN, OUTPUT);
+    #endif
 
     // make sure the relay is off when starting up
     setHeaterState(HEATER_OFF);
@@ -300,10 +311,10 @@ void setup() {
 void loop()  {
     static bool firstInit = false;
     if(!firstInit) {
-        sendKnockSyncMsg();
-        firstInit = true;
+        //sendKnockSyncMsg();
         sendHeartbeat();
         sendBatteryLevel(100);
+        firstInit = true;
     }
 
 #ifdef WANT_RELAY_SAFETY
@@ -311,7 +322,12 @@ void loop()  {
     // start heater safety counter when turning on
     if ((getHeaterState() == HEATER_ON) &&
             ((millis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
-        ++relaySafetyCounter;
+        if (++relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
+            // for safety turn off the heater if the controller doesn't reset the relay safety timer
+            //  this is needed in case something bad happens and the controller looses control over this node
+            //     so we need to shutdown the heater automatically
+            setHeaterState(HEATER_OFF);
+        }
         lastRelaySafetyCheckTimestamp = millis();
     }
 #endif
@@ -322,15 +338,6 @@ void loop()  {
         sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
         sendHeaterActuatorState = false;
     }
-
-#ifdef WANT_RELAY_SAFETY
-    if (relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
-        // for safety turn off the heater if the controller doesn't reset the relay safety timer
-        //  this is needed in case something bad happens and the controller looses control over this node
-        //     so we need to shutdown the heater automatically
-        setHeaterState(HEATER_OFF);
-    }
-#endif
 
     static uint32_t lastHeartbeatReportTimestamp;
     if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
