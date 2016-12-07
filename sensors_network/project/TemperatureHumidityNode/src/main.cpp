@@ -112,13 +112,17 @@ SI7021 tempHumSensor;
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 20000;
 
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
-const uint32_t SENSOR_DATA_REPORT_INTERVAL_MS = 40000;  // 40s interval
+const uint32_t SENSOR_DATA_CHECK_INTERVAL_MS = 40000;  // 40s interval
+const uint32_t SENSOR_DATA_REGULAR_REPORT_INTERVAL_MS = 180000;  // 3min interval
 
 const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
-const uint32_t SENSOR_DATA_REPORT_CYCLES =
-    SENSOR_DATA_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t SENSOR_DATA_CHECK_COUNTER =
+    SENSOR_DATA_CHECK_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t SENSOR_DATA_REGULAR_REPORT_COUNTER =
+    SENSOR_DATA_REGULAR_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+
 const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 
 #ifdef WANT_TX_FAILURES_MONITORING
@@ -284,7 +288,9 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    sleep(1000);    // don't send next data too fast
     present(TEMPERATURE_SENSOR_ID, S_TEMP, temperatureSensorName);
+    sleep(1000);// don't send next data too fast
     present(HUMIDITY_SENSOR_ID, S_HUM, humiditySensorName);
 }
 
@@ -462,15 +468,20 @@ void loop() {
     if(!firstInit) {
         sendKnockSyncMsg();
         sendHeartbeat();
+        sleep(1000);    // don't send next data too fast
         sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
+        sleep(1000);    // don't send next data too fast
         sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemp(), V_TEMP);
+        sleep(1000);    // don't send next data too fast
         sendSensorData(HUMIDITY_SENSOR_ID, tempHumSensor.readHumidity(), V_HUM);
         firstInit = true;
     }
 
-    static uint32_t sensorDataReportCyclesCounter = 0;
-    if (sensorDataReportCyclesCounter++ >= SENSOR_DATA_REPORT_CYCLES) {
+    // check on a regular basis if sensor data needs to be sent
+    //  (it will be sent if something changed meanwhile only)
+    static uint32_t sensorDataReportCheckCounter = 0;
+    if (sensorDataReportCheckCounter++ >= SENSOR_DATA_CHECK_COUNTER) {
         static float lastTemperature;
         static float lastHumidity;
 
@@ -495,7 +506,16 @@ void loop() {
             sendSensorData(HUMIDITY_SENSOR_ID, currentHumidity, V_HUM);
             lastHumidity = currentHumidity;
         }
-        sensorDataReportCyclesCounter = 0;
+        sensorDataReportCheckCounter = 0;
+    }
+
+    // send sensor data on a regular basis no matter if it changed or not
+    static uint32_t sensorDataRegularReportCounter = 0;
+    if (sensorDataRegularReportCounter++ >= SENSOR_DATA_REGULAR_REPORT_COUNTER) {
+        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemp(), V_TEMP);
+        sleep(1000);
+        sendSensorData(HUMIDITY_SENSOR_ID, tempHumSensor.readHumidity(), V_HUM);
+        sensorDataRegularReportCounter = 0;
     }
 
     // send battery state after BATTERY_LVL_REPORT_INTERVAL_MS interval elapsed

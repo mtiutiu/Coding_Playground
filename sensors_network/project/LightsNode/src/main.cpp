@@ -296,6 +296,7 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    sleep(1000);    // don't send next data too fast
     present(AC_SENSOR_ID, S_LIGHT, acSensorName);
 }
 
@@ -492,6 +493,7 @@ void loop() {
 			sleep(EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS);
 		}
         sendHeartbeat();
+        sleep(1000);   // don't send next data too fas
         sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
 

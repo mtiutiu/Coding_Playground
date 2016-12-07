@@ -77,9 +77,9 @@
 
 // Flash leds on rx/tx/err
 // Uncomment to override default HW configurations
-#define MY_DEFAULT_ERR_LED_PIN A2  // Error led pin
-#define MY_DEFAULT_RX_LED_PIN  A0  // Receive led pin
-#define MY_DEFAULT_TX_LED_PIN  A1  // the PCB, on board LED
+#define MY_DEFAULT_ERR_LED_PIN 4  // Error led pin
+#define MY_DEFAULT_RX_LED_PIN  6  // Receive led pin
+#define MY_DEFAULT_TX_LED_PIN  5  // the PCB, on board LED
 
 #include <Arduino.h>
 #include <SPI.h>
