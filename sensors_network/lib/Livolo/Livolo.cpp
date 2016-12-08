@@ -9,6 +9,8 @@
 
 Livolo::Livolo(byte pin)
 {
+  txPinPort	= portOutputRegister(digitalPinToPort(pin));
+  txPinBitMask = digitalPinToBitMask(pin);
   pinMode(pin, OUTPUT);
   txPin = pin;
  // Serial.begin(9600);
@@ -39,7 +41,8 @@ void Livolo::sendButton(unsigned int remoteID, byte keycode, byte retries) {
     selectPulse(txPulse);    
     }    
   }
-   digitalWrite(txPin, LOW);
+   //digitalWrite(txPin, LOW);
+   cbi(txPinPort, txPinBitMask);
   interrupts();   
    // Serial.println("Sending done");
 }
@@ -77,29 +80,43 @@ void Livolo::sendPulse(byte txPulse) {
 
   switch(txPulse) { // transmit pulse
    case 1: // Start
-   digitalWrite(txPin, HIGH);
-   delayMicroseconds(525); // 550
+   //digitalWrite(txPin, HIGH);
+   sbi(txPinPort, txPinBitMask);
+   //delayMicroseconds(525); // 550
+   _delay_us(525);
    //digitalWrite(txPin, LOW);
    break;
    case 2: // "High Zero"
-   digitalWrite(txPin, LOW);
-   delayMicroseconds(110); // 110
-   digitalWrite(txPin, HIGH);
+   //digitalWrite(txPin, LOW);
+   cbi(txPinPort, txPinBitMask);
+   //delayMicroseconds(110); // 110
+   _delay_us(110);
+   //digitalWrite(txPin, HIGH);
+   sbi(txPinPort, txPinBitMask);
    break;   
    case 3: // "High One"
-   digitalWrite(txPin, LOW);
-   delayMicroseconds(305); // 303
-   digitalWrite(txPin, HIGH);
+   //digitalWrite(txPin, LOW);
+   cbi(txPinPort, txPinBitMask);
+   //delayMicroseconds(305); // 303
+   _delay_us(305);
+   //digitalWrite(txPin, HIGH);
+   sbi(txPinPort, txPinBitMask);
    break;      
    case 4: // "Low Zero"
-   digitalWrite(txPin, HIGH);
-   delayMicroseconds(110); // 110
-   digitalWrite(txPin, LOW);
+   //digitalWrite(txPin, HIGH);
+   sbi(txPinPort, txPinBitMask);
+   //delayMicroseconds(110); // 110
+   _delay_us(110);
+   //digitalWrite(txPin, LOW);
+   cbi(txPinPort, txPinBitMask);
    break;      
    case 5: // "Low One"
-   digitalWrite(txPin, HIGH);
-   delayMicroseconds(305); // 290
-   digitalWrite(txPin, LOW);
+   //digitalWrite(txPin, HIGH);
+   sbi(txPinPort, txPinBitMask);
+   //delayMicroseconds(305); // 290
+   _delay_us(305);
+   //digitalWrite(txPin, LOW);
+   cbi(txPinPort, txPinBitMask);
    break;      
   } 
 }

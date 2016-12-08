@@ -38,8 +38,14 @@
  * 
  */
 
-#include <MySensor.h>  
-#include <SPI.h>
+// Enable debug prints
+#define MY_DEBUG
+
+// Enable and select radio type attached
+#define MY_RADIO_NRF24
+//#define MY_RADIO_RFM69
+
+#include <MySensors.h>  
 
 #define CHILD_ID_DUST 0
 #define DUST_SENSOR_ANALOG_PIN 1
@@ -56,23 +62,17 @@ float voMeasured = 0;
 float calcVoltage = 0;
 float dustDensity = 0;
 
-MySensor gw;
 MyMessage dustMsg(CHILD_ID_DUST, V_LEVEL);
 
-void setup()  
-{
-  gw.begin();
-
+void presentation() {
   // Send the sketch version information to the gateway and Controller
-  gw.sendSketchInfo("Dust Sensor", "1.1");
+  sendSketchInfo("Dust Sensor", "1.1");
 
   // Register all sensors to gateway (they will be created as child devices)
-  gw.present(CHILD_ID_DUST, S_DUST);  
-   
+  present(CHILD_ID_DUST, S_DUST);  
 }
 
-void loop()      
-{    
+void loop() {    
   uint16_t voMeasured = analogRead(DUST_SENSOR_ANALOG_PIN);// Get DUST value
 
   // 0 - 5V mapped to 0 - 1023 integer values
@@ -93,9 +93,9 @@ void loop()
   Serial.println(dustDensity); // unit: ug/m3
  
   if (ceil(dustDensity) != lastDUST) {
-      gw.send(dustMsg.set((int)ceil(dustDensity)));
+      send(dustMsg.set((int16_t)ceil(dustDensity)));
       lastDUST = ceil(dustDensity);
   }
  
-  gw.sleep(SLEEP_TIME);
+  sleep(SLEEP_TIME);
 }
