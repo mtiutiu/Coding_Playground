@@ -5,9 +5,7 @@
 #include <EEPROM.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
-#define WANT_HEATER_ACTIVITY_LED
 //#define HAS_NODE_ID_SET_SWITCH
-#define WANT_RELAY_SAFETY
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -16,7 +14,7 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#define MY_NODE_ID 251  // this needs to be set explicitly
+#define MY_NODE_ID 250  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
@@ -26,13 +24,13 @@
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
 // Flash leds on rx/tx/err
-#define MY_DEFAULT_ERR_LED_PIN 4
-#define MY_DEFAULT_RX_LED_PIN  6
-#define MY_DEFAULT_TX_LED_PIN  5
+//#define MY_DEFAULT_ERR_LED_PIN 4
+//#define MY_DEFAULT_RX_LED_PIN  6
+//#define MY_DEFAULT_TX_LED_PIN  5
 // Set blinking period
-#define MY_DEFAULT_LED_BLINK_PERIOD 300
+//#define MY_DEFAULT_LED_BLINK_PERIOD 300
 // Inverses the behavior of leds
-#define MY_WITH_LEDS_BLINKING_INVERSE
+//#define MY_WITH_LEDS_BLINKING_INVERSE
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
@@ -48,32 +46,20 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
-// ----------------------- HEATER ACTUATOR SENSOR SECTION ----------------------
+// ----------------------- LED STRIP ACTUATOR SENSOR SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 1;
-const uint8_t HEATER_CONTROL_RELAY_SENSOR_ID = 1;
-const uint8_t HEATER_CONTROL_RELAY_PIN = A0;
-const uint8_t HEATER_OFF = 0;
-const uint8_t HEATER_ON = 1;
+const uint8_t LED_STRIP_RELAY_SENSOR_ID = 1;
+const uint8_t LED_STRIP_CONTROL_RELAY_PIN = 4;
+const uint8_t LED_STRIP_OFF = 0;
+const uint8_t LED_STRIP_ON = 1;
 
-const uint32_t HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
+const uint32_t LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
-#ifdef WANT_RELAY_SAFETY
-static uint32_t relaySafetyCounter = 0;
-const uint32_t HEATER_RELAY_SAFETY_TIMEOUT_MS = 300000; // 5 min
-const uint32_t HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS = 60000;
-const uint32_t HEATER_RELAY_SAFETY_MAX_COUNTER = HEATER_RELAY_SAFETY_TIMEOUT_MS /
-    HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS;
-#endif
-
-bool sendHeaterActuatorState = false;
-
-#ifdef WANT_HEATER_ACTIVITY_LED
-const uint8_t HEATER_ON_LED_PIN = 3;
-#endif
+bool sendLedStripActuatorState = false;
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -160,39 +146,28 @@ void saveNodeEepromMetadata(const char *metadata) {
 
 void presentNodeMetadata() {
     char nodeName[MAX_NODE_METADATA_LENGTH];
-    char heaterSensorName[MAX_NODE_METADATA_LENGTH];
+    char ledStripSensorName[MAX_NODE_METADATA_LENGTH];
     memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(heaterSensorName, '\0', MAX_NODE_METADATA_LENGTH);
+    memset(ledStripSensorName, '\0', MAX_NODE_METADATA_LENGTH);
 
     char *nodeInfo[] = {
         nodeName,     // node friendly name
-        heaterSensorName // node sensor friendly name
+        ledStripSensorName // node sensor friendly name
     };
 
     // load node metadata based on attached sensors count + the node name
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_BINARY, heaterSensorName);
+    present(LED_STRIP_RELAY_SENSOR_ID, S_BINARY, ledStripSensorName);
 }
 
-uint8_t getHeaterState() {
-    return digitalRead(HEATER_CONTROL_RELAY_PIN);
+uint8_t getLedStripState() {
+    return digitalRead(LED_STRIP_CONTROL_RELAY_PIN);
 }
 
-void setHeaterState(uint8_t newState) {
-    digitalWrite(HEATER_CONTROL_RELAY_PIN, newState);
-
-    #ifdef WANT_HEATER_ACTIVITY_LED
-    // signal heater state using a LED
-    digitalWrite(HEATER_ON_LED_PIN, (newState == HEATER_ON));
-    #endif
-
-    #ifdef WANT_RELAY_SAFETY
-    if(newState == HEATER_OFF) {
-        relaySafetyCounter = 0;
-    }
-    #endif
+void setLedStripState(uint8_t newState) {
+    digitalWrite(LED_STRIP_CONTROL_RELAY_PIN, newState);
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -220,7 +195,7 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 }
 
 /*void sendKnockSyncMsg() {
-    MyMessage knockMsg(HEATER_CONTROL_RELAY_SENSOR_ID, V_VAR1);
+    MyMessage knockMsg(LED_STRIP_RELAY_SENSOR_ID, V_VAR1);
 
     send(knockMsg.set("knock"), false);
     wait(KNOCK_MSG_WAIT_INTERVAL_MS);
@@ -262,31 +237,18 @@ void receive(const MyMessage &message) {
                 presentNodeMetadata();
             }
             break;
-        #ifdef WANT_RELAY_SAFETY
-        case V_VAR2:
-            if((getHeaterState() == HEATER_ON) &&
-                    (message.getCommand() == C_SET) &&
-                    (strcasecmp_P(message.getString(), PSTR("reset")) == 0)) {
-                relaySafetyCounter = 0;
-            }
-            break;
-        #endif
         case V_STATUS:
-            // V_STATUS message type for heater set operations only
+            // V_STATUS message type for led strip actuator set operations only
             if (message.getCommand() == C_SET) {
                 uint8_t newState = 0;
                 sscanf(message.getString(), "%hhu", &newState);
-                setHeaterState(newState);
-                sendHeaterActuatorState = true;
+                setLedStripState(newState);
+                sendLedStripActuatorState = true;
             }
 
-            // V_STATUS message type for heater get operations only
+            // V_STATUS message type for led strip actuator get operations only
             if(message.getCommand() == C_REQ) {
-                sendHeaterActuatorState = true;
-
-                #ifdef WANT_RELAY_SAFETY
-                relaySafetyCounter = 0;
-                #endif
+                sendLedStripActuatorState = true;
             }
             break;
         default:;
@@ -294,18 +256,10 @@ void receive(const MyMessage &message) {
 }
 
 void setup() {
-    pinMode(HEATER_CONTROL_RELAY_PIN, OUTPUT);
-
-    #ifdef WANT_HEATER_ACTIVITY_LED
-    pinMode(HEATER_ON_LED_PIN, OUTPUT);
-    #endif
+    pinMode(LED_STRIP_CONTROL_RELAY_PIN, OUTPUT);
 
     // make sure the relay is off when starting up
-    setHeaterState(HEATER_OFF);
-
-#ifdef WANT_RELAY_SAFETY
-    relaySafetyCounter = 0;
-#endif
+    setLedStripState(LED_STRIP_OFF);
 }
 
 void loop()  {
@@ -317,25 +271,10 @@ void loop()  {
         firstInit = true;
     }
 
-#ifdef WANT_RELAY_SAFETY
-    static uint32_t lastRelaySafetyCheckTimestamp;
-    // start heater safety counter when turning on
-    if ((getHeaterState() == HEATER_ON) &&
-            ((millis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
-        if (++relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
-            // for safety turn off the heater if the controller doesn't reset the relay safety timer
-            //  this is needed in case something bad happens and the controller looses control over this node
-            //     so we need to shutdown the heater automatically
-            setHeaterState(HEATER_OFF);
-        }
-        lastRelaySafetyCheckTimestamp = millis();
-    }
-#endif
-
-    static uint32_t lastHeaterStateReportTimestamp;
-    if(millis() - lastHeaterStateReportTimestamp >= HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS) {
-        sendHeaterActuatorState = true;
-        lastHeaterStateReportTimestamp = millis();
+    static uint32_t lastLedStripActuatorStateReportTimestamp;
+    if(millis() - lastLedStripActuatorStateReportTimestamp >= LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS) {
+        sendLedStripActuatorState = true;
+        lastLedStripActuatorStateReportTimestamp = millis();
     }
 
     static uint32_t lastHeartbeatReportTimestamp;
@@ -343,7 +282,7 @@ void loop()  {
         sendHeartbeat();
         lastHeartbeatReportTimestamp = millis();
     }
-    
+
     // this is always on(I don't see a reason on sending battery level here - but if the client requested it...oh well)
     static uint32_t lastBatteryLvlReportTimestamp;
     if(millis() - lastBatteryLvlReportTimestamp >= BATTERY_LVL_REPORT_INTERVAL_MS) {
@@ -351,9 +290,9 @@ void loop()  {
         lastBatteryLvlReportTimestamp = millis();
     }
 
-    if (sendHeaterActuatorState) {
+    if (sendLedStripActuatorState) {
         // send new state back to controller
-        sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
-        sendHeaterActuatorState = false;
+        sendData(LED_STRIP_RELAY_SENSOR_ID, getLedStripState(), V_STATUS);
+        sendLedStripActuatorState = false;
     }
 }

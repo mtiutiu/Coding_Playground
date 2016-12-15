@@ -119,11 +119,11 @@
  * Incoming / outgoing messages:
  *
  * See <a href="https://www.mysensors.org/download/serial_api_20">here</a> for more detail on the format and definitons.
+ * 
+ * Receiving a message		
+ * - TSF:MSG:READ,sender-last-destination,s=%%d,c=%%d,t=%%d,pt=%%d,l=%%d,sg=%%d:%%s		
  *
- * Receiving a message
- * - TSF:MSG:READ,sender-last-destination,s=%%d,c=%%d,t=%%d,pt=%%d,l=%%d,sg=%%d:%%s
- *
- * Sending a message
+ * Sending a message		
  * - [!]TSF:MSG:SEND,sender-last-next-destination,s=%%d,c=%%d,t=%%d,pt=%%d,l=%%d,sg=%%d,ft=%%d,st=%%s:%%s
  *
  * Message fields:
@@ -133,7 +133,7 @@
  * - <b>pt</b>=payload type
  * - <b>l</b>=length
  * - <b>sg</b>=signing flag
- * - <b>ft</b>=failed uplink transmission counter
+ * - <b>ft</b>=failed uplink transmission counter 
  * - <b>st</b>=send status, OK=success, NACK=no radio ACK received
  *
  * @brief API declaration for MyTransport
@@ -145,7 +145,7 @@
 
 #include "MySensorsCore.h"
 
- // debug
+ // debug 
 #if defined(MY_DEBUG)
 	#define TRANSPORT_DEBUG(x,...) debug(x, ##__VA_ARGS__)	//!< debug
 #else
@@ -197,7 +197,7 @@
 	#if defined(MY_RADIO_RFM69)
 		#error Receive message buffering not supported for RFM69!
 	#endif
-	#if defined(MY_RS485)
+	#if defined(MY_RS485) 
 		#error Receive message buffering not supported for RS485!
 	#endif
 #elif !defined(MY_RX_MESSAGE_BUFFER_FEATURE) && defined(MY_RX_MESSAGE_BUFFER_SIZE)
@@ -219,7 +219,7 @@ struct transportState {
 * @brief Status variables and SM state
 *
 * This structure stores transport status and SM variables
-*/
+*/ 
 typedef struct {
 	// SM variables
 	transportState* currentState;			//!< pointer to current fsm state
@@ -234,7 +234,7 @@ typedef struct {
 	bool transportActive : 1;				//!< flag transport active
 	uint8_t stateRetries : 3;				//!< retries / state re-enter (max 7)
 	// 8 bits
-	uint8_t failedUplinkTransmissions : 4;	//!< counter failed uplink transmissions (max 15)
+	uint8_t failedUplinkTransmissions : 4;	//!< counter failed uplink transmissions (max 15)	
 	uint8_t failureCounter : 3;				//!< counter for TSM failures (max 7)
 	bool msgReceived : 1;					//!< flag message received
 	// 8 bits
@@ -291,7 +291,7 @@ void stReadyTransition(void);
 */
 void stReadyUpdate(void);
 /**
-* @brief Transport failure and power down radio
+* @brief Transport failure and power down radio 
 */
 void stFailureTransition(void);
 /**
@@ -334,7 +334,7 @@ bool transportAssignNodeID(const uint8_t newNodeId);
 * @brief Wait and process messages for a defined amount of time until specified message received
 * @param ms Time to wait and process incoming messages in ms
 * @param cmd Specific command
-* @param msgtype Specific message type
+* @param msgtype Specific message type 
 * @return true if specified command received within waiting time
 */
 bool transportWait(const uint32_t ms, const uint8_t cmd, const uint8_t msgtype);
@@ -346,7 +346,7 @@ bool transportWait(const uint32_t ms, const uint8_t cmd, const uint8_t msgtype);
 uint8_t transportPingNode(const uint8_t targetId);
 /**
 * @brief Send and route message according to destination
-*
+* 
 * This function is used in MyTransport and omits the transport state check, i.e. message can be sent even if transport is not ready
 *
 * @param message
@@ -363,7 +363,7 @@ bool transportSendRoute(MyMessage &message);
 * @brief Send message to recipient
 * @param to Recipient of message
 * @param message
-* @return true if message sent successfully
+* @return true if message sent successfully 
 */
 bool transportSendWrite(const uint8_t to, MyMessage &message);
 /**
@@ -477,11 +477,12 @@ bool transportSanityCheck();
 * @brief Receive message from FIFO
 * @return length of recevied message (header + payload)
 */
-uint8_t transportReceive(void* data);
+uint8_t transportReceive(void* data); 
 /**
 * @brief Power down transport HW
 */
 void transportPowerDown();
+
 
 #endif // MyTransport_h
 /** @}*/

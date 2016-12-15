@@ -99,7 +99,7 @@ void stInitUpdate(void) {
 			if ((uint8_t)MY_NODE_ID != AUTO) {
 				TRANSPORT_DEBUG(PSTR("TSM:INIT:STATID=%d\n"),(uint8_t)MY_NODE_ID);
 				// Set static ID
-                // call user setNodeId if defined
+				// call user setNodeId if defined
                 // otherwise use preprocessor defined MY_NODE_ID
                 if(setNodeId) {
                     _nc.nodeId = (uint8_t)setNodeId();
@@ -503,7 +503,7 @@ bool transportWait(const uint32_t ms, const uint8_t cmd, const uint8_t msgtype){
 	while ((hwMillis() - enter < ms) && !expectedResponse) {
 		// process incoming messages
 		transportProcessFIFO();
-		yield();	// process esp8266 stack, ignored for AVR
+		doYield();
 		expectedResponse = (mGetCommand(_msg) == cmd && _msg.type == msgtype);
 	}
 	return expectedResponse;

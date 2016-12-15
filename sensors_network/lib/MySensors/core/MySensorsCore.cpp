@@ -38,11 +38,7 @@ bool _nodeRegistered = false;
 void (*_timeCallback)(unsigned long); // Callback for requested time messages
 
 void _process(void) {
-	hwWatchdogReset();
-
-	#if defined (MY_DEFAULT_TX_LED_PIN) || defined(MY_DEFAULT_RX_LED_PIN) || defined(MY_DEFAULT_ERR_LED_PIN)
-		ledsProcess();
-	#endif
+	doYield();
 
 	#if defined(MY_INCLUSION_MODE_FEATURE)
 		inclusionProcess();
@@ -64,10 +60,7 @@ void _process(void) {
 
 void _infiniteLoop(void) {
 	while(1) {
-		yield();
-		#if defined (MY_DEFAULT_TX_LED_PIN) || defined(MY_DEFAULT_RX_LED_PIN) || defined(MY_DEFAULT_ERR_LED_PIN)
-			ledsProcess();
-		#endif
+		doYield();
 		#if defined(__linux__)
 			exit(1);
 		#endif
@@ -111,9 +104,8 @@ void _begin(void) {
 		hwWriteConfig(EEPROM_PARENT_NODE_ID_ADDRESS, MY_PARENT_NODE_ID);
 		transportInitialise();
 		while (!isTransportReady()) {
-			hwWatchdogReset();
 			transportProcess();
-			yield();
+			doYield();
 		}
 	#endif
 
@@ -123,20 +115,20 @@ void _begin(void) {
 		// Check if node has been locked down
 		if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER) == 0) {
 			// Node is locked, check if unlock pin is asserted, else hang the node
-			pinMode(MY_NODE_UNLOCK_PIN, INPUT_PULLUP);
+			hwPinMode(MY_NODE_UNLOCK_PIN, INPUT_PULLUP);
 			// Make a short delay so we are sure any large external nets are fully pulled
 			unsigned long enter = hwMillis();
 			while (hwMillis() - enter < 2) {}
-			if (digitalRead(MY_NODE_UNLOCK_PIN) == 0) {
+			if (hwDigitalRead(MY_NODE_UNLOCK_PIN) == 0) {
 				// Pin is grounded, reset lock counter
 				hwWriteConfig(EEPROM_NODE_LOCK_COUNTER, MY_NODE_LOCK_COUNTER_MAX);
 				// Disable pullup
-				pinMode(MY_NODE_UNLOCK_PIN, INPUT);
+				hwPinMode(MY_NODE_UNLOCK_PIN, INPUT);
 				setIndication(INDICATION_ERR_LOCKED);
 				debug(PSTR("MCO:BGN:NODE UNLOCKED\n"));
 			} else {
 				// Disable pullup
-				pinMode(MY_NODE_UNLOCK_PIN, INPUT);
+				hwPinMode(MY_NODE_UNLOCK_PIN, INPUT);
 				nodeLock("LDB"); //Locked during boot
 			}
 		} else if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER) == 0xFF) {
@@ -447,7 +439,6 @@ void wait(const uint32_t waitingMS) {
 	const uint32_t enteringMS = hwMillis();
 	while (hwMillis() - enteringMS < waitingMS) {
 		_process();
-		yield();
 	}
 }
 
@@ -458,10 +449,19 @@ bool wait(const uint32_t waitingMS, const uint8_t cmd, const uint8_t msgtype) {
 	bool expectedResponse = false;
 	while ( (hwMillis() - enteringMS < waitingMS) && !expectedResponse ) {
 		_process();
-		yield();
 		expectedResponse = (mGetCommand(_msg) == cmd && _msg.type == msgtype);
 	}
 	return expectedResponse;
+}
+
+void doYield(void) {
+	hwWatchdogReset();
+
+	yield();
+
+	#if defined (MY_DEFAULT_TX_LED_PIN) || defined(MY_DEFAULT_RX_LED_PIN) || defined(MY_DEFAULT_ERR_LED_PIN)
+		ledsProcess();
+	#endif
 }
 
 int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t interrupt1, const uint8_t mode1, const uint8_t interrupt2, const uint8_t mode2) {
@@ -495,7 +495,6 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t in
 				uint32_t sleepDeltaMS = 0;
 				while (!isTransportReady() && (sleepDeltaMS < sleepingTimeMS) && (sleepDeltaMS < MY_SLEEP_TRANSPORT_RECONNECT_TIMEOUT_MS)) {
 					_process();
-					yield();
 					sleepDeltaMS = hwMillis() - sleepEnterMS;
 				}
 				// sleep remainder
@@ -519,6 +518,13 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t in
 		#if defined(MY_SENSOR_NETWORK)
 			debug(PSTR("MCO:SLP:TPD\n"));	// sleep, power down transport
 			transportPowerDown();
+		#endif
+
+		#if defined (MY_DEFAULT_TX_LED_PIN) || defined(MY_DEFAULT_RX_LED_PIN) || defined(MY_DEFAULT_ERR_LED_PIN)
+			// Wait until leds finish their blinking pattern
+			while (ledsBlinking()) {
+				doYield();
+			}
 		#endif
 
 		setIndication(INDICATION_SLEEP);
@@ -581,7 +587,7 @@ void nodeLock(const char* str) {
 	while (1) {
 		setIndication(INDICATION_ERR_LOCKED);
 		debug(PSTR("MCO:NLK:NODE LOCKED. TO UNLOCK, GND PIN %d AND RESET\n"), MY_NODE_UNLOCK_PIN);
-		yield();
+		doYield();
 		(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID,C_INTERNAL, I_LOCKED).set(str));
 		#if defined(MY_SENSOR_NETWORK)
 			transportPowerDown();
