@@ -67,6 +67,15 @@
 #ifndef MY_BAUD_RATE
 #define MY_BAUD_RATE 115200
 #endif
+ /**
+ * @def MY_SERIAL_OUTPUT_SIZE
+ * @brief Max. characters for serial output.
+ */
+#ifndef MY_SERIAL_OUTPUT_SIZE
+#define MY_SERIAL_OUTPUT_SIZE (120u)
+#endif
+
+
 
 // Disables over-the-air reset of node
 //#define MY_DISABLE_REMOTE_RESET
@@ -86,7 +95,7 @@
 * @brief If enabled, the routing table is kept in RAM (if memory allows) and saved in regular intervals.
 * note: AVR has limited memory, use with care
 */
-//#define MY_RAM_ROUTING_TABLE_FEATURE
+#define MY_RAM_ROUTING_TABLE_FEATURE
 
 /**
 * @def MY_ROUTING_TABLE_SAVE_INTERVAL_MS
@@ -97,7 +106,7 @@
 #endif
 /**
 * @def MY_TRANSPORT_SANITY_CHECK
-* @brief If enabled, node will check transport in regular intervals to detect HW issues and re-initialize in case of failure.
+* @brief If enabled, node will check transport in regular intervals to detect HW issues and re-initialize in case of failure. 
 * This feature is enabled for all repeater nodes (incl. GW)
 */
 //#define MY_TRANSPORT_SANITY_CHECK
@@ -111,7 +120,7 @@
 #endif
 /**
 * @def MY_TRANSPORT_DISCOVERY_INTERVAL_MS
-* @brief This is a gateway-only feature: Interval (in ms) to issue network discovery checks
+* @brief This is a gateway-only feature: Interval (in ms) to issue network discovery checks 
 */
 #ifndef MY_TRANSPORT_DISCOVERY_INTERVAL_MS
 #define MY_TRANSPORT_DISCOVERY_INTERVAL_MS (10*60*1000ul)
@@ -139,7 +148,7 @@
  * @def MY_REGISTRATION_FEATURE
  * @brief If enabled, node has to register to gateway/controller before allowed to send sensor data.
  */
-//#define MY_REGISTRATION_FEATURE
+#define MY_REGISTRATION_FEATURE
 
  /**
  * @def MY_REGISTRATION_RETRIES
@@ -166,7 +175,7 @@
  * @def MY_CORE_COMPATIBILITY_CHECK
  * @brief If enabled, library compatibility is checked during node registration. Incompatible libraries are unable to send sensor data.
  */
-//#define MY_CORE_COMPATIBILITY_CHECK
+#define MY_CORE_COMPATIBILITY_CHECK
 
 /**
  * @def MY_NODE_ID
