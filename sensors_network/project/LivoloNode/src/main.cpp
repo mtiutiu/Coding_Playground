@@ -88,7 +88,6 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A2, A3, A4, A5, 7, 8, 9};
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
@@ -184,6 +183,7 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    wait(500);
     present(LIVOLO_ACTUATOR_SENSOR_ID, S_CUSTOM, livoloSensorName);
 }
 
@@ -280,6 +280,7 @@ void loop() {
     if(!firstInit) {
         //sendKnockSyncMsg();
         sendHeartbeat();
+        wait(500);
         sendBatteryLevel(100);
         firstInit = true;
     }

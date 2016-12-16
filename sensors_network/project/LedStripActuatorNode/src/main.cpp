@@ -6,6 +6,7 @@
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
+#define LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -18,6 +19,9 @@
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
+#define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
+#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
+#define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL
 
@@ -46,6 +50,19 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
+// ---------------------------------------- LED STRIP CONTROL BUTTON CONFIGURATION ------------------------
+const uint8_t LED_STRIP_CONTROL_BTN_PIN = 9;
+const uint32_t LED_STRIP_CONTROL_BTN_DEBOUNCE_INTERVAL_MS = 500;
+
+#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
+const uint8_t LED_STRIP_CONTROL_BTN_LED_PIN = A0;
+#endif
+
+#include <Bounce2.h>
+
+Bounce ledStripControlBtnDebouncer = Bounce();
+// -------------------------------------------------------------------------------------------------------------
+
 // ----------------------- LED STRIP ACTUATOR SENSOR SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t LED_STRIP_RELAY_SENSOR_ID = 1;
@@ -63,7 +80,6 @@ bool sendLedStripActuatorState = false;
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
@@ -159,6 +175,7 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    wait(500);
     present(LED_STRIP_RELAY_SENSOR_ID, S_BINARY, ledStripSensorName);
 }
 
@@ -168,6 +185,16 @@ uint8_t getLedStripState() {
 
 void setLedStripState(uint8_t newState) {
     digitalWrite(LED_STRIP_CONTROL_RELAY_PIN, newState);
+
+#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
+    // signaling btn led has inverse logic
+    //  (we want it to be lit when the led strip is OFF and viceversa)
+    digitalWrite(LED_STRIP_CONTROL_BTN_LED_PIN, !newState);
+#endif
+}
+
+void toggleLedStripState() {
+    setLedStripState(!digitalRead(LED_STRIP_CONTROL_RELAY_PIN));
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -256,6 +283,15 @@ void receive(const MyMessage &message) {
 }
 
 void setup() {
+    pinMode(LED_STRIP_CONTROL_BTN_PIN, INPUT_PULLUP);
+    ledStripControlBtnDebouncer.attach(LED_STRIP_CONTROL_BTN_PIN);
+    ledStripControlBtnDebouncer.interval(LED_STRIP_CONTROL_BTN_DEBOUNCE_INTERVAL_MS);
+
+#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
+    pinMode(LED_STRIP_CONTROL_BTN_LED_PIN, OUTPUT);
+    digitalWrite(LED_STRIP_CONTROL_BTN_LED_PIN, LOW);
+#endif
+
     pinMode(LED_STRIP_CONTROL_RELAY_PIN, OUTPUT);
 
     // make sure the relay is off when starting up
@@ -267,8 +303,18 @@ void loop()  {
     if(!firstInit) {
         //sendKnockSyncMsg();
         sendHeartbeat();
+        wait(500);
         sendBatteryLevel(100);
+        wait(500);
+        sendLedStripActuatorState = true;
         firstInit = true;
+    }
+
+    ledStripControlBtnDebouncer.update();
+    if(ledStripControlBtnDebouncer.fell()) {
+        // led strip control button was pressed
+        toggleLedStripState();
+        sendLedStripActuatorState = true;
     }
 
     static uint32_t lastLedStripActuatorStateReportTimestamp;
