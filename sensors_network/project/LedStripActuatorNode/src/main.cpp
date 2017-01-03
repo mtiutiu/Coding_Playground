@@ -20,7 +20,7 @@
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
-#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
+//#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL

@@ -19,13 +19,18 @@
  * Based on wiringPi Copyright (c) 2012 Gordon Henderson.
  */
 
-#ifndef pins_io_h
-#define pins_io_h
+#ifndef rpi_util_h
+#define rpi_util_h
 
 #include <stdint.h>
 #include "bcm2835.h"
 
-namespace rpi_util {
+const int pin_to_gpio_rev1[41] = {-1, -1, -1, 0, -1, 1, -1, 4, 14, -1, 15, 17, 18, 21, -1, 22, 23, -1, 24, 10, -1, 9, 25, 11, 8, -1, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+const int pin_to_gpio_rev2[41] = {-1, -1, -1, 2, -1, 3, -1, 4, 14, -1, 15, 17, 18, 27, -1, 22, 23, -1, 24, 10, -1, 9, 25, 11, 8, -1, 7, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+const int pin_to_gpio_rev3[41] = {-1, -1, -1, 2, -1, 3, -1, 4, 14, -1, 15, 17, 18, 27, -1, 22, 23, -1, 24, 10, -1, 9, 25, 11, 8, -1, 7, -1, -1, 5, -1, 6, 12, 13, -1, 19, 16, 26, 20, -1, 21 };
+
+namespace rpi_util
+{
 
 typedef enum {
 	LSBFIRST = BCM2835_SPI_BIT_ORDER_LSBFIRST,
@@ -45,10 +50,10 @@ typedef enum {
 } rpi_pinedge;
 
 typedef enum {
-	PIN_SPI_SS = RPI_GPIO_P1_24,
-	PIN_SPI_MOSI = RPI_GPIO_P1_19,
-	PIN_SPI_MISO = RPI_GPIO_P1_21,
-	PIN_SPI_SCK = RPI_GPIO_P1_23
+	PIN_SPI_SS = 24,
+	PIN_SPI_MOSI = 19,
+	PIN_SPI_MISO = 21,
+	PIN_SPI_SCK = 23
 } rpi_spipins;
 
 const uint8_t SS   = PIN_SPI_SS;

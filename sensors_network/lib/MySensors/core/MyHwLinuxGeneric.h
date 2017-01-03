@@ -5,8 +5,8 @@
  * repeater and gateway builds a routing tables in EEPROM which keeps track of the
  * network topology allowing messages to be routed to nodes.
  *
- * Created by Marcelo Aquino <marceloaqno@gmail.org>
- * Copyright (C) 2016 Marcelo Aquino
+ * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
+ * Copyright (C) 2013-2016 Sensnology AB
  * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
@@ -16,7 +16,7 @@
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
  */
- 
+
 #ifndef MyHwLinuxGeneric_h
 #define MyHwLinuxGeneric_h
 
@@ -26,12 +26,14 @@
 #include "SerialPort.h"
 
 #ifdef MY_IS_SERIAL_PTY
-	SerialPort Serial = SerialPort(MY_LINUX_SERIAL_PTY, true);
+SerialPort Serial = SerialPort(MY_LINUX_SERIAL_PTY, true);
 #else
-	SerialPort Serial = SerialPort(MY_LINUX_SERIAL_PORT);
+SerialPort Serial = SerialPort(MY_LINUX_SERIAL_PORT);
 #endif
 
+#ifndef MY_SERIALDEVICE
 #define MY_SERIALDEVICE Serial
+#endif
 
 // Define these as macros (do nothing)
 #define hwWatchdogReset()
@@ -50,38 +52,40 @@ inline void hwRandomNumberInit();
 inline unsigned long hwMillis();
 
 #ifdef MY_RF24_IRQ_PIN
-	static pthread_mutex_t hw_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t hw_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-	static __inline__ void __hwUnlock(const  uint8_t *__s) {
-		pthread_mutex_unlock(&hw_mutex);
-		(void)__s;
-	}
+static __inline__ void __hwUnlock(const  uint8_t *__s)
+{
+	pthread_mutex_unlock(&hw_mutex);
+	(void)__s;
+}
 
-	static __inline__ void __hwLock() {
-		pthread_mutex_lock(&hw_mutex);
-	}
+static __inline__ void __hwLock()
+{
+	pthread_mutex_lock(&hw_mutex);
+}
 #endif
 
 #if defined(DOXYGEN)
-	#define ATOMIC_BLOCK_CLEANUP
+#define ATOMIC_BLOCK_CLEANUP
 #elif defined(MY_RF24_IRQ_PIN)
-	#define ATOMIC_BLOCK_CLEANUP uint8_t __atomic_loop \
-		__attribute__((__cleanup__( __hwUnlock ))) = 1
+#define ATOMIC_BLOCK_CLEANUP uint8_t __atomic_loop \
+	__attribute__((__cleanup__( __hwUnlock ))) = 1
 #else
-	#define ATOMIC_BLOCK_CLEANUP
+#define ATOMIC_BLOCK_CLEANUP
 #endif	/* DOXYGEN */
 
 #if defined(DOXYGEN)
-	#define ATOMIC_BLOCK
+#define ATOMIC_BLOCK
 #elif defined(MY_RF24_IRQ_PIN)
-	#define ATOMIC_BLOCK for ( ATOMIC_BLOCK_CLEANUP, __hwLock(); \
-							__atomic_loop ; __atomic_loop = 0 )
+#define ATOMIC_BLOCK for ( ATOMIC_BLOCK_CLEANUP, __hwLock(); \
+                           __atomic_loop ; __atomic_loop = 0 )
 #else
-	#define ATOMIC_BLOCK
+#define ATOMIC_BLOCK
 #endif	/* DOXYGEN */
 
 #ifndef DOXYGEN
-	#define MY_CRITICAL_SECTION ATOMIC_BLOCK
+#define MY_CRITICAL_SECTION ATOMIC_BLOCK
 #endif	/* DOXYGEN */
 
 #endif

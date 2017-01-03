@@ -34,23 +34,25 @@
 #include <Arduino.h>
 #endif
 
+#ifndef MY_SERIALDEVICE
 #define MY_SERIALDEVICE Serial
+#endif
 
 #if defined __AVR_ATmega328P__
 #ifndef sleep_bod_disable
 #define sleep_bod_disable() 										\
-do { 																\
-  unsigned char tempreg; 											\
-  __asm__ __volatile__("in %[tempreg], %[mcucr]" "\n\t" 			\
-                       "ori %[tempreg], %[bods_bodse]" "\n\t" 		\
-                       "out %[mcucr], %[tempreg]" "\n\t" 			\
-                       "andi %[tempreg], %[not_bodse]" "\n\t" 		\
-                       "out %[mcucr], %[tempreg]" 					\
-                       : [tempreg] "=&d" (tempreg) 					\
-                       : [mcucr] "I" _SFR_IO_ADDR(MCUCR), 			\
-                         [bods_bodse] "i" (_BV(BODS) | _BV(BODSE)), \
-                         [not_bodse] "i" (~_BV(BODSE))); 			\
-} while (0)
+	do { 																\
+		unsigned char tempreg; 											\
+		__asm__ __volatile__("in %[tempreg], %[mcucr]" "\n\t" 			\
+		                     "ori %[tempreg], %[bods_bodse]" "\n\t" 		\
+		                     "out %[mcucr], %[tempreg]" "\n\t" 			\
+		                     "andi %[tempreg], %[not_bodse]" "\n\t" 		\
+		                     "out %[mcucr], %[tempreg]" 					\
+		                     : [tempreg] "=&d" (tempreg) 					\
+		                     : [mcucr] "I" _SFR_IO_ADDR(MCUCR), 			\
+		                     [bods_bodse] "i" (_BV(BODS) | _BV(BODSE)), \
+		                     [not_bodse] "i" (~_BV(BODSE))); 			\
+	} while (0)
 #endif
 #endif
 
@@ -63,9 +65,9 @@ do { 																\
 
 
 #if defined(MY_DISABLED_SERIAL)
-	#define hwInit()
+#define hwInit()
 #else
-	#define hwInit() MY_SERIALDEVICE.begin(MY_BAUD_RATE)
+#define hwInit() MY_SERIALDEVICE.begin(MY_BAUD_RATE)
 #endif
 
 #define hwWatchdogReset() wdt_reset()
@@ -73,15 +75,9 @@ do { 																\
 #define hwMillis() millis()
 #define hwRandomNumberInit() randomSeed(analogRead(MY_SIGNING_SOFT_RANDOMSEED_PIN))
 #define hwReadConfig(__pos) eeprom_read_byte((uint8_t*)(__pos))
-
-#ifndef eeprom_update_byte
-	#define hwWriteConfig(__loc, __val) if((uint8_t)(__val) != eeprom_read_byte((uint8_t*)(__loc))) { eeprom_write_byte((uint8_t*)(__loc), (__val)); }
-#else
-	#define hwWriteConfig(__pos, __val) eeprom_update_byte((uint8_t*)(__pos), (__val))
-#endif
-
+#define hwWriteConfig(__pos, __val) eeprom_update_byte((uint8_t*)(__pos), (__val))
 #define hwReadConfigBlock(__buf, __pos, __length) eeprom_read_block((void*)(__buf), (void*)(__pos), (__length))
-#define hwWriteConfigBlock(__buf, __pos, __length) eeprom_write_block((void*)(__buf), (void*)(__pos), (__length))
+#define hwWriteConfigBlock(__buf, __pos, __length) eeprom_update_block((void*)(__buf), (void*)(__pos), (__length))
 
 
 
@@ -102,7 +98,7 @@ enum period_t {
 void hwInternalSleep(unsigned long ms);
 
 #ifndef DOXYGEN
-  #define MY_CRITICAL_SECTION     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+#define MY_CRITICAL_SECTION     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 #endif  /* DOXYGEN */
 
 #endif

@@ -30,7 +30,8 @@
 /**
  * SoftEeprom class
  */
-class SoftEeprom {
+class SoftEeprom
+{
 
 private:
 	size_t _length; //!< @brief Eeprom max size.
@@ -42,6 +43,10 @@ public:
 	 * @brief SoftEeprom constructor.
 	 */
 	SoftEeprom(const char *fileName, size_t length);
+	/**
+	 * @brief SoftEeprom copy constructor.
+	 */
+	SoftEeprom(const SoftEeprom& other);
 	/**
 	 * @brief SoftEeprom destructor.
 	 */
@@ -76,6 +81,11 @@ public:
 	 * @param value to write.
 	 */
 	void writeByte(int addr, uint8_t value);
+	/**
+	 * @brief Overloaded assign operator.
+	 *
+	 */
+	SoftEeprom& operator=(const SoftEeprom& other);
 };
 
 #endif
