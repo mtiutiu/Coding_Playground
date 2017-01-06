@@ -173,7 +173,7 @@ void presentNodeMetadata() {
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
     wait(500);
-    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_BINARY, heaterSensorName);
+    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_HEATER, heaterSensorName);
 }
 
 uint8_t getHeaterState() {
