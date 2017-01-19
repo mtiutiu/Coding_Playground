@@ -95,7 +95,7 @@
 * @brief If enabled, the routing table is kept in RAM (if memory allows) and saved in regular intervals.
 * note: AVR has limited memory, use with care
 */
-#define MY_RAM_ROUTING_TABLE_FEATURE
+//#define MY_RAM_ROUTING_TABLE_FEATURE
 
 /**
 * @def MY_ROUTING_TABLE_SAVE_INTERVAL_MS
@@ -106,7 +106,7 @@
 #endif
 /**
 * @def MY_TRANSPORT_SANITY_CHECK
-* @brief If enabled, node will check transport in regular intervals to detect HW issues and re-initialize in case of failure. 
+* @brief If enabled, node will check transport in regular intervals to detect HW issues and re-initialize in case of failure.
 * This feature is enabled for all repeater nodes (incl. GW)
 */
 //#define MY_TRANSPORT_SANITY_CHECK
@@ -120,7 +120,7 @@
 #endif
 /**
 * @def MY_TRANSPORT_DISCOVERY_INTERVAL_MS
-* @brief This is a gateway-only feature: Interval (in ms) to issue network discovery checks 
+* @brief This is a gateway-only feature: Interval (in ms) to issue network discovery checks
 */
 #ifndef MY_TRANSPORT_DISCOVERY_INTERVAL_MS
 #define MY_TRANSPORT_DISCOVERY_INTERVAL_MS (10*60*1000ul)
