@@ -96,7 +96,7 @@
 * @brief If enabled, the routing table is kept in RAM (if memory allows) and saved in regular intervals.
 * note: AVR has limited memory, use with care
 */
-#define MY_RAM_ROUTING_TABLE_FEATURE
+//#define MY_RAM_ROUTING_TABLE_FEATURE
 
 /**
 * @def MY_ROUTING_TABLE_SAVE_INTERVAL_MS
