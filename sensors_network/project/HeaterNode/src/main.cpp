@@ -77,7 +77,6 @@ const uint8_t HEATER_ON_LED_PIN = 3;
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-//  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
@@ -173,6 +172,7 @@ void presentNodeMetadata() {
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
+    wait(500);
     present(HEATER_CONTROL_RELAY_SENSOR_ID, S_BINARY, heaterSensorName);
 }
 
@@ -313,7 +313,10 @@ void loop()  {
     if(!firstInit) {
         //sendKnockSyncMsg();
         sendHeartbeat();
+        wait(500);
         sendBatteryLevel(100);
+        wait(500);
+        sendHeaterActuatorState = true;
         firstInit = true;
     }
 
@@ -343,7 +346,7 @@ void loop()  {
         sendHeartbeat();
         lastHeartbeatReportTimestamp = millis();
     }
-    
+
     // this is always on(I don't see a reason on sending battery level here - but if the client requested it...oh well)
     static uint32_t lastBatteryLvlReportTimestamp;
     if(millis() - lastBatteryLvlReportTimestamp >= BATTERY_LVL_REPORT_INTERVAL_MS) {
