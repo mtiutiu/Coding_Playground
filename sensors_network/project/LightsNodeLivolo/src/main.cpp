@@ -6,7 +6,6 @@
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
-#define LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -15,12 +14,13 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#define MY_NODE_ID 250  // this needs to be set explicitly
+#define MY_NODE_ID 249  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
 //#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
+#define MY_TRANSPORT_WAIT_READY_MS	3000
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL
@@ -50,45 +50,43 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
-// ---------------------------------------- LED STRIP CONTROL BUTTON CONFIGURATION ------------------------
-const uint8_t LED_STRIP_CONTROL_BTN_PIN = 9;
-const uint32_t LED_STRIP_CONTROL_BTN_DEBOUNCE_INTERVAL_MS = 500;
-
-#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
-const uint8_t LED_STRIP_CONTROL_BTN_LED_PIN = A0;
-#endif
-
-#include <Bounce2.h>
-
-Bounce ledStripControlBtnDebouncer = Bounce();
+// ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {4, A1};
 // -------------------------------------------------------------------------------------------------------------
 
-// ----------------------- LED STRIP ACTUATOR SENSOR SECTION ----------------------
-const uint8_t NODE_SENSORS_COUNT = 1;
-const uint8_t LED_STRIP_RELAY_SENSOR_ID = 1;
-const uint8_t LED_STRIP_CONTROL_RELAY_PIN = 4;
-const uint8_t LED_STRIP_OFF = 0;
-const uint8_t LED_STRIP_ON = 1;
+// ----------------------- LIGHTS SECTION ----------------------
+const uint8_t NODE_SENSORS_COUNT = 2;
+const uint8_t TOUCH_SENSOR_CHANNEL1_ID = 1;
+const uint8_t TOUCH_SENSOR_CHANNEL2_ID = 2;
 
-const uint32_t LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
-//const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
+const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 45000; //45s interval
+
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
-bool sendLedStripActuatorState = false;
+static bool sendLightsState = false;
+const uint8_t RELAY_CH_PINS[] = {6, 7, 8, 9};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
-// ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
-const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
-// -----------------------------------------------------------------------------------------------------------
-
 // --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
 const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
+// -----------------------------------------------------------------------------------------------------------
+
+// ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
+const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+
+#include <Vcc.h>
+
+const float VccMin        = 0;  // Minimum expected Vcc level, in Volts. Example for 2xAA Alkaline.
+const float VccMax        = 3.3;  // Maximum expected Vcc level, in Volts. Example for 2xAA Alkaline.
+const float VccCorrection = 1.0/1.0;  // Measured Vcc by multimeter divided by reported Vcc
+
+Vcc vcc(VccCorrection);
 // -----------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -166,39 +164,28 @@ void saveNodeEepromMetadata(const char *metadata) {
 
 void presentNodeMetadata() {
     char nodeName[MAX_NODE_METADATA_LENGTH];
-    char ledStripSensorName[MAX_NODE_METADATA_LENGTH];
+    char touchSensorChannel1Name[MAX_NODE_METADATA_LENGTH];
+    char touchSensorChannel2Name[MAX_NODE_METADATA_LENGTH];
     memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(ledStripSensorName, '\0', MAX_NODE_METADATA_LENGTH);
+    memset(touchSensorChannel1Name, '\0', MAX_NODE_METADATA_LENGTH);
+    memset(touchSensorChannel2Name, '\0', MAX_NODE_METADATA_LENGTH);
 
     char *nodeInfo[] = {
         nodeName,     // node friendly name
-        ledStripSensorName // node sensor friendly name
+        touchSensorChannel1Name, // touch sensor ch1 friendly name
+        touchSensorChannel2Name // touch sensor ch2 friendly name
     };
 
     // load node metadata based on attached sensors count + the node name
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
     sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    wait(500);
-    present(LED_STRIP_RELAY_SENSOR_ID, S_BINARY, ledStripSensorName);
-}
-
-uint8_t getLedStripState() {
-    return digitalRead(LED_STRIP_CONTROL_RELAY_PIN);
-}
-
-void setLedStripState(uint8_t newState) {
-    digitalWrite(LED_STRIP_CONTROL_RELAY_PIN, newState);
-
-#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
-    // signaling btn led has inverse logic
-    //  (we want it to be lit when the led strip is OFF and viceversa)
-    digitalWrite(LED_STRIP_CONTROL_BTN_LED_PIN, !newState);
-#endif
-}
-
-void toggleLedStripState() {
-    setLedStripState(!digitalRead(LED_STRIP_CONTROL_RELAY_PIN));
+    wait(200);    // don't send next data too fast
+    
+    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		present(i + 1, S_BINARY, nodeInfo[i]);
+		wait(200);// don't send next data too fast
+	}
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -269,15 +256,17 @@ void receive(const MyMessage &message) {
             }
             break;
         case V_STATUS:
-            // V_STATUS message type for led strip actuator set operations only
+            // V_STATUS message type for light switch set operations only
             if (message.getCommand() == C_SET) {
-                setLedStripState(message.getBool());
-                sendLedStripActuatorState = true;
+                bool newState = message.getBool();
+                uint8_t channel = message.sensor;
+
+                
             }
 
-            // V_STATUS message type for led strip actuator get operations only
+            // V_STATUS message type for light switch get operations only
             if(message.getCommand() == C_REQ) {
-                sendLedStripActuatorState = true;
+                sendLightsState = true;
             }
             break;
         default:;
@@ -285,19 +274,32 @@ void receive(const MyMessage &message) {
 }
 
 void setup() {
-    pinMode(LED_STRIP_CONTROL_BTN_PIN, INPUT_PULLUP);
-    ledStripControlBtnDebouncer.attach(LED_STRIP_CONTROL_BTN_PIN);
-    ledStripControlBtnDebouncer.interval(LED_STRIP_CONTROL_BTN_DEBOUNCE_INTERVAL_MS);
+    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
+	}
+	
+	for(uint8_t i = 0; i < (NODE_SENSORS_COUNT * 2); i++) {
+		pinMode(RELAY_CH_PINS[i], OUTPUT);
+	}
+}
 
-#ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
-    pinMode(LED_STRIP_CONTROL_BTN_LED_PIN, OUTPUT);
-    digitalWrite(LED_STRIP_CONTROL_BTN_LED_PIN, LOW);
-#endif
+void toggleChannelRelaySwitch(uint8_t channel) {
+	sendLightsState = true;
+}
 
-    pinMode(LED_STRIP_CONTROL_RELAY_PIN, OUTPUT);
-
-    // make sure the relay is off when starting up
-    setLedStripState(LED_STRIP_OFF);
+void checkTouchSensor() {
+	static bool wasTouched = false;
+	
+	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		if(digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW && !wasTouched) {
+			toggleChannelRelaySwitch(i);
+			wasTouched = true;
+		}
+		
+		if(digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) {
+			wasTouched = false;
+		}
+	}
 }
 
 void loop()  {
@@ -306,23 +308,21 @@ void loop()  {
         //sendKnockSyncMsg();
         sendHeartbeat();
         wait(500);
-        sendBatteryLevel(100);
+        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
         wait(500);
-        sendLedStripActuatorState = true;
+        sendLightsState = true;
         firstInit = true;
     }
 
-    ledStripControlBtnDebouncer.update();
-    if(ledStripControlBtnDebouncer.fell()) {
-        // led strip control button was pressed
-        toggleLedStripState();
-        sendLedStripActuatorState = true;
+	if (sendLightsState) {
+        // send new state back to controller
+        sendLightsState = false;
     }
 
-    static uint32_t lastLedStripActuatorStateReportTimestamp;
-    if(millis() - lastLedStripActuatorStateReportTimestamp >= LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS) {
-        sendLedStripActuatorState = true;
-        lastLedStripActuatorStateReportTimestamp = millis();
+    static uint32_t lastLightsStateReportTimestamp;
+    if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
+        sendLightsState = true;
+        lastLightsStateReportTimestamp = millis();
     }
 
     static uint32_t lastHeartbeatReportTimestamp;
@@ -331,17 +331,11 @@ void loop()  {
         lastHeartbeatReportTimestamp = millis();
     }
 
-    // this is always on(I don't see a reason on sending battery level here - but if the client requested it...oh well)
-    static uint32_t lastBatteryLvlReportTimestamp;
-    if(millis() - lastBatteryLvlReportTimestamp >= BATTERY_LVL_REPORT_INTERVAL_MS) {
-        sendBatteryLevel(100);
-        lastBatteryLvlReportTimestamp = millis();
-    }
-
-    if (sendLedStripActuatorState) {
-        // send new state back to controller
-        sendData(LED_STRIP_RELAY_SENSOR_ID, getLedStripState(), V_STATUS);
-        sendLedStripActuatorState = false;
+    // send power supply voltage level
+    static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
+    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+        lastPowerSupplyVoltageLvlReportTimestamp = millis();
     }
     
     // send presentation on a regular interval too
