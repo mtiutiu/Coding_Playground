@@ -37,6 +37,7 @@
 //#define MY_WITH_LEDS_BLINKING_INVERSE
 
 #include <MySensors.h>
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 // --------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------- DIP SW NODE ID CONFIGURATION ------------------------
@@ -51,13 +52,14 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // -------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
+#define RELEASED  0
+#define TOUCHED   1
+const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 1000;
 const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {4, A1};
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------- LIGHTS SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 2;
-const uint8_t TOUCH_SENSOR_CHANNEL1_ID = 1;
-const uint8_t TOUCH_SENSOR_CHANNEL2_ID = 2;
 
 const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 45000; //45s interval
 
@@ -65,8 +67,19 @@ const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
-static bool sendLightsState = false;
-const uint8_t RELAY_CH_PINS[] = {6, 7, 8, 9};
+
+#define OFF 0
+#define ON  1
+#define SET_COIL_INDEX     0
+#define RESET_COIL_INDEX   1
+
+const uint8_t RELAY_CH_PINS[][2] = {
+    {6, 7}, // channel 1 relay control pins(bistable relay - 2 coils)
+    {8, 9}  // channel 2 relay control pins(bistable relay - 2 coils)
+};
+const uint32_t RELAY_PULSE_DELAY_MS = 50;
+
+uint8_t channelState[] = {OFF, OFF};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -97,16 +110,18 @@ Vcc vcc(VccCorrection);
 // flag for checking if eeprom was read/written for the first time or not
 static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define MAX_NODE_PAYLOAD_LENGTH 25
-// we add 1 for storing the string terminating character also
+// storing the string terminating character also
 #define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
+
+char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
 // -------------------------------------------------------------------------------------------------------------
 
 bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
     return (EEPROM.read(index) != mark);
 }
 
-void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
+void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     if (!metadata || !nodeInfo) {
         return;
     }
@@ -120,7 +135,7 @@ void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
     }
 }
 
-void loadNodeDefaultMetadata(char **nodeInfo, uint8_t maxFields) {
+void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     char metadata[MAX_NODE_METADATA_LENGTH];
     memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
     strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
@@ -135,7 +150,9 @@ void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
     }
 }
 
-void loadNodeEepromMetadataFields(char **nodeInfo, uint8_t maxFields) {
+void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+    memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
+
     if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
                               EEPROM_FIRST_WRITE_MARK) ||
         !nodeInfo) {
@@ -163,28 +180,15 @@ void saveNodeEepromMetadata(const char *metadata) {
 }
 
 void presentNodeMetadata() {
-    char nodeName[MAX_NODE_METADATA_LENGTH];
-    char touchSensorChannel1Name[MAX_NODE_METADATA_LENGTH];
-    char touchSensorChannel2Name[MAX_NODE_METADATA_LENGTH];
-    memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(touchSensorChannel1Name, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(touchSensorChannel2Name, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char *nodeInfo[] = {
-        nodeName,     // node friendly name
-        touchSensorChannel1Name, // touch sensor ch1 friendly name
-        touchSensorChannel2Name // touch sensor ch2 friendly name
-    };
-
     // load node metadata based on attached sensors count + the node name
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-    sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    wait(200);    // don't send next data too fast
-    
+    sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
+    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
+
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		present(i + 1, S_BINARY, nodeInfo[i]);
-		wait(200);// don't send next data too fast
+		present(i + 1, S_BINARY, nodeInfo[i + 1]);
+		wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
 	}
 }
 
@@ -212,12 +216,60 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     }
 }
 
-/*void sendKnockSyncMsg() {
-    MyMessage knockMsg(LED_STRIP_RELAY_SENSOR_ID, V_VAR1);
+uint8_t getChannelState(uint8_t index) {
+    return channelState[index];
+}
 
-    send(knockMsg.set("knock"), false);
-    wait(KNOCK_MSG_WAIT_INTERVAL_MS);
-}*/
+void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
+    if(newState == ON) {
+        digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
+        wait(RELAY_PULSE_DELAY_MS);
+        digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+        channelState[channel] = ON;
+    } else {
+        digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
+        wait(RELAY_PULSE_DELAY_MS);
+        digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+        channelState[channel] = OFF;
+    }
+}
+
+void sendLightsState() {
+    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+        sendData(i + 1, getChannelState(i), V_STATUS);
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+    }
+}
+
+void checkTouchSensor() {
+    static uint32_t lastTouchTimestamp[NODE_SENSORS_COUNT];
+    static uint8_t touchSensorState[NODE_SENSORS_COUNT];
+
+	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		if((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+                (touchSensorState[i] != TOUCHED)) {
+
+            // latch in TOUCH state
+            touchSensorState[i] = TOUCHED;
+            lastTouchTimestamp[i] = millis();
+		}
+
+        if((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+                (touchSensorState[i] != RELEASED)) {
+
+            lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
+            // evaluate elapsed time between touch states
+            // we can do here short press and long press handling if desired
+            if(lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
+                channelState[i] = !channelState[i];
+                setChannelRelaySwitchState(i + 1, channelState[i]);
+                sendData(i + 1, channelState[i], V_STATUS);
+            }
+            // latch in RELEASED state
+            touchSensorState[i] = RELEASED;
+		}
+	}
+}
 
 // called by mysensors to set node id internally
 // this is useful to set node id at runtime and
@@ -258,15 +310,15 @@ void receive(const MyMessage &message) {
         case V_STATUS:
             // V_STATUS message type for light switch set operations only
             if (message.getCommand() == C_SET) {
-                bool newState = message.getBool();
-                uint8_t channel = message.sensor;
-
-                
+                // maybe perform some received data validation here ???
+                setChannelRelaySwitchState((message.sensor - 1), message.getBool());
+                sendData(message.sensor, message.getBool(), V_STATUS);
             }
 
             // V_STATUS message type for light switch get operations only
             if(message.getCommand() == C_REQ) {
-                sendLightsState = true;
+                // maybe perform some received data validation here ???
+                sendData(message.sensor, getChannelState(message.sensor - 1), V_STATUS);
             }
             break;
         default:;
@@ -277,28 +329,15 @@ void setup() {
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
 		pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
 	}
-	
-	for(uint8_t i = 0; i < (NODE_SENSORS_COUNT * 2); i++) {
-		pinMode(RELAY_CH_PINS[i], OUTPUT);
-	}
-}
 
-void toggleChannelRelaySwitch(uint8_t channel) {
-	sendLightsState = true;
-}
-
-void checkTouchSensor() {
-	static bool wasTouched = false;
-	
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		if(digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW && !wasTouched) {
-			toggleChannelRelaySwitch(i);
-			wasTouched = true;
-		}
-		
-		if(digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) {
-			wasTouched = false;
-		}
+        for(uint8_t j = 0; j < NODE_SENSORS_COUNT; j++) {
+		    pinMode(RELAY_CH_PINS[i][j], OUTPUT);
+            // make sure touch switch relays start in OFF state
+            digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
+            wait(RELAY_PULSE_DELAY_MS);
+            digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
+        }
 	}
 }
 
@@ -307,23 +346,20 @@ void loop()  {
     if(!firstInit) {
         //sendKnockSyncMsg();
         sendHeartbeat();
-        wait(500);
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        wait(500);
-        sendLightsState = true;
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+        sendLightsState();
         firstInit = true;
     }
 
-	if (sendLightsState) {
-        // send new state back to controller
-        sendLightsState = false;
-    }
+    checkTouchSensor();
 
-    static uint32_t lastLightsStateReportTimestamp;
-    if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
-        sendLightsState = true;
-        lastLightsStateReportTimestamp = millis();
-    }
+    // static uint32_t lastLightsStateReportTimestamp;
+    // if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
+    //     sendLightsState = true;
+    //     lastLightsStateReportTimestamp = millis();
+    // }
 
     static uint32_t lastHeartbeatReportTimestamp;
     if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
@@ -337,7 +373,7 @@ void loop()  {
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
         lastPowerSupplyVoltageLvlReportTimestamp = millis();
     }
-    
+
     // send presentation on a regular interval too
     static uint32_t lastPresentationTimestamp = 0;
     if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
