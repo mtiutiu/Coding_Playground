@@ -355,11 +355,11 @@ void loop()  {
 
     checkTouchSensor();
 
-    // static uint32_t lastLightsStateReportTimestamp;
-    // if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
-    //     sendLightsState = true;
-    //     lastLightsStateReportTimestamp = millis();
-    // }
+    static uint32_t lastLightsStateReportTimestamp;
+    if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
+        sendLightsState();
+        lastLightsStateReportTimestamp = millis();
+    }
 
     static uint32_t lastHeartbeatReportTimestamp;
     if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
