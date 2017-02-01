@@ -11,7 +11,6 @@
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // RFM69 radio driver
 #define MY_RADIO_RFM69
-
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
 #define MY_NODE_ID 249  // this needs to be set explicitly
@@ -262,7 +261,7 @@ void checkTouchSensor() {
             // we can do here short press and long press handling if desired
             if(lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
                 channelState[i] = !channelState[i];
-                setChannelRelaySwitchState(i + 1, channelState[i]);
+                setChannelRelaySwitchState(i, channelState[i]);
                 sendData(i + 1, channelState[i], V_STATUS);
             }
             // latch in RELEASED state
