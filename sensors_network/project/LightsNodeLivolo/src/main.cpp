@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
@@ -196,8 +197,8 @@ uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
 
     for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-        pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
-        nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
+        hwPinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+        nodeId |= !hwDigitalRead(NODE_ID_SWITCH_PINS[i]) << i;
     }
 
     return nodeId;
@@ -209,7 +210,7 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
          (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random sleep interval between retries for collisions
+        // random wait interval between retries for collisions
         wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
             SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
@@ -221,14 +222,14 @@ uint8_t getChannelState(uint8_t index) {
 
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
     if(newState == ON) {
-        digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
+        hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
         wait(RELAY_PULSE_DELAY_MS);
-        digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+        hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
         channelState[channel] = ON;
     } else {
-        digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
+        hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
         wait(RELAY_PULSE_DELAY_MS);
-        digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+        hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
         channelState[channel] = OFF;
     }
 }
@@ -245,7 +246,7 @@ void checkTouchSensor() {
     static uint8_t touchSensorState[NODE_SENSORS_COUNT];
 
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		if((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+		if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
                 (touchSensorState[i] != TOUCHED)) {
 
             // latch in TOUCH state
@@ -253,7 +254,7 @@ void checkTouchSensor() {
             lastTouchTimestamp[i] = millis();
 		}
 
-        if((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+        if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
                 (touchSensorState[i] != RELEASED)) {
 
             lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
@@ -326,16 +327,16 @@ void receive(const MyMessage &message) {
 
 void setup() {
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
+		hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
 	}
 
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
         for(uint8_t j = 0; j < NODE_SENSORS_COUNT; j++) {
-		    pinMode(RELAY_CH_PINS[i][j], OUTPUT);
+		    hwPinMode(RELAY_CH_PINS[i][j], OUTPUT);
             // make sure touch switch relays start in OFF state
-            digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
+            hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
             wait(RELAY_PULSE_DELAY_MS);
-            digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
+            hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
         }
 	}
 }
