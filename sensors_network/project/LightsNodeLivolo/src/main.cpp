@@ -36,6 +36,8 @@
 // Inverses the behavior of leds
 //#define MY_WITH_LEDS_BLINKING_INVERSE
 
+//#define MY_OTA_FIRMWARE_FEATURE // need OTA
+
 #include <MySensors.h>
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 // --------------------------------------------------------------------------------------------------------------
@@ -55,7 +57,7 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #define RELEASED  0
 #define TOUCHED   1
 const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 1000;
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {4, A1};
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3, A1};
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------- LIGHTS SECTION ----------------------
@@ -74,12 +76,13 @@ const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 #define RESET_COIL_INDEX   1
 
 const uint8_t RELAY_CH_PINS[][2] = {
-    {6, 7}, // channel 1 relay control pins(bistable relay - 2 coils)
-    {8, 9}  // channel 2 relay control pins(bistable relay - 2 coils)
+    {A4, A5}, // channel 1 relay control pins(bistable relay - 2 coils)
+    {0, 1}  // channel 2 relay control pins(bistable relay - 2 coils)
 };
 const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 uint8_t channelState[] = {OFF, OFF};
+const uint8_t LED_PINS[] = {4, A0};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -226,11 +229,13 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
         wait(RELAY_PULSE_DELAY_MS);
         hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
         channelState[channel] = ON;
+        hwDigitalWrite(LED_PINS[channel], LOW);
     } else {
         hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
         wait(RELAY_PULSE_DELAY_MS);
         hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
         channelState[channel] = OFF;
+        hwDigitalWrite(LED_PINS[channel], HIGH);
     }
 }
 
@@ -246,7 +251,7 @@ void checkTouchSensor() {
     static uint8_t touchSensorState[NODE_SENSORS_COUNT];
 
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+		if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
                 (touchSensorState[i] != TOUCHED)) {
 
             // latch in TOUCH state
@@ -254,7 +259,7 @@ void checkTouchSensor() {
             lastTouchTimestamp[i] = millis();
 		}
 
-        if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+        if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
                 (touchSensorState[i] != RELEASED)) {
 
             lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
@@ -328,6 +333,11 @@ void receive(const MyMessage &message) {
 void setup() {
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
 		hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
+	}
+
+    for(uint8_t i = 0; i < sizeof(LED_PINS); i++) {
+		hwPinMode(LED_PINS[i], OUTPUT);
+        hwDigitalWrite(LED_PINS[i], HIGH);
 	}
 
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
