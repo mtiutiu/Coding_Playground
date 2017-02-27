@@ -27,15 +27,6 @@
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
-// Flash leds on rx/tx/err
-//#define MY_DEFAULT_ERR_LED_PIN 4
-//#define MY_DEFAULT_RX_LED_PIN  6
-//#define MY_DEFAULT_TX_LED_PIN  5
-// Set blinking period
-//#define MY_DEFAULT_LED_BLINK_PERIOD 300
-// Inverses the behavior of leds
-//#define MY_WITH_LEDS_BLINKING_INVERSE
-
 //#define MY_OTA_FIRMWARE_FEATURE // need OTA
 
 #include <MySensors.h>
@@ -82,7 +73,10 @@ const uint8_t RELAY_CH_PINS[][2] = {
 const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 uint8_t channelState[] = {OFF, OFF};
-const uint8_t LED_PINS[] = {4, A0};
+const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
+
+#define TURN_RED_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], LOW)
+#define TURN_BLUE_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], HIGH)
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -229,13 +223,13 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
         wait(RELAY_PULSE_DELAY_MS);
         hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
         channelState[channel] = ON;
-        hwDigitalWrite(LED_PINS[channel], LOW);
+        TURN_RED_LED_ON(channel);
     } else {
         hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
         wait(RELAY_PULSE_DELAY_MS);
         hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
         channelState[channel] = OFF;
-        hwDigitalWrite(LED_PINS[channel], HIGH);
+        TURN_BLUE_LED_ON(channel);
     }
 }
 
@@ -331,15 +325,18 @@ void receive(const MyMessage &message) {
 }
 
 void setup() {
+    // set required mcu pins for reading touch sensors state
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
 		hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
 	}
 
-    for(uint8_t i = 0; i < sizeof(LED_PINS); i++) {
-		hwPinMode(LED_PINS[i], OUTPUT);
-        hwDigitalWrite(LED_PINS[i], HIGH);
+    // lit BLUE leds when starting up
+    for(uint8_t i = 0; i < sizeof(LIGHT_STATE_LED_PINS); i++) {
+		hwPinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
+        TURN_BLUE_LED_ON(i);
 	}
 
+    // set bistable relays initial state
 	for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
         for(uint8_t j = 0; j < NODE_SENSORS_COUNT; j++) {
 		    hwPinMode(RELAY_CH_PINS[i][j], OUTPUT);
