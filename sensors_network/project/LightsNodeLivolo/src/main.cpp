@@ -91,8 +91,8 @@ const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 
 
 #include <Vcc.h>
 
-const float VccMin        = 0;  // Minimum expected Vcc level, in Volts. Example for 2xAA Alkaline.
-const float VccMax        = 3.3;  // Maximum expected Vcc level, in Volts. Example for 2xAA Alkaline.
+const float VccMin        = 0;  // Minimum expected Vcc level, in Volts
+const float VccMax        = 3.0;  // Maximum expected Vcc level, in Volts
 const float VccCorrection = 1.0/1.0;  // Measured Vcc by multimeter divided by reported Vcc
 
 Vcc vcc(VccCorrection);
