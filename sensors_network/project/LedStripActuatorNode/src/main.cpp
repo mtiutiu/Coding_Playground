@@ -20,7 +20,7 @@
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
-#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
+//#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 
 #define MY_DISABLED_SERIAL
@@ -85,6 +85,10 @@ const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+// -----------------------------------------------------------------------------------------------------------
+
+// --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
+const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
 // -----------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -267,9 +271,7 @@ void receive(const MyMessage &message) {
         case V_STATUS:
             // V_STATUS message type for led strip actuator set operations only
             if (message.getCommand() == C_SET) {
-                uint8_t newState = 0;
-                sscanf(message.getString(), "%hhu", &newState);
-                setLedStripState(newState);
+                setLedStripState(message.getBool());
                 sendLedStripActuatorState = true;
             }
 
@@ -340,5 +342,12 @@ void loop()  {
         // send new state back to controller
         sendData(LED_STRIP_RELAY_SENSOR_ID, getLedStripState(), V_STATUS);
         sendLedStripActuatorState = false;
+    }
+    
+    // send presentation on a regular interval too
+    static uint32_t lastPresentationTimestamp = 0;
+    if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+        presentNodeMetadata();
+        lastPresentationTimestamp = millis();
     }
 }
