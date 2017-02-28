@@ -69,8 +69,7 @@ const uint8_t RELAY_CH_PINS[][2] = {
     {0, 1}  // channel 2 relay control pins(bistable relay - 2 coils)
 };
 
-// from datasheet: http://www.hongfa.com/pro/pdf/HFE60_en.pdf
-const uint32_t RELAY_PULSE_DELAY_MS = 10;
+const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 uint8_t channelState[] = {OFF, OFF};
 const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
