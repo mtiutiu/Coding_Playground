@@ -143,7 +143,7 @@
  * @def MY_REGISTRATION_FEATURE
  * @brief If enabled, node has to register to gateway/controller before allowed to send sensor data.
  */
-#define MY_REGISTRATION_FEATURE
+//#define MY_REGISTRATION_FEATURE
 
 /**
 * @def MY_REGISTRATION_RETRIES

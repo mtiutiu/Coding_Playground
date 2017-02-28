@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
-#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
@@ -27,7 +26,7 @@
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
-//#define MY_OTA_FIRMWARE_FEATURE // need OTA
+#define MY_OTA_FIRMWARE_FEATURE // need OTA
 
 #include <MySensors.h>
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
@@ -60,7 +59,6 @@ const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
 
-
 #define OFF 0
 #define ON  1
 #define SET_COIL_INDEX     0
@@ -70,7 +68,9 @@ const uint8_t RELAY_CH_PINS[][2] = {
     {A4, A5}, // channel 1 relay control pins(bistable relay - 2 coils)
     {0, 1}  // channel 2 relay control pins(bistable relay - 2 coils)
 };
-const uint32_t RELAY_PULSE_DELAY_MS = 50;
+
+// from datasheet: http://www.hongfa.com/pro/pdf/HFE60_en.pdf
+const uint32_t RELAY_PULSE_DELAY_MS = 10;
 
 uint8_t channelState[] = {OFF, OFF};
 const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
