@@ -22,6 +22,7 @@
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
 //#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
+#define MY_TRANSPORT_WAIT_READY_MS	3000
 
 #define MY_DISABLED_SERIAL
 
@@ -343,7 +344,7 @@ void loop()  {
         sendData(LED_STRIP_RELAY_SENSOR_ID, getLedStripState(), V_STATUS);
         sendLedStripActuatorState = false;
     }
-    
+
     // send presentation on a regular interval too
     static uint32_t lastPresentationTimestamp = 0;
     if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {

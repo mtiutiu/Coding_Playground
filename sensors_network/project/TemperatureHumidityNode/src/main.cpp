@@ -30,6 +30,8 @@
 #define MY_TRANSPORT_UPLINK_CHECK_DISABLED  //very important for battery powered nodes
 //#define MY_TRANSPORT_DONT_CARE_MODE //very important for battery powered nodes
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
+//#define MY_SLEEP_TRANSPORT_RECONNECT_TIMEOUT_MS 1
+#define MY_TRANSPORT_WAIT_READY_MS	3000
 
 #define MY_DISABLED_SERIAL
 
