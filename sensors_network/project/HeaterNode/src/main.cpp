@@ -80,6 +80,10 @@ const uint8_t HEATER_ON_LED_PIN = 3;
 const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
+// --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
+const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
+// -----------------------------------------------------------------------------------------------------------
+
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 // -----------------------------------------------------------------------------------------------------------
@@ -358,5 +362,12 @@ void loop()  {
         // send new state back to controller
         sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
         sendHeaterActuatorState = false;
+    }
+
+    // send presentation on a regular interval too
+    static uint32_t lastPresentationTimestamp = 0;
+    if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+        presentNodeMetadata();
+        lastPresentationTimestamp = millis();
     }
 }
