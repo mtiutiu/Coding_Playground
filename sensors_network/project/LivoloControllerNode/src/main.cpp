@@ -1,4 +1,4 @@
-#pragma GCC optimize ("-O2")
+//#pragma GCC optimize ("-O2")
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -68,8 +68,8 @@ const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 const uint8_t LIVOLO_ACTIVITY_LED_PIN = 3;
 #endif
 
-#define TX_ENABLE_POWER_SUPPLY()   digitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, HIGH)
-#define TX_DISABLE_POWER_SUPPLY()  digitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, LOW)
+#define TX_ENABLE_POWER_SUPPLY()   hwDigitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, HIGH)
+#define TX_DISABLE_POWER_SUPPLY()  hwDigitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, LOW)
 
 #include <Livolo.h>
 
@@ -196,7 +196,7 @@ uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
 
     for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-        pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+        hwPinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
         nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
     }
 
@@ -272,10 +272,10 @@ void receive(const MyMessage &message) {
 }
 
 void setup() {
-    pinMode(TX_POWER_SUPPLY_ENABLE_PIN, OUTPUT);
+    hwPinMode(TX_POWER_SUPPLY_ENABLE_PIN, OUTPUT);
 
     #ifdef WANT_LIVOLO_ACTIVITY_LED
-    pinMode(LIVOLO_ACTIVITY_LED_PIN, OUTPUT);
+    hwPinMode(LIVOLO_ACTIVITY_LED_PIN, OUTPUT);
     #endif
 }
 
@@ -292,7 +292,7 @@ void loop() {
     if (livoloCmdMsgReceived) {
         TX_ENABLE_POWER_SUPPLY(); //enable tx power supply line
         #ifdef WANT_LIVOLO_ACTIVITY_LED
-        digitalWrite(LIVOLO_ACTIVITY_LED_PIN, HIGH);
+        hwDigitalWrite(LIVOLO_ACTIVITY_LED_PIN, HIGH);
         #endif
         wait(TX_POWER_SUPPLY_SETTLE_TIME_MS);  // give it some time to settle
 
@@ -300,7 +300,7 @@ void loop() {
         				  livoloCmdData.remoteKey,
         				  livoloCmdData.txRetries);
         #ifdef WANT_LIVOLO_ACTIVITY_LED
-        digitalWrite(LIVOLO_ACTIVITY_LED_PIN, LOW);
+        hwDigitalWrite(LIVOLO_ACTIVITY_LED_PIN, LOW);
         #endif
         TX_DISABLE_POWER_SUPPLY();  // disable tx power supply line
 
