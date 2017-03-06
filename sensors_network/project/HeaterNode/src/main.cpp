@@ -56,6 +56,8 @@ const uint8_t HEATER_OFF = 0;
 const uint8_t HEATER_ON = 1;
 
 const uint32_t HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 500;
+
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
@@ -74,6 +76,8 @@ bool sendHeaterActuatorState = false;
 #ifdef WANT_HEATER_ACTIVITY_LED
 const uint8_t HEATER_ON_LED_PIN = 3;
 #endif
+
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -84,8 +88,16 @@ const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
 // -----------------------------------------------------------------------------------------------------------
 
-// ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
-const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+// ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
+const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
+
+#include <Vcc.h>
+
+const float VccMin        = 0;  // Minimum expected Vcc level, in Volts
+const float VccMax        = 3.3;  // Maximum expected Vcc level, in Volts
+const float VccCorrection = 1.0;  // Measured Vcc by multimeter divided by reported Vcc
+
+Vcc vcc(VccCorrection);
 // -----------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -96,16 +108,18 @@ const uint32_t BATTERY_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 // flag for checking if eeprom was read/written for the first time or not
 static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define MAX_NODE_PAYLOAD_LENGTH 25
-// we add 1 for storing the string terminating character also
+// storing the string terminating character also
 #define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
+
+char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
 // -------------------------------------------------------------------------------------------------------------
 
 bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
     return (EEPROM.read(index) != mark);
 }
 
-void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
+void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     if (!metadata || !nodeInfo) {
         return;
     }
@@ -119,7 +133,7 @@ void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
     }
 }
 
-void loadNodeDefaultMetadata(char **nodeInfo, uint8_t maxFields) {
+void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     char metadata[MAX_NODE_METADATA_LENGTH];
     memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
     strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
@@ -134,7 +148,9 @@ void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
     }
 }
 
-void loadNodeEepromMetadataFields(char **nodeInfo, uint8_t maxFields) {
+void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+    memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
+
     if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
                               EEPROM_FIRST_WRITE_MARK) ||
         !nodeInfo) {
@@ -162,22 +178,16 @@ void saveNodeEepromMetadata(const char *metadata) {
 }
 
 void presentNodeMetadata() {
-    char nodeName[MAX_NODE_METADATA_LENGTH];
-    char heaterSensorName[MAX_NODE_METADATA_LENGTH];
-    memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(heaterSensorName, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char *nodeInfo[] = {
-        nodeName,     // node friendly name
-        heaterSensorName // node sensor friendly name
-    };
-
     // load node metadata based on attached sensors count + the node name
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-    sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    wait(500);
-    present(HEATER_CONTROL_RELAY_SENSOR_ID, S_HEATER, heaterSensorName);
+    sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
+    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
+
+    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
+		wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
+	}
 }
 
 uint8_t getHeaterState() {
@@ -317,9 +327,9 @@ void loop()  {
     if(!firstInit) {
         //sendKnockSyncMsg();
         sendHeartbeat();
-        wait(500);
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendBatteryLevel(100);
-        wait(500);
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendHeaterActuatorState = true;
         firstInit = true;
     }
@@ -351,11 +361,11 @@ void loop()  {
         lastHeartbeatReportTimestamp = millis();
     }
 
-    // this is always on(I don't see a reason on sending battery level here - but if the client requested it...oh well)
-    static uint32_t lastBatteryLvlReportTimestamp;
-    if(millis() - lastBatteryLvlReportTimestamp >= BATTERY_LVL_REPORT_INTERVAL_MS) {
-        sendBatteryLevel(100);
-        lastBatteryLvlReportTimestamp = millis();
+    // send power supply voltage level
+    static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
+    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+        lastPowerSupplyVoltageLvlReportTimestamp = millis();
     }
 
     if (sendHeaterActuatorState) {

@@ -74,6 +74,8 @@ const uint32_t RELAY_PULSE_DELAY_MS = 50;
 uint8_t channelState[] = {OFF, OFF};
 const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
 
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY, S_BINARY};
+
 #define TURN_RED_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], LOW)
 #define TURN_BLUE_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], HIGH)
 // ------------------------------------------------------------------------------
@@ -183,7 +185,7 @@ void presentNodeMetadata() {
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
 
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		present(i + 1, S_BINARY, nodeInfo[i + 1]);
+		present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
 		wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
 	}
 }

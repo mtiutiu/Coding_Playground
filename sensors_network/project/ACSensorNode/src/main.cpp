@@ -113,6 +113,7 @@ EnergyMonitor emonSensor;
 #endif
 
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 1000;
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 1000;
 
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t AC_SENSOR_ID = 1;
@@ -141,6 +142,8 @@ const uint32_t LIGHT_STATUS_REPORT_CYCLES =
 const uint8_t MAX_TX_FAILS_COUNT = 5;
 const uint32_t TX_FAIL_SLEEP_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 #endif
+
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -184,9 +187,11 @@ const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 // flag for checking if eeprom was read/written for the first time or not
 static const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
 #define MAX_NODE_PAYLOAD_LENGTH 25
-// we add 1 for storing the string terminating character also
+// storing the string terminating character also
 #define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
 #define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
+
+char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
 // -------------------------------------------------------------------------------------------------------------
 
 void optimize_port_pins_low_power(const uint8_t* port, uint8_t len) {
@@ -227,7 +232,7 @@ bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
     return (EEPROM.read(index) != mark);
 }
 
-void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
+void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     if (!metadata || !nodeInfo) {
         return;
     }
@@ -241,7 +246,7 @@ void parseNodeMetadata(char *metadata, char **nodeInfo, uint8_t maxFields) {
     }
 }
 
-void loadNodeDefaultMetadata(char **nodeInfo, uint8_t maxFields) {
+void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
     char metadata[MAX_NODE_METADATA_LENGTH];
     memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
     strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
@@ -256,7 +261,9 @@ void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
     }
 }
 
-void loadNodeEepromMetadataFields(char **nodeInfo, uint8_t maxFields) {
+void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+    memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
+
     if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
                               EEPROM_FIRST_WRITE_MARK) ||
         !nodeInfo) {
@@ -284,22 +291,16 @@ void saveNodeEepromMetadata(const char *metadata) {
 }
 
 void presentNodeMetadata() {
-    char nodeName[MAX_NODE_METADATA_LENGTH];
-    char acSensorName[MAX_NODE_METADATA_LENGTH];
-    memset(nodeName, '\0', MAX_NODE_METADATA_LENGTH);
-    memset(acSensorName, '\0', MAX_NODE_METADATA_LENGTH);
-
-    char *nodeInfo[] = {
-        nodeName,     // node friendly name
-        acSensorName // ac sensor friendly name
-    };
-
     // load node metadata based on attached sensors count + the node name
     loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-    sendSketchInfo(nodeName, MY_SENSOR_NODE_SKETCH_VERSION);
-    sleep(1000);    // don't send next data too fast
-    present(AC_SENSOR_ID, S_LIGHT, acSensorName);
+    sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
+    sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
+
+    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+		present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
+		sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
+	}
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
@@ -495,7 +496,7 @@ void loop() {
 			sleep(EMONLIB_DIGITAL_FILTER_STABILIZE_SLEEP_INTERVAL_MS);
 		}
         sendHeartbeat();
-        sleep(1000);   // don't send next data too fas
+        sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);   // don't send next data too fas
         sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
 
