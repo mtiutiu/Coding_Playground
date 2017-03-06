@@ -47,7 +47,7 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
 #define RELEASED  0
 #define TOUCHED   1
-const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 1000;
+const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 500;
 const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3, A1};
 // -------------------------------------------------------------------------------------------------------------
 
@@ -357,7 +357,7 @@ void setup() {
 
 void loop()  {
     wdt_reset();
-    
+
     static bool firstInit = false;
     if(!firstInit) {
         //sendKnockSyncMsg();
