@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 #define WANT_LIVOLO_ACTIVITY_LED
@@ -280,6 +281,11 @@ void receive(const MyMessage &message) {
     }
 }
 
+void before() {
+    wdt_disable();
+    wdt_enable(WDTO_8S);
+}
+
 void setup() {
     hwPinMode(TX_POWER_SUPPLY_ENABLE_PIN, OUTPUT);
 
@@ -289,9 +295,10 @@ void setup() {
 }
 
 void loop() {
+    wdt_reset();
+
     static bool firstInit = false;
     if(!firstInit) {
-        //sendKnockSyncMsg();
         sendHeartbeat();
         wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendBatteryLevel(100);

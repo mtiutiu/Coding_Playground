@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 #define WANT_HEATER_ACTIVITY_LED
@@ -307,6 +308,11 @@ void receive(const MyMessage &message) {
     }
 }
 
+void before() {
+    wdt_disable();
+    wdt_enable(WDTO_8S);
+}
+
 void setup() {
     pinMode(HEATER_CONTROL_RELAY_PIN, OUTPUT);
 
@@ -323,6 +329,8 @@ void setup() {
 }
 
 void loop()  {
+    wdt_reset();
+
     static bool firstInit = false;
     if(!firstInit) {
         //sendKnockSyncMsg();

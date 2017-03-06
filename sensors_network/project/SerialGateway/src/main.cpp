@@ -84,6 +84,12 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <MySensors.h>
+#include <avr/wdt.h>
+
+void before() {
+    wdt_disable();
+    wdt_enable(WDTO_8S);
+}
 
 void setup() {
 // Setup locally attached sensors
@@ -94,5 +100,6 @@ void presentation() {
 }
 
 void loop() {
+    wdt_reset();
 // Send locally attached sensor data here
 }

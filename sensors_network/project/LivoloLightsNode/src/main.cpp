@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
@@ -325,6 +326,11 @@ void receive(const MyMessage &message) {
     }
 }
 
+void before() {
+    wdt_disable();
+    wdt_enable(WDTO_8S);
+}
+
 void setup() {
     // set required mcu pins for reading touch sensors state
     for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
@@ -350,6 +356,8 @@ void setup() {
 }
 
 void loop()  {
+    wdt_reset();
+    
     static bool firstInit = false;
     if(!firstInit) {
         //sendKnockSyncMsg();

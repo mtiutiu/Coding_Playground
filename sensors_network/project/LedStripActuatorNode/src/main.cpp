@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
 //#define HAS_NODE_ID_SET_SWITCH
@@ -294,6 +295,11 @@ void receive(const MyMessage &message) {
     }
 }
 
+void before() {
+    wdt_disable();
+    wdt_enable(WDTO_8S);
+}
+
 void setup() {
     pinMode(LED_STRIP_CONTROL_BTN_PIN, INPUT_PULLUP);
     ledStripControlBtnDebouncer.attach(LED_STRIP_CONTROL_BTN_PIN);
@@ -311,6 +317,8 @@ void setup() {
 }
 
 void loop()  {
+    wdt_reset();
+    
     static bool firstInit = false;
     if(!firstInit) {
         //sendKnockSyncMsg();
