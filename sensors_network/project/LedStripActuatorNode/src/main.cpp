@@ -73,7 +73,7 @@ const uint8_t LED_STRIP_OFF = 0;
 const uint8_t LED_STRIP_ON = 1;
 
 const uint32_t LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
-const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 500;
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
@@ -318,7 +318,7 @@ void setup() {
 
 void loop()  {
     wdt_reset();
-    
+
     static bool firstInit = false;
     if(!firstInit) {
         //sendKnockSyncMsg();

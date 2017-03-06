@@ -44,7 +44,7 @@ const uint8_t LIVOLO_ACTUATOR_SENSOR_ID = 1;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
-const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 500;
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
 // we expect 3 values: remote id, remote key and tx retries
 //	remote_id:remote_key:tx_retries
