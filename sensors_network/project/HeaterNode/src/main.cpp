@@ -35,6 +35,8 @@
 // Inverses the behavior of leds
 #define MY_WITH_LEDS_BLINKING_INVERSE
 
+#define MY_OTA_FIRMWARE_FEATURE // need OTA
+
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
 
@@ -61,8 +63,8 @@ const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 300;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 1200;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
 
 #ifdef WANT_RELAY_SAFETY
 static uint32_t relaySafetyCounter = 0;
