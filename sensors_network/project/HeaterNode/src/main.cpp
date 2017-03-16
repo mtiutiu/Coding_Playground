@@ -27,9 +27,9 @@
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
 // Flash leds on rx/tx/err
-#define MY_DEFAULT_ERR_LED_PIN 4
-#define MY_DEFAULT_RX_LED_PIN  6
-#define MY_DEFAULT_TX_LED_PIN  5
+#define MY_DEFAULT_ERR_LED_PIN A2
+#define MY_DEFAULT_RX_LED_PIN  A0
+#define MY_DEFAULT_TX_LED_PIN  A1
 // Set blinking period
 #define MY_DEFAULT_LED_BLINK_PERIOD 300
 // Inverses the behavior of leds
@@ -54,7 +54,7 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // ----------------------- HEATER ACTUATOR SENSOR SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t HEATER_CONTROL_RELAY_SENSOR_ID = 1;
-const uint8_t HEATER_CONTROL_RELAY_PIN = A0;
+const uint8_t HEATER_CONTROL_RELAY_PIN = A4;
 const uint8_t HEATER_OFF = 0;
 const uint8_t HEATER_ON = 1;
 
@@ -77,7 +77,7 @@ const uint32_t HEATER_RELAY_SAFETY_MAX_COUNTER = HEATER_RELAY_SAFETY_TIMEOUT_MS 
 bool sendHeaterActuatorState = false;
 
 #ifdef WANT_HEATER_ACTIVITY_LED
-const uint8_t HEATER_ON_LED_PIN = 3;
+const uint8_t HEATER_ON_LED_PIN = A5;
 #endif
 
 const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
