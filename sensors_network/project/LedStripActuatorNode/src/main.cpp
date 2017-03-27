@@ -29,6 +29,9 @@
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
+#define MY_OTA_FIRMWARE_FEATURE // need OTA
+#define MY_OTA_FLASH_SS 1   // on my mini R board(https://www.itead.cc/wiki/Mini_Rboard)
+
 // Flash leds on rx/tx/err
 //#define MY_DEFAULT_ERR_LED_PIN 4
 //#define MY_DEFAULT_RX_LED_PIN  6
