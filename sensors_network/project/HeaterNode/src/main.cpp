@@ -80,7 +80,7 @@ bool sendHeaterActuatorState = false;
 const uint8_t HEATER_ON_LED_PIN = A5;
 #endif
 
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_HEATER};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
