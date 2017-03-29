@@ -236,13 +236,6 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     }
 }
 
-/*void sendKnockSyncMsg() {
-    MyMessage knockMsg(HEATER_CONTROL_RELAY_SENSOR_ID, V_VAR1);
-
-    send(knockMsg.set("knock"), false);
-    wait(KNOCK_MSG_WAIT_INTERVAL_MS);
-}*/
-
 // called by mysensors to set node id internally
 // this is useful to set node id at runtime and
 //  not at compile time with MY_NODE_ID preprocesor define
@@ -335,10 +328,9 @@ void loop()  {
 
     static bool firstInit = false;
     if(!firstInit) {
-        //sendKnockSyncMsg();
         sendHeartbeat();
         wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
-        sendBatteryLevel(100);
+        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
         wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendHeaterActuatorState = true;
         firstInit = true;
@@ -365,11 +357,11 @@ void loop()  {
         lastHeaterStateReportTimestamp = millis();
     }
 
-    static uint32_t lastHeartbeatReportTimestamp;
-    if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
-        sendHeartbeat();
-        lastHeartbeatReportTimestamp = millis();
-    }
+    // static uint32_t lastHeartbeatReportTimestamp;
+    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    //     sendHeartbeat();
+    //     lastHeartbeatReportTimestamp = millis();
+    // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
@@ -385,9 +377,9 @@ void loop()  {
     }
 
     // send presentation on a regular interval too
-    static uint32_t lastPresentationTimestamp = 0;
-    if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
-        presentNodeMetadata();
-        lastPresentationTimestamp = millis();
-    }
+    // static uint32_t lastPresentationTimestamp = 0;
+    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    //     presentNodeMetadata();
+    //     lastPresentationTimestamp = millis();
+    // }
 }

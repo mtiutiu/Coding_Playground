@@ -301,7 +301,7 @@ void loop() {
     if(!firstInit) {
         sendHeartbeat();
         wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
-        sendBatteryLevel(100);
+        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
         firstInit = true;
     }
 
@@ -342,11 +342,11 @@ void loop() {
         sendStatus = false;
     }
 
-    static uint32_t lastHeartbeatReportTimestamp;
-    if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
-        sendHeartbeat();
-        lastHeartbeatReportTimestamp = millis();
-    }
+    // static uint32_t lastHeartbeatReportTimestamp;
+    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    //     sendHeartbeat();
+    //     lastHeartbeatReportTimestamp = millis();
+    // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
@@ -356,9 +356,9 @@ void loop() {
     }
 
     // send presentation on a regular interval too
-    static uint32_t lastPresentationTimestamp = 0;
-    if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
-        presentNodeMetadata();
-        lastPresentationTimestamp = millis();
-    }
+    // static uint32_t lastPresentationTimestamp = 0;
+    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    //     presentNodeMetadata();
+    //     lastPresentationTimestamp = millis();
+    // }
 }
