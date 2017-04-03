@@ -51,6 +51,8 @@
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
 
+#define MY_TRANSPORT_DISCOVERY_INTERVAL_MS 86400000UL // 24h network discovery interval
+
 // Define a lower baud rate for Arduino's running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
 #if F_CPU == 8000000L
 #define MY_BAUD_RATE 38400
