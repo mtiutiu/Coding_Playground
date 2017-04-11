@@ -15,6 +15,8 @@
 #define HAS_NODE_ID_SET_SWITCH
 #define WANT_TX_FAILURES_MONITORING
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
+//#define USE_SI7021_SENSOR
+#define USE_HTU21D_SENSOR
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
@@ -106,9 +108,16 @@ Vcc vcc(VCC_CORRECTION);
 // ------------------------------------- TEMP/HUM SENSOR SECTION -------------------------------------
 #ifndef MOCK_SENSOR_DATA
 #include <Wire.h>
-#include <Si7021.h>
 
+#ifdef USE_SI7021_SENSOR
+#include <Si7021.h>
 SI7021 tempHumSensor;
+#endif
+
+#ifdef USE_HTU21D_SENSOR
+#include <SparkFunHTU21D.h>
+HTU21D tempHumSensor;
+#endif
 #endif
 
 const uint32_t SENSOR_SLEEP_INTERVAL_MS = 20000;
@@ -457,7 +466,9 @@ void setup() {
 
 #ifndef MOCK_SENSOR_DATA
     tempHumSensor.begin();
+    #ifdef USE_SI7021_SENSOR
     tempHumSensor.setHumidityRes(12); // Humidity = 12-bit / Temperature = 14-bit
+    #endif
 #endif
 }
 
@@ -470,7 +481,7 @@ void loop() {
         sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN,
 			VBATT_THRESHOLD_SAMPLES));
         sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
-        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemp(), V_TEMP);
+        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemperature(), V_TEMP);
         sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
         sendSensorData(HUMIDITY_SENSOR_ID, tempHumSensor.readHumidity(), V_HUM);
         firstInit = true;
@@ -487,7 +498,7 @@ void loop() {
             float currentTemperature = random(20.0, 40.0);
             float currentHumidity = random(20.0, 40.0);
         #else
-            float currentTemperature = tempHumSensor.readTemp();
+            float currentTemperature = tempHumSensor.readTemperature();
             float currentHumidity = tempHumSensor.readHumidity();
         #endif
 
@@ -510,7 +521,7 @@ void loop() {
     // send sensor data on a regular basis no matter if it changed or not
     static uint32_t sensorDataRegularReportCounter = 0;
     if (sensorDataRegularReportCounter++ >= SENSOR_DATA_REGULAR_REPORT_COUNTER) {
-        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemp(), V_TEMP);
+        sendSensorData(TEMPERATURE_SENSOR_ID, tempHumSensor.readTemperature(), V_TEMP);
         sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendSensorData(HUMIDITY_SENSOR_ID, tempHumSensor.readHumidity(), V_HUM);
         sensorDataRegularReportCounter = 0;

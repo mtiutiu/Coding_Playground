@@ -21,7 +21,7 @@ float SI7021::readHumidity()
     return RH_CALC(readSensor(0xE5)); 						// Return humidity
 }
 
-float SI7021::readTemp()
+float SI7021::readTemperature()
 {
 	return TEMP_CALC(readSensor(0xE3));						// Return temp
 }

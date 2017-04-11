@@ -10,7 +10,7 @@ class SI7021
 			/* Main Functions */
 			void begin();
 			float readHumidity();
-			float readTemp();
+			float readTemperature();
 			float readTempPrev();
 
 			/* Resolution Functions */
