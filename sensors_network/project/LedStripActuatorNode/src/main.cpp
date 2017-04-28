@@ -30,7 +30,6 @@
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
 #define MY_OTA_FIRMWARE_FEATURE // need OTA
-#define MY_OTA_FLASH_SS 1   // on my mini R board(https://www.itead.cc/wiki/Mini_Rboard)
 
 // Flash leds on rx/tx/err
 //#define MY_DEFAULT_ERR_LED_PIN 4
@@ -56,11 +55,11 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // -------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------- LED STRIP CONTROL BUTTON CONFIGURATION ------------------------
-const uint8_t LED_STRIP_CONTROL_BTN_PIN = 9;
+const uint8_t LED_STRIP_CONTROL_BTN_PIN = 7;
 const uint32_t LED_STRIP_CONTROL_BTN_DEBOUNCE_INTERVAL_MS = 500;
 
 #ifdef LED_STRIP_CONTROL_BTN_HAS_LED_SIGNALING
-const uint8_t LED_STRIP_CONTROL_BTN_LED_PIN = A0;
+const uint8_t LED_STRIP_CONTROL_BTN_LED_PIN = 6;
 #endif
 
 #include <Bounce2.h>
@@ -71,7 +70,7 @@ Bounce ledStripControlBtnDebouncer = Bounce();
 // ----------------------- LED STRIP ACTUATOR SENSOR SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 1;
 const uint8_t LED_STRIP_RELAY_SENSOR_ID = 1;
-const uint8_t LED_STRIP_CONTROL_RELAY_PIN = 4;
+const uint8_t LED_STRIP_CONTROL_RELAY_PIN = A4;
 const uint8_t LED_STRIP_OFF = 0;
 const uint8_t LED_STRIP_ON = 1;
 
