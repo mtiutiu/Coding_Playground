@@ -54,7 +54,7 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------- RGB LED STRIP SECTION ----------------------
-const uint8_t NODE_SENSORS_COUNT = 1;
+const uint8_t NODE_SENSORS_COUNT = 2;
 
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
@@ -63,10 +63,31 @@ const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
 
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_RGB_LIGHT};
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_RGB_LIGHT, S_BINARY};
 
 const uint16_t LED_COUNT = 144;
 const uint8_t DATA_PIN = A0;
+
+const bool OFF = false;
+const bool ON = true;
+
+const uint8_t BRIGHTNESS_MIN_VALUE = 0;
+const uint8_t BRIGHTNESS_MAX_VALUE = 255;
+const uint8_t BRIGHTNESS_DEFAULT_VALUE = 100;
+const uint8_t SPEED_MIN_VALUE = 0;
+const uint8_t SPEED_MAX_VALUE = 255;
+const uint8_t SPEED_DEFAULT_VALUE = 100;
+const uint8_t MODE_MIN_VALUE = 0;
+const uint8_t MODE_DEFAULT_VALUE = 1;
+const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
+const uint8_t G_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t G_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t G_COLOR_FIELD_DEFAULT_VALUE = 100;
+const uint8_t B_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t B_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t B_COLOR_FIELD_DEFAULT_VALUE = 100;
 
 const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
 const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
@@ -222,30 +243,50 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     }
 }
 
-void saveRGBLedStripCurrentSettings() {
-    saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID,
-        ws2812fx.getBrightness());
-    saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID,
-        ws2812fx.getSpeed());
-    saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID,
-        ws2812fx.getMode());
+void saveRGBLedStripCurrentSettings(uint8_t brightness, uint8_t speed,
+    uint8_t mode, uint32_t color) {
+
+    saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID, brightness);
+    saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID, speed);
+    saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID, mode);
     saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-        (ws2812fx.getColor() & 0x00FF0000) >> 16);
-    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-        (ws2812fx.getColor() & 0x0000FF00) >> 8);
-    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-        (ws2812fx.getColor() & 0x000000FF) >> 0);
+        (color & 0x00FF0000) >> 16);
+    saveState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID,
+        (color & 0x0000FF00) >> 8);
+    saveState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID,
+        (color & 0x000000FF) >> 0);
 }
 
 void loadRGBLedStripSavedSettings() {
-    ws2812fx.setBrightness(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID));
-    ws2812fx.setSpeed(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID));
-    ws2812fx.setColor(
-        loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID),
-        loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID),
-        loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID)
+    uint8_t brightnessSetting = loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID);
+    ws2812fx.setBrightness(
+        ((brightnessSetting >= BRIGHTNESS_MIN_VALUE) && (brightnessSetting <= BRIGHTNESS_MAX_VALUE)) ?
+            brightnessSetting : BRIGHTNESS_DEFAULT_VALUE
     );
-    ws2812fx.setMode(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID));
+
+    uint8_t speedSetting = loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID);
+    ws2812fx.setSpeed(
+        ((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE)) ?
+            speedSetting : SPEED_DEFAULT_VALUE
+    );
+
+    uint8_t modeSetting = loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID);
+    ws2812fx.setMode(
+        ((modeSetting >= MODE_MIN_VALUE) && (modeSetting <= ws2812fx.getModeCount())) ?
+            modeSetting : MODE_DEFAULT_VALUE
+    );
+
+    uint8_t R_FieldColorSetting = loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID);
+    uint8_t G_FieldColorSetting = loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID);
+    uint8_t B_FieldColorSetting = loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID);
+    ws2812fx.setColor(
+        ((R_FieldColorSetting >= R_COLOR_FIELD_MIN_VALUE) && (R_FieldColorSetting <= R_COLOR_FIELD_MAX_VALUE)) ?
+            R_FieldColorSetting : R_COLOR_FIELD_DEFAULT_VALUE,
+        ((G_FieldColorSetting >= G_COLOR_FIELD_MIN_VALUE) && (G_FieldColorSetting <= G_COLOR_FIELD_MAX_VALUE)) ?
+            G_FieldColorSetting : G_COLOR_FIELD_DEFAULT_VALUE,
+        ((B_FieldColorSetting >= B_COLOR_FIELD_MIN_VALUE) && (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE)) ?
+            B_FieldColorSetting : B_COLOR_FIELD_DEFAULT_VALUE
+    );
 }
 
 /*void sendKnockSyncMsg() {
@@ -295,7 +336,7 @@ void receive(const MyMessage &message) {
             // brightness setting set
             if (message.getCommand() == C_SET) {
                 uint8_t brightnessSetting = message.getByte();
-                if((brightnessSetting >= 0) && (brightnessSetting <= 255)) {
+                if((brightnessSetting >= BRIGHTNESS_MIN_VALUE) && (brightnessSetting <= BRIGHTNESS_MAX_VALUE)) {
                     ws2812fx.setBrightness(brightnessSetting);
                 }
             }
@@ -303,7 +344,7 @@ void receive(const MyMessage &message) {
             // speed setting set
             if (message.getCommand() == C_SET) {
                 uint8_t speedSetting = message.getByte();
-                if((speedSetting >= 0) && (speedSetting <= 255)) {
+                if((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE)) {
                     ws2812fx.setSpeed(speedSetting);
                 }
             }
@@ -311,17 +352,35 @@ void receive(const MyMessage &message) {
             // mode setting set
             if (message.getCommand() == C_SET) {
                 uint8_t modeSetting = message.getByte();
-                if((modeSetting >= 0) && (modeSetting <= ws2812fx.getModeCount())) {
+                if((modeSetting >= MODE_MIN_VALUE) && (modeSetting <= ws2812fx.getModeCount())) {
                     ws2812fx.setMode(modeSetting);
                 }
             }
-        case V_VAR5:
+        case V_STATUS:
             // save current rgb led strip settings
             if (message.getCommand() == C_SET) {
-                bool saveSettings = message.getBool();
-                if(saveSettings) {
-                    saveRGBLedStripCurrentSettings();
+                bool status = message.getBool();
+                if(status == OFF) {
+                    // get current brightness/color settings for saving them later
+                    uint8_t previousBrightness = ws2812fx.getBrightness();
+                    uint32_t previousColor = ws2812fx.getColor();
+
+                    // turn OFF rgb led strip
+                    ws2812fx.setBrightness(BRIGHTNESS_MIN_VALUE);
+                    ws2812fx.setColor(R_COLOR_FIELD_MIN_VALUE,
+                        G_COLOR_FIELD_MIN_VALUE, B_COLOR_FIELD_MIN_VALUE);
+
+                    saveRGBLedStripCurrentSettings(previousBrightness,
+                        ws2812fx.getSpeed(), ws2812fx.getMode(), previousColor);
                 }
+
+                if(status == ON) {
+                    // load rgb led strip saved settings
+                    loadRGBLedStripSavedSettings();
+                }
+            }
+            if (message.getCommand() == C_REQ) {
+
             }
             break;
         case V_RGB:
