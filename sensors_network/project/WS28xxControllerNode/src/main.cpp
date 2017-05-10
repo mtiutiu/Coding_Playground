@@ -68,6 +68,13 @@ const uint8_t ATTACHED_SENSOR_TYPES[] = {S_RGB_LIGHT};
 const uint16_t LED_COUNT = 144;
 const uint8_t DATA_PIN = A0;
 
+const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
+const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
+const uint8_t RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID = 3;
+const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
+const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
+const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
+
 #include <WS2812FX.h>
 
 // Parameter 1 = number of pixels in strip
@@ -258,6 +265,56 @@ void receive(const MyMessage &message) {
                 presentNodeMetadata();
             }
             break;
+        case V_VAR2:
+            // brightness setting set
+            if (message.getCommand() == C_SET) {
+                uint8_t brightnessSetting = message.getByte();
+                if((brightnessSetting >= 0) && (brightnessSetting <= 255)) {
+                    ws2812fx.setBrightness(brightnessSetting);
+                }
+            }
+        case V_VAR3:
+            // speed setting set
+            if (message.getCommand() == C_SET) {
+                uint8_t speedSetting = message.getByte();
+                if((speedSetting >= 0) && (speedSetting <= 255)) {
+                    ws2812fx.setSpeed(speedSetting);
+                }
+            }
+        case V_VAR4:
+            // mode setting set
+            if (message.getCommand() == C_SET) {
+                uint8_t modeSetting = message.getByte();
+                if((modeSetting >= 0) && (modeSetting <= ws2812fx.getModeCount())) {
+                    ws2812fx.setMode(modeSetting);
+                }
+            }
+        case V_VAR5:
+            // save current rgb led strip settings
+            if (message.getCommand() == C_SET) {
+                bool saveSettings = message.getBool();
+                if(saveSettings) {
+                    saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID,
+                        ws2812fx.getBrightness());
+                    saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID,
+                        ws2812fx.getSpeed());
+                    saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID,
+                        ws2812fx.getMode());
+                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+                        (ws2812fx.getColor() & 0x00FF0000) >> 16);
+                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+                        (ws2812fx.getColor() & 0x0000FF00) >> 8);
+                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+                        (ws2812fx.getColor() & 0x000000FF) >> 0);
+                }
+            }
+            break;
+        case V_RGB:
+            // V_RGB message type for RGB led strip set operations only
+            if (message.getCommand() == C_SET) {
+                ws2812fx.setColor(strtoul(message.getString(), NULL, 16));
+                //ws2812fx.setColor(message.getULong());
+            }
         default:;
     }
 }
@@ -269,17 +326,22 @@ void before() {
 
 void setup() {
     ws2812fx.init();
-    ws2812fx.setBrightness(20);
-    ws2812fx.setSpeed(200);
-    ws2812fx.setColor(0x00FF00);
-    ws2812fx.setMode(FX_MODE_STATIC);
+
+    // load rgb led strip saved settings
+    ws2812fx.setBrightness(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID));
+    ws2812fx.setSpeed(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID));
+    ws2812fx.setColor(
+        loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID),
+        loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID),
+        loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID)
+    );
+    ws2812fx.setMode(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID));
+
     ws2812fx.start();
 }
 
 void loop()  {
     wdt_reset();
-
-    ws2812fx.service();
 
     static bool firstInit = false;
     if(!firstInit) {
@@ -291,23 +353,25 @@ void loop()  {
         firstInit = true;
     }
 
+    ws2812fx.service();
+
     // static uint32_t lastHeartbeatReportTimestamp;
-    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
     //     sendHeartbeat();
-    //     lastHeartbeatReportTimestamp = millis();
+    //     lastHeartbeatReportTimestamp = hwMillis();
     // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+    if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        lastPowerSupplyVoltageLvlReportTimestamp = millis();
+        lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
     }
 
     // send presentation on a regular interval too
     // static uint32_t lastPresentationTimestamp = 0;
-    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
     //     presentNodeMetadata();
-    //     lastPresentationTimestamp = millis();
+    //     lastPresentationTimestamp = hwMillis();
     // }
 }

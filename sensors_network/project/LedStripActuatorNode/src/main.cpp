@@ -340,22 +340,22 @@ void loop()  {
     }
 
     static uint32_t lastLedStripActuatorStateReportTimestamp;
-    if(millis() - lastLedStripActuatorStateReportTimestamp >= LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS) {
+    if(hwMillis() - lastLedStripActuatorStateReportTimestamp >= LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS) {
         sendLedStripActuatorState = true;
-        lastLedStripActuatorStateReportTimestamp = millis();
+        lastLedStripActuatorStateReportTimestamp = hwMillis();
     }
 
     // static uint32_t lastHeartbeatReportTimestamp;
-    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
     //     sendHeartbeat();
-    //     lastHeartbeatReportTimestamp = millis();
+    //     lastHeartbeatReportTimestamp = hwMillis();
     // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+    if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        lastPowerSupplyVoltageLvlReportTimestamp = millis();
+        lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
     }
 
     if (sendLedStripActuatorState) {
@@ -366,8 +366,8 @@ void loop()  {
 
     // send presentation on a regular interval too
     // static uint32_t lastPresentationTimestamp = 0;
-    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
     //     presentNodeMetadata();
-    //     lastPresentationTimestamp = millis();
+    //     lastPresentationTimestamp = hwMillis();
     // }
 }

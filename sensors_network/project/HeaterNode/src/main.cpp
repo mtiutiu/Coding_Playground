@@ -340,34 +340,34 @@ void loop()  {
     static uint32_t lastRelaySafetyCheckTimestamp;
     // start heater safety counter when turning on
     if ((getHeaterState() == HEATER_ON) &&
-            ((millis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
+            ((hwMillis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
         if (++relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
             // for safety turn off the heater if the controller doesn't reset the relay safety timer
             //  this is needed in case something bad happens and the controller looses control over this node
             //     so we need to shutdown the heater automatically
             setHeaterState(HEATER_OFF);
         }
-        lastRelaySafetyCheckTimestamp = millis();
+        lastRelaySafetyCheckTimestamp = hwMillis();
     }
 #endif
 
     static uint32_t lastHeaterStateReportTimestamp;
-    if(millis() - lastHeaterStateReportTimestamp >= HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS) {
+    if(hwMillis() - lastHeaterStateReportTimestamp >= HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS) {
         sendHeaterActuatorState = true;
-        lastHeaterStateReportTimestamp = millis();
+        lastHeaterStateReportTimestamp = hwMillis();
     }
 
     // static uint32_t lastHeartbeatReportTimestamp;
-    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
     //     sendHeartbeat();
-    //     lastHeartbeatReportTimestamp = millis();
+    //     lastHeartbeatReportTimestamp = hwMillis();
     // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+    if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        lastPowerSupplyVoltageLvlReportTimestamp = millis();
+        lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
     }
 
     if (sendHeaterActuatorState) {
@@ -378,8 +378,8 @@ void loop()  {
 
     // send presentation on a regular interval too
     // static uint32_t lastPresentationTimestamp = 0;
-    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
     //     presentNodeMetadata();
-    //     lastPresentationTimestamp = millis();
+    //     lastPresentationTimestamp = hwMillis();
     // }
 }

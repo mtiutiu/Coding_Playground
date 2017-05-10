@@ -252,13 +252,13 @@ void checkTouchSensor() {
 
             // latch in TOUCH state
             touchSensorState[i] = TOUCHED;
-            lastTouchTimestamp[i] = millis();
+            lastTouchTimestamp[i] = hwMillis();
 		}
 
         if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
                 (touchSensorState[i] != RELEASED)) {
 
-            lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
+            lastTouchTimestamp[i] = hwMillis() - lastTouchTimestamp[i];
             // evaluate elapsed time between touch states
             // we can do here short press and long press handling if desired
             if(lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
@@ -372,28 +372,28 @@ void loop()  {
     checkTouchSensor();
 
     static uint32_t lastLightsStateReportTimestamp;
-    if(millis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
+    if(hwMillis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
         sendLightsState();
-        lastLightsStateReportTimestamp = millis();
+        lastLightsStateReportTimestamp = hwMillis();
     }
 
     // static uint32_t lastHeartbeatReportTimestamp;
-    // if ((millis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
     //     sendHeartbeat();
-    //     lastHeartbeatReportTimestamp = millis();
+    //     lastHeartbeatReportTimestamp = hwMillis();
     // }
 
     // send power supply voltage level
     static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-    if(millis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+    if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        lastPowerSupplyVoltageLvlReportTimestamp = millis();
+        lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
     }
 
     // send presentation on a regular interval too
     // static uint32_t lastPresentationTimestamp = 0;
-    // if ((millis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+    // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
     //     presentNodeMetadata();
-    //     lastPresentationTimestamp = millis();
+    //     lastPresentationTimestamp = hwMillis();
     // }
 }
