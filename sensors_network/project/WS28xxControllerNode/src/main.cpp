@@ -222,6 +222,32 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     }
 }
 
+void saveRGBLedStripCurrentSettings() {
+    saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID,
+        ws2812fx.getBrightness());
+    saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID,
+        ws2812fx.getSpeed());
+    saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID,
+        ws2812fx.getMode());
+    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+        (ws2812fx.getColor() & 0x00FF0000) >> 16);
+    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+        (ws2812fx.getColor() & 0x0000FF00) >> 8);
+    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+        (ws2812fx.getColor() & 0x000000FF) >> 0);
+}
+
+void loadRGBLedStripSavedSettings() {
+    ws2812fx.setBrightness(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID));
+    ws2812fx.setSpeed(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID));
+    ws2812fx.setColor(
+        loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID),
+        loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID),
+        loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID)
+    );
+    ws2812fx.setMode(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID));
+}
+
 /*void sendKnockSyncMsg() {
     MyMessage knockMsg(LED_STRIP_RELAY_SENSOR_ID, V_VAR1);
 
@@ -294,18 +320,7 @@ void receive(const MyMessage &message) {
             if (message.getCommand() == C_SET) {
                 bool saveSettings = message.getBool();
                 if(saveSettings) {
-                    saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID,
-                        ws2812fx.getBrightness());
-                    saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID,
-                        ws2812fx.getSpeed());
-                    saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID,
-                        ws2812fx.getMode());
-                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-                        (ws2812fx.getColor() & 0x00FF0000) >> 16);
-                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-                        (ws2812fx.getColor() & 0x0000FF00) >> 8);
-                    saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-                        (ws2812fx.getColor() & 0x000000FF) >> 0);
+                    saveRGBLedStripCurrentSettings();
                 }
             }
             break;
@@ -328,14 +343,7 @@ void setup() {
     ws2812fx.init();
 
     // load rgb led strip saved settings
-    ws2812fx.setBrightness(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID));
-    ws2812fx.setSpeed(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID));
-    ws2812fx.setColor(
-        loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID),
-        loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID),
-        loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID)
-    );
-    ws2812fx.setMode(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID));
+    loadRGBLedStripSavedSettings();
 
     ws2812fx.start();
 }
