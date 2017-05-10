@@ -6,9 +6,8 @@
 #include <avr/wdt.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
-#define WANT_LIVOLO_ACTIVITY_LED
 //#define HAS_NODE_ID_SET_SWITCH
-// -----------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // RFM69 radio driver
@@ -16,80 +15,71 @@
 
 #define MY_RFM69_FREQUENCY RF69_868MHZ
 
-#define MY_NODE_ID 252
+#define MY_NODE_ID 253  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
+#define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
+//#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
+#define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
+#define MY_TRANSPORT_WAIT_READY_MS	3000
 
 #define MY_DISABLED_SERIAL
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
+#define MY_OTA_FIRMWARE_FEATURE // need OTA
+
 // Flash leds on rx/tx/err
-#define MY_DEFAULT_ERR_LED_PIN 4
-#define MY_DEFAULT_RX_LED_PIN  6
-#define MY_DEFAULT_TX_LED_PIN  5
+//#define MY_DEFAULT_ERR_LED_PIN 4
+//#define MY_DEFAULT_RX_LED_PIN  6
+//#define MY_DEFAULT_TX_LED_PIN  5
 // Set blinking period
-#define MY_DEFAULT_LED_BLINK_PERIOD 300
+//#define MY_DEFAULT_LED_BLINK_PERIOD 300
 // Inverses the behavior of leds
-#define MY_WITH_LEDS_BLINKING_INVERSE
+//#define MY_WITH_LEDS_BLINKING_INVERSE
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
-
-// -------------------------------- LIVOLO ACTUATOR SECTION ---------------------
-const uint8_t NODE_SENSORS_COUNT = 1;
-const uint8_t LIVOLO_ACTUATOR_SENSOR_ID = 1;
-
-const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
-const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
-
-// we expect 3 values: remote id, remote key and tx retries
-//	remote_id:remote_key:tx_retries
-struct LivoloCmd {
-    uint16_t remoteId;
-    uint8_t remoteKey;
-    uint8_t txRetries;
-};
-LivoloCmd livoloCmdData;
-
-bool livoloCmdMsgReceived = false;
-bool sendStatus = false;
-
-// transmitter data pin connected to A1(Arduino uno board)
-const uint8_t TX_DATA_PIN = A1;
-
-// transmitter power supply pin
-const uint8_t TX_POWER_SUPPLY_ENABLE_PIN = A0;
-const uint32_t TX_POWER_SUPPLY_SETTLE_TIME_MS = 50;
-const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
-
-#ifdef WANT_LIVOLO_ACTIVITY_LED
-const uint8_t LIVOLO_ACTIVITY_LED_PIN = 3;
-#endif
-
-#define TX_ENABLE_POWER_SUPPLY()   hwDigitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, HIGH)
-#define TX_DISABLE_POWER_SUPPLY()  hwDigitalWrite(TX_POWER_SUPPLY_ENABLE_PIN, LOW)
-
-#include <Livolo.h>
-
-Livolo livolo(TX_DATA_PIN);
-
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_CUSTOM};
-// ------------------------------------------------------------------------------
 
 // ---------------------------------------- DIP SW NODE ID CONFIGURATION ------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
 | C0 | C1 | C2 | C3 | C4 | C5 | C6 |
-| A2 | A3 | A4 | A5 |  7 |  8 |  9 |
+| A0 | A1 | A2 | A3 | A4 | A5 |  7 |
 */
 
-const uint8_t NODE_ID_SWITCH_PINS[] = {A2, A3, A4, A5, 7, 8, 9};
+const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 #endif
 // -------------------------------------------------------------------------------------------------------------
+
+// --------------------------------- RGB LED STRIP SECTION ----------------------
+const uint8_t NODE_SENSORS_COUNT = 1;
+
+const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
+
+//const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
+const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
+
+const uint8_t ATTACHED_SENSOR_TYPES[] = {S_RGB_LIGHT};
+
+const uint16_t LED_COUNT = 144;
+const uint8_t DATA_PIN = A0;
+
+#include <WS2812FX.h>
+
+// Parameter 1 = number of pixels in strip
+// Parameter 2 = Arduino pin number (most are valid)
+// Parameter 3 = pixel type flags, add together as needed:
+//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
+//   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
+WS2812FX ws2812fx = WS2812FX(LED_COUNT, DATA_PIN, NEO_GRB + NEO_KHZ800);
+// ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
 //const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
@@ -206,7 +196,7 @@ uint8_t readNodeIdSwitch() {
     uint8_t nodeId = 0;
 
     for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-        hwPinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+        pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
         nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
     }
 
@@ -214,7 +204,7 @@ uint8_t readNodeIdSwitch() {
 }
 #endif
 
-void sendData(uint8_t sensorId, const char sensorData[], uint8_t dataType) {
+void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     MyMessage sensorDataMsg(sensorId, dataType);
 
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
@@ -226,7 +216,7 @@ void sendData(uint8_t sensorId, const char sensorData[], uint8_t dataType) {
 }
 
 /*void sendKnockSyncMsg() {
-    MyMessage knockMsg(LIVOLO_ACTUATOR_SENSOR_ID, V_VAR1);
+    MyMessage knockMsg(LED_STRIP_RELAY_SENSOR_ID, V_VAR1);
 
     send(knockMsg.set("knock"), false);
     wait(KNOCK_MSG_WAIT_INTERVAL_MS);
@@ -249,11 +239,11 @@ void presentation() {
     presentNodeMetadata();
 }
 
-// // called automatically by mysensors core for incomming messages
+// called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
     switch (message.type) {
         case V_VAR1:
-            if(message.getCommand() == C_SET) {
+            if (message.getCommand() == C_SET) {
                 char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
                 loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
@@ -268,15 +258,6 @@ void receive(const MyMessage &message) {
                 presentNodeMetadata();
             }
             break;
-        case V_VAR2:
-            if(message.getCommand() == C_SET) {
-                sscanf(message.getString(), "%d:%hhu:%hhu",
-                    &livoloCmdData.remoteId,
-                    &livoloCmdData.remoteKey,
-                    &livoloCmdData.txRetries);
-                livoloCmdMsgReceived = true;
-            }
-            break;
         default:;
     }
 }
@@ -287,59 +268,27 @@ void before() {
 }
 
 void setup() {
-    hwPinMode(TX_POWER_SUPPLY_ENABLE_PIN, OUTPUT);
-
-    #ifdef WANT_LIVOLO_ACTIVITY_LED
-    hwPinMode(LIVOLO_ACTIVITY_LED_PIN, OUTPUT);
-    #endif
+    ws2812fx.init();
+    ws2812fx.setBrightness(20);
+    ws2812fx.setSpeed(200);
+    ws2812fx.setColor(0x00FF00);
+    ws2812fx.setMode(FX_MODE_STATIC);
+    ws2812fx.start();
 }
 
-void loop() {
+void loop()  {
     wdt_reset();
+
+    ws2812fx.service();
 
     static bool firstInit = false;
     if(!firstInit) {
+        //sendKnockSyncMsg();
         sendHeartbeat();
         wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
         firstInit = true;
-    }
-
-    if (livoloCmdMsgReceived) {
-        TX_ENABLE_POWER_SUPPLY(); //enable tx power supply line
-        #ifdef WANT_LIVOLO_ACTIVITY_LED
-        hwDigitalWrite(LIVOLO_ACTIVITY_LED_PIN, HIGH);
-        #endif
-        wait(TX_POWER_SUPPLY_SETTLE_TIME_MS);  // give it some time to settle
-
-        livolo.sendButton(livoloCmdData.remoteId,
-        				  livoloCmdData.remoteKey,
-        				  livoloCmdData.txRetries);
-        #ifdef WANT_LIVOLO_ACTIVITY_LED
-        hwDigitalWrite(LIVOLO_ACTIVITY_LED_PIN, LOW);
-        #endif
-        TX_DISABLE_POWER_SUPPLY();  // disable tx power supply line
-
-        // send reply
-        sendStatus = true;
-        livoloCmdMsgReceived = false;
-    }
-
-    // echo back received livolo command string
-    if (sendStatus) {
-        char recvLivoloCmdData[MAX_NODE_METADATA_LENGTH];
-        memset(recvLivoloCmdData, '\0', MAX_NODE_METADATA_LENGTH);
-        sprintf_P(recvLivoloCmdData,
-        		PSTR("sent:%d:%hhu:%hhu"),
-        		livoloCmdData.remoteId,
-        		livoloCmdData.remoteKey,
-        		livoloCmdData.txRetries);
-
-        MyMessage statusMsg(LIVOLO_ACTUATOR_SENSOR_ID, V_VAR2);
-        // send new state back to controller
-        sendData(LIVOLO_ACTUATOR_SENSOR_ID, recvLivoloCmdData, V_VAR2);
-
-        sendStatus = false;
     }
 
     // static uint32_t lastHeartbeatReportTimestamp;

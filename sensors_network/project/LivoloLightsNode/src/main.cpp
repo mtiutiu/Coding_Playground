@@ -54,7 +54,7 @@ const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3, A1};
 // ----------------------- LIGHTS SECTION ----------------------
 const uint8_t NODE_SENSORS_COUNT = 2;
 
-const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 45000; //45s interval
+const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 180000; //3min status updates
 
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
@@ -82,11 +82,11 @@ const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY, S_BINARY};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
+//const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
-const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
+//const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
 // -----------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------

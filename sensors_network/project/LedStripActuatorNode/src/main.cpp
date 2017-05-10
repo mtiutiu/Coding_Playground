@@ -74,7 +74,7 @@ const uint8_t LED_STRIP_CONTROL_RELAY_PIN = A4;
 const uint8_t LED_STRIP_OFF = 0;
 const uint8_t LED_STRIP_ON = 1;
 
-const uint32_t LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS = 45000;
+const uint32_t LED_STRIP_ACTUATOR_STATE_SEND_INTERVAL_MS = 180000; // 3min status updates
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
@@ -87,11 +87,11 @@ const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
+//const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
-const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
+//const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
 // -----------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
