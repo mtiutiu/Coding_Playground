@@ -31,13 +31,13 @@
 #define MY_OTA_FIRMWARE_FEATURE // need OTA
 
 // Flash leds on rx/tx/err
-//#define MY_DEFAULT_ERR_LED_PIN 4
-//#define MY_DEFAULT_RX_LED_PIN  6
-//#define MY_DEFAULT_TX_LED_PIN  5
+#define MY_DEFAULT_ERR_LED_PIN 4
+#define MY_DEFAULT_RX_LED_PIN  6
+#define MY_DEFAULT_TX_LED_PIN  5
 // Set blinking period
-//#define MY_DEFAULT_LED_BLINK_PERIOD 300
+#define MY_DEFAULT_LED_BLINK_PERIOD 300
 // Inverses the behavior of leds
-//#define MY_WITH_LEDS_BLINKING_INVERSE
+#define MY_WITH_LEDS_BLINKING_INVERSE
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ const uint8_t NODE_ID_SWITCH_PINS[] = {A0, A1, A2, A3, A4, A5, 7};
 // -------------------------------------------------------------------------------------------------------------
 
 // --------------------------------- RGB LED STRIP SECTION ----------------------
-const uint8_t NODE_SENSORS_COUNT = 2;
+const uint8_t NODE_SENSORS_COUNT = 5;
 
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
@@ -63,10 +63,19 @@ const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
 
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_RGB_LIGHT, S_BINARY};
+const uint8_t RGB_SENSOR_ID = 1;
+const uint8_t BRIGHTNESS_SENSOR_ID = 2;
+const uint8_t SPEED_SENSOR_ID = 3;
+const uint8_t MODE_SENSOR_ID = 4;
+const uint8_t STATUS_SENSOR_ID = 5;
 
-const uint16_t LED_COUNT = 144;
-const uint8_t DATA_PIN = A0;
+const uint8_t ATTACHED_SENSOR_TYPES[] = {
+    S_RGB_LIGHT,
+    S_CUSTOM,   // brightness
+    S_CUSTOM,   // speed
+    S_CUSTOM,    // mode
+    S_BINARY
+};
 
 const bool OFF = false;
 const bool ON = true;
@@ -78,7 +87,7 @@ const uint8_t SPEED_MIN_VALUE = 0;
 const uint8_t SPEED_MAX_VALUE = 255;
 const uint8_t SPEED_DEFAULT_VALUE = 100;
 const uint8_t MODE_MIN_VALUE = 0;
-const uint8_t MODE_DEFAULT_VALUE = 1;
+const uint8_t MODE_DEFAULT_VALUE = 0;
 const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
 const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
 const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
@@ -96,7 +105,13 @@ const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
 const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
 const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
 
+const uint16_t LED_COUNT = 144;
+const uint16_t LED_PXL_BUFF_SIZE = LED_COUNT * 3;
+const uint8_t DATA_PIN = A0;
+
 #include <WS2812FX.h>
+
+uint8_t pix_buff[LED_PXL_BUFF_SIZE];
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -106,7 +121,7 @@ const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-WS2812FX ws2812fx = WS2812FX(LED_COUNT, DATA_PIN, NEO_GRB + NEO_KHZ800);
+WS2812FX ws2812fx = WS2812FX(LED_COUNT, DATA_PIN, NEO_GRB + NEO_KHZ800, pix_buff);
 // ------------------------------------------------------------------------------
 
 // --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
@@ -287,6 +302,7 @@ void loadRGBLedStripSavedSettings() {
         ((B_FieldColorSetting >= B_COLOR_FIELD_MIN_VALUE) && (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE)) ?
             B_FieldColorSetting : B_COLOR_FIELD_DEFAULT_VALUE
     );
+    ws2812fx.trigger();
 }
 
 /*void sendKnockSyncMsg() {
@@ -332,33 +348,43 @@ void receive(const MyMessage &message) {
                 presentNodeMetadata();
             }
             break;
+        case V_RGB:
+            // V_RGB message type for RGB led strip set operations only
+            if ((message.getCommand() == C_SET) && (message.sensor == RGB_SENSOR_ID)) {
+                ws2812fx.setColor(strtoul(message.getString(), NULL, 16));
+                ws2812fx.trigger();
+                //ws2812fx.setColor(message.getULong());
+            }
         case V_VAR2:
             // brightness setting set
-            if (message.getCommand() == C_SET) {
+            if ((message.getCommand() == C_SET) && (message.sensor == BRIGHTNESS_SENSOR_ID)) {
                 uint8_t brightnessSetting = message.getByte();
                 if((brightnessSetting >= BRIGHTNESS_MIN_VALUE) && (brightnessSetting <= BRIGHTNESS_MAX_VALUE)) {
                     ws2812fx.setBrightness(brightnessSetting);
+                    ws2812fx.trigger();
                 }
             }
         case V_VAR3:
             // speed setting set
-            if (message.getCommand() == C_SET) {
+            if ((message.getCommand() == C_SET) && (message.sensor == SPEED_SENSOR_ID)) {
                 uint8_t speedSetting = message.getByte();
                 if((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE)) {
                     ws2812fx.setSpeed(speedSetting);
+                    ws2812fx.trigger();
                 }
             }
         case V_VAR4:
             // mode setting set
-            if (message.getCommand() == C_SET) {
+            if ((message.getCommand() == C_SET) && (message.sensor == MODE_SENSOR_ID)) {
                 uint8_t modeSetting = message.getByte();
-                if((modeSetting >= MODE_MIN_VALUE) && (modeSetting <= ws2812fx.getModeCount())) {
+                if((modeSetting >= MODE_MIN_VALUE) && (modeSetting < ws2812fx.getModeCount())) {
                     ws2812fx.setMode(modeSetting);
+                    ws2812fx.trigger();
                 }
             }
         case V_STATUS:
             // save current rgb led strip settings
-            if (message.getCommand() == C_SET) {
+            if ((message.getCommand() == C_SET) && (message.sensor == STATUS_SENSOR_ID)) {
                 bool status = message.getBool();
                 if(status == OFF) {
                     // get current brightness/color settings for saving them later
@@ -369,6 +395,7 @@ void receive(const MyMessage &message) {
                     ws2812fx.setBrightness(BRIGHTNESS_MIN_VALUE);
                     ws2812fx.setColor(R_COLOR_FIELD_MIN_VALUE,
                         G_COLOR_FIELD_MIN_VALUE, B_COLOR_FIELD_MIN_VALUE);
+                    ws2812fx.trigger();
 
                     saveRGBLedStripCurrentSettings(previousBrightness,
                         ws2812fx.getSpeed(), ws2812fx.getMode(), previousColor);
@@ -378,16 +405,6 @@ void receive(const MyMessage &message) {
                     // load rgb led strip saved settings
                     loadRGBLedStripSavedSettings();
                 }
-            }
-            if (message.getCommand() == C_REQ) {
-
-            }
-            break;
-        case V_RGB:
-            // V_RGB message type for RGB led strip set operations only
-            if (message.getCommand() == C_SET) {
-                ws2812fx.setColor(strtoul(message.getString(), NULL, 16));
-                //ws2812fx.setColor(message.getULong());
             }
         default:;
     }
@@ -399,6 +416,8 @@ void before() {
 }
 
 void setup() {
+    hwPinMode(DATA_PIN, OUTPUT);
+
     ws2812fx.init();
 
     // load rgb led strip saved settings

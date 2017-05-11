@@ -99,7 +99,7 @@
 
 #define NEO_KHZ800 0x0000 // 800 KHz datastream
 #ifndef __AVR_ATtiny85__
-#define NEO_KHZ400 0x0100 // 400 KHz datastream
+//#define NEO_KHZ400 0x0100 // 400 KHz datastream
 #endif
 
 // If 400 KHz support is enabled, the third parameter to the constructor
@@ -108,9 +108,9 @@
 // is sufficient to encode pixel color order, saving some space.
 
 #ifdef NEO_KHZ400
-typedef uint16_t neoPixelType;
-#else
 typedef uint8_t  neoPixelType;
+#else
+typedef uint16_t neoPixelType;
 #endif
 
 class Adafruit_NeoPixel {
@@ -118,26 +118,25 @@ class Adafruit_NeoPixel {
  public:
 
   // Constructor: number of LEDs, pin number, LED type
-  Adafruit_NeoPixel(uint16_t n, uint8_t p=6, neoPixelType t=NEO_GRB + NEO_KHZ800);
-  Adafruit_NeoPixel(void);
+  //Adafruit_NeoPixel(uint16_t n, uint8_t p=6, neoPixelType t=NEO_GRB + NEO_KHZ800,uint8_t *pxl);
+  Adafruit_NeoPixel(uint16_t n, uint8_t p, neoPixelType t,uint8_t *pxl);
+  //Adafruit_NeoPixel(void);
   ~Adafruit_NeoPixel();
 
   void
-    begin(void),
+    //begin(void),
     show(void),
-    setPin(uint8_t p),
+    //setPin(uint8_t p),
     setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b),
     setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint8_t w),
     setPixelColor(uint16_t n, uint32_t c),
     setBrightness(uint8_t),
-    clear(),
-    updateLength(uint16_t n),
-    updateType(neoPixelType t);
+    clear();
+    //updateLength(uint16_t n),
+    //updateType(neoPixelType t);
   uint8_t
    *getPixels(void) const,
     getBrightness(void) const;
-  int8_t
-    getPin(void) { return pin; };
   uint16_t
     numPixels(void) const;
   static uint32_t
@@ -150,11 +149,11 @@ class Adafruit_NeoPixel {
 
  private:
 
-  boolean
-#ifdef NEO_KHZ400  // If 400 KHz NeoPixel support enabled...
-    is800KHz,      // ...true if 800 KHz pixels
+#ifdef NEO_KHZ400
+  boolean  // If 400 KHz NeoPixel support enabled...
+  is800KHz;      // ...true if 800 KHz pixels
 #endif
-    begun;         // true if begin() previously called
+    //begun;         // true if begin() previously called
   uint16_t
     numLEDs,       // Number of RGB LEDs in strip
     numBytes;      // Size of 'pixels' buffer below (3 or 4 bytes/pixel)
@@ -175,6 +174,7 @@ class Adafruit_NeoPixel {
   uint8_t
     pinMask;       // Output PORT bitmask
 #endif
+
 };
 
 #endif // ADAFRUIT_NEOPIXEL_H

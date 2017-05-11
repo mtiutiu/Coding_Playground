@@ -56,7 +56,7 @@
 #define CALL_MODE(n) (this->*_mode[n])();
 
 void WS2812FX::init() {
-  Adafruit_NeoPixel::begin();
+  //Adafruit_NeoPixel::begin();
   WS2812FX::setBrightness(_brightness);
   Adafruit_NeoPixel::show();
 }

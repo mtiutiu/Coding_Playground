@@ -53,7 +53,7 @@
 #define WS2812FX_h
 
 #include "Arduino.h"
-#include <Adafruit_NeoPixel.h>
+#include <Adafruit_NeoPixel_Static.h>
 
 #define DEFAULT_BRIGHTNESS 50
 #define DEFAULT_MODE 0
@@ -123,7 +123,7 @@ class WS2812FX : public Adafruit_NeoPixel {
 
   public:
 
-    WS2812FX(uint16_t n, uint8_t p, neoPixelType t) : Adafruit_NeoPixel(n, p, t) {
+    WS2812FX(uint16_t n, uint8_t p, neoPixelType t, uint8_t* pix_buff) : Adafruit_NeoPixel(n, p, t, pix_buff) {
       _mode[FX_MODE_STATIC]                = &WS2812FX::mode_static;
       _mode[FX_MODE_BLINK]                 = &WS2812FX::mode_blink;
       _mode[FX_MODE_BREATH]                = &WS2812FX::mode_breath;
