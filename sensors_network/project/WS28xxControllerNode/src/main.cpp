@@ -79,7 +79,7 @@ const uint8_t ATTACHED_SENSOR_TYPES[] = {
 
 const bool OFF = false;
 const bool ON = true;
-static bool ledStripState = OFF;
+static bool currentLedStripState = OFF;
 
 const uint8_t BRIGHTNESS_MIN_VALUE = 0;
 const uint8_t BRIGHTNESS_MAX_VALUE = 255;
@@ -321,20 +321,20 @@ void sendLedStripSettings() {
     sendData(RGB_SENSOR_ID, colorInfoBuff, V_RGB);
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
-    uint8_t currentLedStripBrightness = ws2812fx.getBrightness();
-    sendData(RGB_SENSOR_ID, &currentLedStripBrightness, V_VAR2);
+    uint8_t currentLedStripBrightness = round((float)(ws2812fx.getBrightness() * 100) / BRIGHTNESS_MAX_VALUE);
+    sendData(RGB_SENSOR_ID, &currentLedStripBrightness, V_LIGHT_LEVEL);
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
-    uint8_t currentLedStripSpeed = ws2812fx.getSpeed();
-    sendData(RGB_SENSOR_ID, &currentLedStripSpeed, V_VAR3);
+    uint8_t currentLedStripSpeed = round((float)(ws2812fx.getSpeed() * 100) / SPEED_MAX_VALUE);
+    sendData(RGB_SENSOR_ID, &currentLedStripSpeed, V_PERCENTAGE);
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
     uint8_t currentLedStripMode = ws2812fx.getMode();
-    sendData(RGB_SENSOR_ID, &currentLedStripMode, V_VAR4);
+    sendData(RGB_SENSOR_ID, &currentLedStripMode, V_CUSTOM);
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
-    uint8_t currentLedStripState = ws2812fx.getBrightness() > 0;
-    sendData(RGB_SENSOR_ID, &currentLedStripState, V_STATUS);
+    uint8_t currentcurrentLedStripState = ws2812fx.getBrightness() > 0;
+    sendData(RGB_SENSOR_ID, &currentcurrentLedStripState, V_STATUS);
 }
 
 /*void sendKnockSyncMsg() {
@@ -381,7 +381,7 @@ void receive(const MyMessage &message) {
             }
             break;
         case V_RGB:
-            if(ledStripState == OFF) {
+            if(currentLedStripState == OFF) {
                 return;
             }
             // V_RGB message type for RGB led strip set operations only
@@ -391,36 +391,36 @@ void receive(const MyMessage &message) {
                 sendData(RGB_SENSOR_ID, message.getString(), V_RGB);
             }
             break;
-        case V_VAR2:
-            if(ledStripState == OFF) {
+        case V_LIGHT_LEVEL:
+            if(currentLedStripState == OFF) {
                 return;
             }
             // brightness setting set
             if (message.getCommand() == C_SET) {
-                uint8_t brightnessSetting = message.getByte();
-                if((brightnessSetting >= BRIGHTNESS_MIN_VALUE) && (brightnessSetting <= BRIGHTNESS_MAX_VALUE)) {
-                    ws2812fx.setBrightness(brightnessSetting);
+                uint8_t brightnessPercentage = message.getByte();
+                if((brightnessPercentage >= 0) && (brightnessPercentage <= 100)) {
+                    ws2812fx.setBrightness(round((float)(brightnessPercentage * BRIGHTNESS_MAX_VALUE) / 100));
                     ws2812fx.trigger();
-                    sendData(RGB_SENSOR_ID, &brightnessSetting, V_VAR2);
+                    sendData(RGB_SENSOR_ID, &brightnessPercentage, V_LIGHT_LEVEL);
                 }
             }
             break;
-        case V_VAR3:
-            if(ledStripState == OFF) {
+        case V_PERCENTAGE:
+            if(currentLedStripState == OFF) {
                 return;
             }
             // speed setting set
             if (message.getCommand() == C_SET) {
-                uint8_t speedSetting = message.getByte();
-                if((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE)) {
-                    ws2812fx.setSpeed(speedSetting);
+                uint8_t speedPercentage = message.getByte();
+                if((speedPercentage >= 0) && (speedPercentage <= 100)) {
+                    ws2812fx.setSpeed(round((float)(speedPercentage * SPEED_MAX_VALUE) / 100));
                     ws2812fx.trigger();
-                    sendData(RGB_SENSOR_ID, &speedSetting, V_VAR3);
+                    sendData(RGB_SENSOR_ID, &speedPercentage, V_PERCENTAGE);
                 }
             }
             break;
-        case V_VAR4:
-            if(ledStripState == OFF) {
+        case V_CUSTOM:
+            if(currentLedStripState == OFF) {
                 return;
             }
             // mode setting set
@@ -429,15 +429,15 @@ void receive(const MyMessage &message) {
                 if((modeSetting >= MODE_MIN_VALUE) && (modeSetting < ws2812fx.getModeCount())) {
                     ws2812fx.setMode(modeSetting);
                     ws2812fx.trigger();
-                    sendData(RGB_SENSOR_ID, &modeSetting, V_VAR4);
+                    sendData(RGB_SENSOR_ID, &modeSetting, V_CUSTOM);
                 }
             }
             break;
         case V_STATUS:
             // save current rgb led strip settings
             if (message.getCommand() == C_SET) {
-                bool status = message.getBool();
-                if((status == OFF) && (ledStripState == ON)) {
+                bool newLedStripState = message.getBool();
+                if((newLedStripState == OFF) && (currentLedStripState == ON)) {
                     // get current brightness/color settings for saving them later
                     uint8_t previousLedStripBrightness = ws2812fx.getBrightness();
                     uint32_t previousLedStripColor = ws2812fx.getColor();
@@ -450,16 +450,16 @@ void receive(const MyMessage &message) {
 
                     saveRGBLedStripCurrentSettings(previousLedStripBrightness,
                         ws2812fx.getSpeed(), ws2812fx.getMode(), previousLedStripColor);
-                    ledStripState = OFF;
+                    currentLedStripState = OFF;
                 }
 
-                if((status == ON) && (ledStripState == OFF)) {
+                if((newLedStripState == ON) && (currentLedStripState == OFF)) {
                     // load rgb led strip saved settings
                     loadRGBLedStripSavedSettings();
                     sendLedStripSettings();
-                    ledStripState = ON;
+                    currentLedStripState = ON;
                 }
-                sendData(RGB_SENSOR_ID, &status, V_STATUS);
+                sendData(RGB_SENSOR_ID, &newLedStripState, V_STATUS);
             }
             break;
         default:;
@@ -496,11 +496,11 @@ void loop()  {
 
         sendLedStripSettings();
 
-        ledStripState = ON;
+        currentLedStripState = ON;
         firstInit = true;
     }
 
-    if(ledStripState == ON) {
+    if(currentLedStripState == ON) {
         ws2812fx.service();
     }
 
