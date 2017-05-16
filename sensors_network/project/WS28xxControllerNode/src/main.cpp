@@ -28,7 +28,7 @@
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
 
-//#define MY_OTA_FIRMWARE_FEATURE // need OTA
+#define MY_OTA_FIRMWARE_FEATURE // need OTA
 
 // Flash leds on rx/tx/err
 //#define MY_DEFAULT_ERR_LED_PIN 4
@@ -443,6 +443,7 @@ void receive(const MyMessage &message) {
 
                     // turn OFF rgb led strip
                     ws2812fx.stop();
+                    hwDigitalWrite(DATA_PIN, LOW);
 
                     saveRGBLedStripCurrentSettings(previousLedStripBrightness,
                         ws2812fx.getSpeed(), ws2812fx.getMode(), previousLedStripColor);
