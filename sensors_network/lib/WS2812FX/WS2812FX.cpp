@@ -172,14 +172,6 @@ uint32_t WS2812FX::getColor(void) {
   return _color;
 }
 
-const __FlashStringHelper* WS2812FX::getModeName(uint8_t m) {
-  if(m < MODE_COUNT) {
-    return _name[m];
-  } else {
-    return F("");
-  }
-}
-
 /* #####################################################
 #
 #  Color and Blinken Functions
