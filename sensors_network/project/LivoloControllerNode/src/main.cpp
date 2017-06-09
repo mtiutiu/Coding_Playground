@@ -23,7 +23,7 @@
 
 #define MY_DISABLED_SERIAL
 
-#define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
+#define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
 
 // Flash leds on rx/tx/err
 #define MY_DEFAULT_ERR_LED_PIN 4

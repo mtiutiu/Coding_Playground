@@ -37,7 +37,7 @@
 
 //#define MY_SMART_SLEEP_WAIT_DURATION 500
 
-#define MY_SENSOR_NODE_SKETCH_VERSION "2.1"
+#define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
