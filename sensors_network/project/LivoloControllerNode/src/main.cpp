@@ -14,7 +14,7 @@
 // RFM69 radio driver
 #define MY_RADIO_RFM69
 
-#define MY_RFM69_FREQUENCY RF69_868MHZ
+#define MY_RFM69_FREQUENCY RFM69_868MHZ
 
 #define MY_NODE_ID 252
 
