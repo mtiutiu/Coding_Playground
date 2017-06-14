@@ -853,7 +853,7 @@
  * @brief Set TX power level, default 5dBm (overriden if ATC mode enabled).
  */
 #ifndef MY_RFM69_TX_POWER_DBM
-#define MY_RFM69_TX_POWER_DBM			(10)
+#define MY_RFM69_TX_POWER_DBM			(13)
 #endif
 
 /**

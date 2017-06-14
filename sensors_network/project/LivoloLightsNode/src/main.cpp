@@ -11,10 +11,11 @@
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // RFM69 radio driver
+#define MY_RFM69_NEW_DRIVER
 #define MY_RADIO_RFM69
 #define MY_RFM69_FREQUENCY RFM69_868MHZ
 
-#define MY_NODE_ID 249  // this needs to be set explicitly
+#define MY_NODE_ID 248  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
