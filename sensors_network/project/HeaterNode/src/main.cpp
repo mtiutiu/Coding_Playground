@@ -120,122 +120,119 @@ char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
 // -------------------------------------------------------------------------------------------------------------
 
 bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
-    return (EEPROM.read(index) != mark);
+  return (EEPROM.read(index) != mark);
 }
 
 void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-    if (!metadata || !nodeInfo) {
-        return;
-    }
+  if (!metadata || !nodeInfo) {
+    return;
+  }
 
-    for (uint8_t i = 0; i < maxFields; i++) {
-        if (i == 0) {
-            strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
-            continue;
-        }
-        strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+  for (uint8_t i = 0; i < maxFields; i++) {
+    if (i == 0) {
+      strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
+      continue;
     }
+    strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+  }
 }
 
 void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-    char metadata[MAX_NODE_METADATA_LENGTH];
-    memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
-    strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
+  char metadata[MAX_NODE_METADATA_LENGTH];
+  memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
+  strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
 
-    parseNodeMetadata(metadata, nodeInfo, maxFields);
+  parseNodeMetadata(metadata, nodeInfo, maxFields);
 }
 
 void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
-    memset(destBuffer, '\0', len);
-    for (uint16_t i = 0; i < len; i++) {
-        destBuffer[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
-    }
+  memset(destBuffer, '\0', len);
+  for (uint16_t i = 0; i < len; i++) {
+    destBuffer[i] = EEPROM.read(EEPROM_CUSTOM_METADATA_INDEX + i);
+  }
 }
 
 void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-    memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
+  memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
 
-    if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
-                              EEPROM_FIRST_WRITE_MARK) ||
-        !nodeInfo) {
-        loadNodeDefaultMetadata(nodeInfo, maxFields);
-        return;
-    }
+  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK) || !nodeInfo) {
+    loadNodeDefaultMetadata(nodeInfo, maxFields);
+    return;
+  }
 
-    char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-    loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+  char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+  loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-    parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
+  parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
 }
 
 void saveNodeEepromMetadata(const char *metadata) {
-    if (metadata) {
-        if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
-                                  EEPROM_FIRST_WRITE_MARK)) {
-            EEPROM.write(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
-        }
-
-        for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
-            EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
-        }
+  if (metadata) {
+    if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK)) {
+      EEPROM.write(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
     }
+
+    for (uint16_t i = 0; i < MAX_NODE_METADATA_LENGTH; i++) {
+      EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
+    }
+  }
 }
 
 void presentNodeMetadata() {
-    // load node metadata based on attached sensors count + the node name
-    loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
+  // load node metadata based on attached sensors count + the node name
+  loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
-    sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
-    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
+  sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
+  wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
 
-    for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-		present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
-		wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
-	}
+  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+    present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
+    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);// don't send next data too fast
+  }
 }
 
 uint8_t getHeaterState() {
-    return digitalRead(HEATER_CONTROL_RELAY_PIN);
+  return digitalRead(HEATER_CONTROL_RELAY_PIN);
 }
 
 void setHeaterState(uint8_t newState) {
-    digitalWrite(HEATER_CONTROL_RELAY_PIN, newState);
+  digitalWrite(HEATER_CONTROL_RELAY_PIN, newState);
 
-    #ifdef WANT_HEATER_ACTIVITY_LED
-    // signal heater state using a LED
-    digitalWrite(HEATER_ON_LED_PIN, (newState == HEATER_ON));
-    #endif
+#ifdef WANT_HEATER_ACTIVITY_LED
+  // signal heater state using a LED
+  digitalWrite(HEATER_ON_LED_PIN, (newState == HEATER_ON));
+#endif
 
-    #ifdef WANT_RELAY_SAFETY
-    if(newState == HEATER_OFF) {
-        relaySafetyCounter = 0;
-    }
-    #endif
+#ifdef WANT_RELAY_SAFETY
+  if(newState == HEATER_OFF) {
+    relaySafetyCounter = 0;
+  }
+#endif
 }
 
 #ifdef HAS_NODE_ID_SET_SWITCH
 uint8_t readNodeIdSwitch() {
-    uint8_t nodeId = 0;
+  uint8_t nodeId = 0;
 
-    for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
-        pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
-        nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
-    }
+  for (uint8_t i = 0; i < sizeof(NODE_ID_SWITCH_PINS); i++) {
+    pinMode(NODE_ID_SWITCH_PINS[i], INPUT_PULLUP);
+    nodeId |= !digitalRead(NODE_ID_SWITCH_PINS[i]) << i;
+  }
 
-    return nodeId;
+  return nodeId;
 }
 #endif
 
 void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
-    MyMessage sensorDataMsg(sensorId, dataType);
+  MyMessage sensorDataMsg(sensorId, dataType);
 
-    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random sleep interval between retries for collisions
-        wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
-            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
+  for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
+        (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
+    // random sleep interval between retries for collisions
+    wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+      SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
-}
+  }
 
 // called by mysensors to set node id internally
 // this is useful to set node id at runtime and
@@ -251,136 +248,138 @@ uint8_t setNodeId() {
 
 // called automatically by mysensors core for doing node presentation
 void presentation() {
-    presentNodeMetadata();
+  presentNodeMetadata();
 }
 
 // called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
-    switch (message.type) {
-        case V_VAR1:
-            if (message.getCommand() == C_SET) {
-                char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-                loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+  switch (message.type) {
+    case V_VAR1:
+      if (message.getCommand() == C_SET) {
+        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
 
-                // save new node metadata only when they differ
-                if (strncmp(message.getString(), rawNodeMetadata,
-                            MAX_NODE_METADATA_LENGTH) != 0) {
-                    char recvMetadata[MAX_NODE_METADATA_LENGTH];
-                    memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-                    strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-                    saveNodeEepromMetadata(recvMetadata);
-                }
-                presentNodeMetadata();
-            }
-            break;
+        // save new node metadata only when they differ
+        if (strncmp(message.getString(), rawNodeMetadata,
+        MAX_NODE_METADATA_LENGTH) != 0) {
+          char recvMetadata[MAX_NODE_METADATA_LENGTH];
+          memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+          strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+          saveNodeEepromMetadata(recvMetadata);
+        }
+        presentNodeMetadata();
+      }
+      break;
+    #ifdef WANT_RELAY_SAFETY
+    case V_VAR2:
+      if((getHeaterState() == HEATER_ON) &&
+      (message.getCommand() == C_SET) &&
+      (strcasecmp_P(message.getString(), PSTR("reset")) == 0)) {
+        relaySafetyCounter = 0;
+      }
+      break;
+    #endif
+    case V_STATUS:
+      // V_STATUS message type for heater set operations only
+      if (message.getCommand() == C_SET) {
+        uint8_t newState = 0;
+        sscanf(message.getString(), "%hhu", &newState);
+        setHeaterState(newState);
+        sendHeaterActuatorState = true;
+      }
+
+      // V_STATUS message type for heater get operations only
+      if(message.getCommand() == C_REQ) {
+        sendHeaterActuatorState = true;
+
         #ifdef WANT_RELAY_SAFETY
-        case V_VAR2:
-            if((getHeaterState() == HEATER_ON) &&
-                    (message.getCommand() == C_SET) &&
-                    (strcasecmp_P(message.getString(), PSTR("reset")) == 0)) {
-                relaySafetyCounter = 0;
-            }
-            break;
+        relaySafetyCounter = 0;
         #endif
-        case V_STATUS:
-            // V_STATUS message type for heater set operations only
-            if (message.getCommand() == C_SET) {
-                uint8_t newState = 0;
-                sscanf(message.getString(), "%hhu", &newState);
-                setHeaterState(newState);
-                sendHeaterActuatorState = true;
-            }
-
-            // V_STATUS message type for heater get operations only
-            if(message.getCommand() == C_REQ) {
-                sendHeaterActuatorState = true;
-
-                #ifdef WANT_RELAY_SAFETY
-                relaySafetyCounter = 0;
-                #endif
-            }
-            break;
-        default:;
-    }
+      }
+      break;
+    default:;
+  }
 }
 
 void before() {
-    wdt_disable();
-    wdt_enable(WDTO_8S);
+  wdt_disable();
+  wdt_enable(WDTO_8S);
+
+  pinMode(HEATER_CONTROL_RELAY_PIN, OUTPUT);
+
+#ifdef WANT_HEATER_ACTIVITY_LED
+  pinMode(HEATER_ON_LED_PIN, OUTPUT);
+#endif
+
+  // make sure the relay is off when starting up
+  setHeaterState(HEATER_OFF);
+
+#ifdef WANT_RELAY_SAFETY
+  relaySafetyCounter = 0;
+#endif
 }
 
 void setup() {
-    pinMode(HEATER_CONTROL_RELAY_PIN, OUTPUT);
 
-    #ifdef WANT_HEATER_ACTIVITY_LED
-    pinMode(HEATER_ON_LED_PIN, OUTPUT);
-    #endif
-
-    // make sure the relay is off when starting up
-    setHeaterState(HEATER_OFF);
-
-#ifdef WANT_RELAY_SAFETY
-    relaySafetyCounter = 0;
-#endif
 }
 
 void loop()  {
-    wdt_reset();
+  wdt_reset();
 
-    static bool firstInit = false;
-    if(!firstInit) {
-        sendHeartbeat();
-        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
-        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
-        sendHeaterActuatorState = true;
-        firstInit = true;
+  static bool firstInit = false;
+  if(!firstInit) {
+    sendHeartbeat();
+    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+    sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+    wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+    sendHeaterActuatorState = true;
+    firstInit = true;
+  }
+
+  #ifdef WANT_RELAY_SAFETY
+  static uint32_t lastRelaySafetyCheckTimestamp;
+  // start heater safety counter when turning on
+  if ((getHeaterState() == HEATER_ON) &&
+  ((hwMillis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
+    if (++relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
+      // for safety turn off the heater if the controller doesn't reset the relay safety timer
+      //  this is needed in case something bad happens and the controller looses control over this node
+      //     so we need to shutdown the heater automatically
+      setHeaterState(HEATER_OFF);
     }
+    lastRelaySafetyCheckTimestamp = hwMillis();
+  }
+  #endif
 
-#ifdef WANT_RELAY_SAFETY
-    static uint32_t lastRelaySafetyCheckTimestamp;
-    // start heater safety counter when turning on
-    if ((getHeaterState() == HEATER_ON) &&
-            ((hwMillis() - lastRelaySafetyCheckTimestamp) >= HEATER_RELAY_SAFETY_CHECK_INTERVAL_MS)) {
-        if (++relaySafetyCounter >= HEATER_RELAY_SAFETY_MAX_COUNTER) {
-            // for safety turn off the heater if the controller doesn't reset the relay safety timer
-            //  this is needed in case something bad happens and the controller looses control over this node
-            //     so we need to shutdown the heater automatically
-            setHeaterState(HEATER_OFF);
-        }
-        lastRelaySafetyCheckTimestamp = hwMillis();
-    }
-#endif
+  static uint32_t lastHeaterStateReportTimestamp;
+  if(hwMillis() - lastHeaterStateReportTimestamp >= HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS) {
+    sendHeaterActuatorState = true;
+    lastHeaterStateReportTimestamp = hwMillis();
+  }
 
-    static uint32_t lastHeaterStateReportTimestamp;
-    if(hwMillis() - lastHeaterStateReportTimestamp >= HEATER_ACTUATOR_STATE_SEND_INTERVAL_MS) {
-        sendHeaterActuatorState = true;
-        lastHeaterStateReportTimestamp = hwMillis();
-    }
+  // static uint32_t lastHeartbeatReportTimestamp;
+  // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
+  //     sendHeartbeat();
+  //     lastHeartbeatReportTimestamp = hwMillis();
+  // }
 
-    // static uint32_t lastHeartbeatReportTimestamp;
-    // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
-    //     sendHeartbeat();
-    //     lastHeartbeatReportTimestamp = hwMillis();
-    // }
+  // send power supply voltage level
+  static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
+  if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
+    sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+    lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
+  }
 
-    // send power supply voltage level
-    static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-    if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
-        sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
-        lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
-    }
+  if (sendHeaterActuatorState) {
+    // send new state back to controller
+    sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
+    sendHeaterActuatorState = false;
+  }
 
-    if (sendHeaterActuatorState) {
-        // send new state back to controller
-        sendData(HEATER_CONTROL_RELAY_SENSOR_ID, getHeaterState(), V_STATUS);
-        sendHeaterActuatorState = false;
-    }
-
-    // send presentation on a regular interval too
-    // static uint32_t lastPresentationTimestamp = 0;
-    // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
-    //     presentNodeMetadata();
-    //     lastPresentationTimestamp = hwMillis();
-    // }
+  // send presentation on a regular interval too
+  // static uint32_t lastPresentationTimestamp = 0;
+  // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
+  //     presentNodeMetadata();
+  //     lastPresentationTimestamp = hwMillis();
+  // }
 }

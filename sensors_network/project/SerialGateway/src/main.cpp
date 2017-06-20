@@ -91,8 +91,8 @@
 #include <avr/wdt.h>
 
 void before() {
-    wdt_disable();
-    wdt_enable(WDTO_8S);
+  wdt_disable();
+  wdt_enable(WDTO_8S);
 }
 
 void setup() {
@@ -104,6 +104,6 @@ void presentation() {
 }
 
 void loop() {
-    wdt_reset();
+  wdt_reset();
 // Send locally attached sensor data here
 }
