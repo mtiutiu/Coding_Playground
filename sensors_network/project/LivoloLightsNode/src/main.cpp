@@ -80,7 +80,7 @@ const uint8_t NODE_SENSORS_COUNT = 2;
 const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 180000; //3min status updates
 
 const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 5;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
 
 #define OFF 0
@@ -93,7 +93,7 @@ const uint8_t RELAY_CH_PINS[][2] = {
   #ifdef MY_RADIO_NRF5_ESB
   {26, 27} // channel 1 relay control pins(bistable relay - 2 coils)
   #else
-  {A5, A4} // channel 1 relay control pins(bistable relay - 2 coils)
+  {A4, A5} // channel 1 relay control pins(bistable relay - 2 coils)
   #endif
 #elif defined (LIVOLO_TWO_CHANNEL)
   #ifdef MY_RADIO_NRF5_ESB
@@ -144,7 +144,7 @@ const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
 
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
 const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
-const uint16_t SUPPY_VOLTAGE_MV = 3200;
+const uint16_t SUPPY_VOLTAGE_MV = 3000;
 // -----------------------------------------------------------------------------------------------------------
 
 uint8_t getSupplyVoltagePercentage() {
@@ -160,8 +160,14 @@ void presentNodeMetadata() {
 }
 
 void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
-  MyMessage sensorDataMsg(sensorId, dataType);
-  send(sensorDataMsg.set(sensorData));
+    MyMessage sensorDataMsg(sensorId, dataType);
+
+    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
+         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
+        // random wait interval between retries for collisions
+        wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
+    }
 }
 
 uint8_t getChannelState(uint8_t index) {
@@ -241,7 +247,7 @@ void receive(const MyMessage &message) {
     if (message.getCommand() == C_SET) {
       // maybe perform some received data validation here ???
       setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-      wait(10); // don't send reply so fast - got some strange issues because of this
+      wait(5); // don't send reply so fast - got some strange issues because of this
       sendData(message.sensor, message.getBool(), V_STATUS);
     }
 
@@ -256,6 +262,8 @@ void receive(const MyMessage &message) {
 }
 
 void before() {
+  wdt_enable(WDTO_8S);
+
   // set required mcu pins for reading touch sensors state
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
@@ -284,6 +292,8 @@ void setup() {
 }
 
 void loop()  {
+  wdt_reset();
+
   static bool firstInit = false;
   if(!firstInit) {
     sendHeartbeat();
