@@ -167,9 +167,11 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
          (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
         // random wait interval between retries for collisions
-        wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+        delay(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
             SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
+
+    //send(sensorDataMsg.set(sensorData));
 }
 
 uint8_t getChannelState(uint8_t index) {
@@ -179,13 +181,13 @@ uint8_t getChannelState(uint8_t index) {
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
   if(newState == ON) {
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-    wait(RELAY_PULSE_DELAY_MS);
+    delay(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
     channelState[channel] = ON;
     TURN_RED_LED_ON(channel);
   } else {
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-    wait(RELAY_PULSE_DELAY_MS);
+    delay(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
     channelState[channel] = OFF;
     TURN_BLUE_LED_ON(channel);
@@ -249,7 +251,6 @@ void receive(const MyMessage &message) {
     if (message.getCommand() == C_SET) {
       // maybe perform some received data validation here ???
       setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-      wait(5); // don't send reply so fast - got some strange issues because of this
       sendData(message.sensor, message.getBool(), V_STATUS);
     }
 
@@ -283,7 +284,7 @@ void before() {
       hwPinMode(RELAY_CH_PINS[i][j], OUTPUT);
       // make sure touch switch relays start in OFF state
       hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
-      //wait(RELAY_PULSE_DELAY_MS);
+      delay(RELAY_PULSE_DELAY_MS);
       hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
     }
   }
