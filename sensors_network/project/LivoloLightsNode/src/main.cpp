@@ -53,6 +53,10 @@
 
 const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 300;
 
+const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
+const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
+const uint8_t TOUCH_SENSE_SENSITIVITY_MEMORY_SAVE_LOCATION_ID = 0;
+
 #if defined (LIVOLO_ONE_CHANNEL)
 #ifdef MY_RADIO_NRF5_ESB
 const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {8};
@@ -146,7 +150,7 @@ const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
 
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
 const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
-const uint16_t SUPPY_VOLTAGE_MV = 3000;
+const uint16_t SUPPY_VOLTAGE_MV = 3300;
 // -----------------------------------------------------------------------------------------------------------
 
 uint8_t getSupplyVoltagePercentage() {
@@ -158,6 +162,7 @@ void presentNodeMetadata() {
 
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     present(i + 1, ATTACHED_SENSOR_TYPES[i]);
+    wait(10);
   }
 }
 
@@ -167,7 +172,7 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
          (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
         // random wait interval between retries for collisions
-        delay(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+        wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
             SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
 
@@ -181,13 +186,13 @@ uint8_t getChannelState(uint8_t index) {
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
   if(newState == ON) {
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-    delay(RELAY_PULSE_DELAY_MS);
+    wait(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
     channelState[channel] = ON;
     TURN_RED_LED_ON(channel);
   } else {
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-    delay(RELAY_PULSE_DELAY_MS);
+    wait(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
     channelState[channel] = OFF;
     TURN_BLUE_LED_ON(channel);
@@ -197,6 +202,7 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
 void sendLightsState() {
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     sendData(i + 1, getChannelState(i), V_STATUS);
+    wait(10);
   }
 }
 
@@ -231,6 +237,7 @@ void checkTouchSensor() {
         channelState[i] = !channelState[i];
         setChannelRelaySwitchState(i, channelState[i]);
         sendData(i + 1, channelState[i], V_STATUS);
+        wait(10);
       }
       // latch in RELEASED state
       touchSensorState[i] = RELEASED;
@@ -247,25 +254,29 @@ void presentation() {
 void receive(const MyMessage &message) {
   switch (message.type) {
     case V_STATUS:
-    // V_STATUS message type for light switch set operations only
-    if (message.getCommand() == C_SET) {
-      // maybe perform some received data validation here ???
-      setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-      sendData(message.sensor, message.getBool(), V_STATUS);
-    }
+      // V_STATUS message type for light switch set operations only
+      if (message.getCommand() == C_SET) {
+        // maybe perform some received data validation here ???
+        setChannelRelaySwitchState((message.sensor - 1), message.getBool());
+        wait(10);
+        sendData(message.sensor, message.getBool(), V_STATUS);
+      }
 
-    // V_STATUS message type for light switch get operations only
-    if(message.getCommand() == C_REQ) {
-      // maybe perform some received data validation here ???
-      sendData(message.sensor, getChannelState(message.sensor - 1), V_STATUS);
-    }
-    break;
+      // V_STATUS message type for light switch get operations only
+      if(message.getCommand() == C_REQ) {
+        // maybe perform some received data validation here ???
+        sendData(message.sensor, getChannelState(message.sensor - 1), V_STATUS);
+      }
+      break;
     default:;
   }
 }
 
 void before() {
   wdt_enable(WDTO_8S);
+
+  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 24);
+  hwDigitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
 
   // set required mcu pins for reading touch sensors state
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
@@ -300,7 +311,9 @@ void loop()  {
   static bool firstInit = false;
   if(!firstInit) {
     sendHeartbeat();
+    wait(10);
     sendBatteryLevel(getSupplyVoltagePercentage());
+    wait(10);
     sendLightsState();
     firstInit = true;
   }
