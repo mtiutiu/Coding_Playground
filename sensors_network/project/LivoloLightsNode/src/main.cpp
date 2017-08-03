@@ -162,7 +162,7 @@ void presentNodeMetadata() {
 
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     present(i + 1, ATTACHED_SENSOR_TYPES[i]);
-    wait(10);
+    wait(5);
   }
 }
 
@@ -202,7 +202,7 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
 void sendLightsState() {
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     sendData(i + 1, getChannelState(i), V_STATUS);
-    wait(10);
+    wait(5);
   }
 }
 
@@ -237,7 +237,7 @@ void checkTouchSensor() {
         channelState[i] = !channelState[i];
         setChannelRelaySwitchState(i, channelState[i]);
         sendData(i + 1, channelState[i], V_STATUS);
-        wait(10);
+        wait(5);
       }
       // latch in RELEASED state
       touchSensorState[i] = RELEASED;
@@ -258,7 +258,7 @@ void receive(const MyMessage &message) {
       if (message.getCommand() == C_SET) {
         // maybe perform some received data validation here ???
         setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-        wait(10);
+        wait(5);
         sendData(message.sensor, message.getBool(), V_STATUS);
       }
 
@@ -275,7 +275,7 @@ void receive(const MyMessage &message) {
 void before() {
   wdt_enable(WDTO_8S);
 
-  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 24);
+  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 88);
   hwDigitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
 
   // set required mcu pins for reading touch sensors state
@@ -311,9 +311,9 @@ void loop()  {
   static bool firstInit = false;
   if(!firstInit) {
     sendHeartbeat();
-    wait(10);
+    wait(5);
     sendBatteryLevel(getSupplyVoltagePercentage());
-    wait(10);
+    wait(5);
     sendLightsState();
     firstInit = true;
   }
