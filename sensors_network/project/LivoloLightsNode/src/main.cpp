@@ -30,7 +30,7 @@
 #define MY_RF24_PA_LEVEL  RF24_PA_MAX
 #endif
 
-#define MY_NODE_ID 247  // this needs to be set explicitly
+#define MY_NODE_ID 100  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
@@ -103,8 +103,8 @@ const uint8_t RELAY_CH_PINS[][2] = {
   #endif
 #elif defined (LIVOLO_TWO_CHANNEL)
   #ifdef MY_RADIO_NRF5_ESB
-  {26, 27}, // channel 1 relay control pins(bistable relay - 2 coils)
-  {28, 29} // channel 2 relay control pins(bistable relay - 2 coils)
+  {28, 29}, // channel 1 relay control pins(bistable relay - 2 coils)
+  {26, 27} // channel 2 relay control pins(bistable relay - 2 coils)
   #else
   {A4, A5}, // channel 1 relay control pins(bistable relay - 2 coils)
   {0, 1} // channel 2 relay control pins(bistable relay - 2 coils)
