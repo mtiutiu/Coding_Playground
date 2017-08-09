@@ -156,7 +156,7 @@ void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
 }
 
 void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-  memset(nodeInfo, ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH), '\0');
+  memset(nodeInfo, '\0', ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH));
 
   if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
     EEPROM_FIRST_WRITE_MARK) ||
