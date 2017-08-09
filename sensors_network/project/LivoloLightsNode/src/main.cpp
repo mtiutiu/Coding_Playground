@@ -30,6 +30,10 @@
 #define MY_RF24_PA_LEVEL  RF24_PA_MAX
 #endif
 
+#ifdef MY_RADIO_NRF5_ESB
+#define MY_NRF5_ESB_PA_LEVEL NRF5_PA_MAX
+#endif
+
 #define MY_NODE_ID 100  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
@@ -153,16 +157,92 @@ const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 
 const uint16_t SUPPY_VOLTAGE_MV = 3300;
 // -----------------------------------------------------------------------------------------------------------
 
+// --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
+// eeprom start address index for our custom data saving
+// mysensors api uses eeprom addresses including 512 so we pick 514 for safety
+uint16_t EEPROM_CUSTOM_START_INDEX = 514;
+uint16_t EEPROM_CUSTOM_METADATA_INDEX = (EEPROM_CUSTOM_START_INDEX + 1);
+// flag for checking if eeprom was read/written for the first time or not
+const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
+#define MAX_NODE_PAYLOAD_LENGTH 25
+// storing the string terminating character also
+#define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
+#define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
+
+char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
+// -------------------------------------------------------------------------------------------------------------
+
+bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
+  return (hwReadConfig(index) != mark);
+}
+
+void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+  if (!metadata || !nodeInfo) {
+    return;
+  }
+
+  for (uint8_t i = 0; i < maxFields; i++) {
+    if (i == 0) {
+      strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
+      continue;
+    }
+    strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
+  }
+}
+
+void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+  char metadata[MAX_NODE_METADATA_LENGTH];
+  memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
+  strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
+
+  parseNodeMetadata(metadata, nodeInfo, maxFields);
+}
+
+void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
+  memset(destBuffer, '\0', len);
+  hwReadConfigBlock(destBuffer, &EEPROM_CUSTOM_METADATA_INDEX, len);
+}
+
+void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
+  memset(nodeInfo, '\0', ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH));
+
+  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
+    EEPROM_FIRST_WRITE_MARK) ||
+    !nodeInfo) {
+      loadNodeDefaultMetadata(nodeInfo, maxFields);
+      return;
+    }
+
+    char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+    loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+
+    parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
+  }
+
+void saveNodeEepromMetadata(char *metadata) {
+  if (metadata) {
+    if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK)) {
+      hwWriteConfig(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
+    }
+
+    hwWriteConfigBlock(metadata, &EEPROM_CUSTOM_METADATA_INDEX, MAX_NODE_METADATA_LENGTH);
+  }
+}
+
 uint8_t getSupplyVoltagePercentage() {
   return (hwCPUVoltage() * 100) / SUPPY_VOLTAGE_MV;
 }
 
 void presentNodeMetadata() {
-  sendSketchInfo("Livolo", MY_SENSOR_NODE_SKETCH_VERSION);
+  // load node metadata based on attached sensors count + the node name
+  loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
+
+  sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
+  wait(5);    // don't send next data too fast
 
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    present(i + 1, ATTACHED_SENSOR_TYPES[i]);
-    wait(5);
+    present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
+    wait(5);// don't send next data too fast
   }
 }
 
@@ -253,6 +333,22 @@ void presentation() {
 // called automatically by mysensors core for incomming messages
 void receive(const MyMessage &message) {
   switch (message.type) {
+    case V_VAR1:
+      if (message.getCommand() == C_SET) {
+        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
+        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
+
+        // save new node metadata only when they differ
+        if (strncmp(message.getString(), rawNodeMetadata,
+              MAX_NODE_METADATA_LENGTH) != 0) {
+          char recvMetadata[MAX_NODE_METADATA_LENGTH];
+          memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
+          strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
+          saveNodeEepromMetadata(recvMetadata);
+        }
+        presentNodeMetadata();
+      }
+      break;
     case V_STATUS:
       // V_STATUS message type for light switch set operations only
       if (message.getCommand() == C_SET) {
