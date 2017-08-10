@@ -16,7 +16,7 @@
 
 #define MY_RFM69_FREQUENCY RFM69_868MHZ
 
-#define MY_NODE_ID 253  // this needs to be set explicitly
+#define MY_NODE_ID 200  // this needs to be set explicitly
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
@@ -30,6 +30,7 @@
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
 
 #define MY_OTA_FIRMWARE_FEATURE // need OTA
+#define MY_OTA_FLASH_SS   4
 
 // Flash leds on rx/tx/err
 //#define MY_DEFAULT_ERR_LED_PIN 4
@@ -60,9 +61,9 @@ const uint8_t NODE_SENSORS_COUNT = 1;
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 100;
 
 //const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
-const uint8_t SENSOR_DATA_SEND_RETRIES = 3;
+const uint8_t SENSOR_DATA_SEND_RETRIES = 5;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 10;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 50;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 30;
 
 const uint8_t RGB_SENSOR_ID = 1;
 //const uint8_t BRIGHTNESS_SENSOR_ID = 2;
@@ -106,9 +107,9 @@ const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
 const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
 const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
 
-const uint16_t LED_COUNT = 144;
+const uint16_t LED_COUNT = 300;
 const uint16_t LED_PXL_BUFF_SIZE = LED_COUNT * 3;
-const uint8_t DATA_PIN = A0;
+const uint8_t DATA_PIN = 3;
 
 #include <WS2812FX.h>
 
@@ -136,13 +137,7 @@ WS2812FX ws2812fx = WS2812FX(LED_COUNT, DATA_PIN, NEO_GRB + NEO_KHZ800, pix_buff
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
 const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
 
-#include <Vcc.h>
-
-const float VccMin        = 0;  // Minimum expected Vcc level, in Volts
-const float VccMax        = 5.0;  // Maximum expected Vcc level, in Volts
-const float VccCorrection = 1.0;  // Measured Vcc by multimeter divided by reported Vcc
-
-Vcc vcc(VccCorrection);
+const uint16_t SUPPY_VOLTAGE_MV = 5000;
 // -----------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -217,6 +212,10 @@ void saveNodeEepromMetadata(const char *metadata) {
       EEPROM.update((EEPROM_CUSTOM_METADATA_INDEX + i), metadata[i]);
     }
   }
+}
+
+uint8_t getSupplyVoltagePercentage() {
+  return constrain(((hwCPUVoltage() * 100) / SUPPY_VOLTAGE_MV), 0, 100);
 }
 
 void presentNodeMetadata() {
@@ -479,7 +478,7 @@ void loop()  {
     sendHeartbeat();
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
-    sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+    sendBatteryLevel(getSupplyVoltagePercentage());
     wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
     sendLedStripSettings();
@@ -499,7 +498,7 @@ void loop()  {
   // send power supply voltage level
   static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
   if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
-    sendBatteryLevel(vcc.Read_Perc(VccMin, VccMax));
+    sendBatteryLevel(getSupplyVoltagePercentage());
     lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
   }
 
