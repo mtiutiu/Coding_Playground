@@ -379,6 +379,9 @@ void before() {
     hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
   }
 
+  // wait a little bit before turning off relays
+  delay(2000);
+
   // lit BLUE leds when starting up
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     hwPinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
