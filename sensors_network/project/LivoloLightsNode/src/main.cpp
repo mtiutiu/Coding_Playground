@@ -230,7 +230,7 @@ void saveNodeEepromMetadata(char *metadata) {
 }
 
 uint8_t getSupplyVoltagePercentage() {
-  return (hwCPUVoltage() * 100) / SUPPY_VOLTAGE_MV;
+  return constrain(((hwCPUVoltage() * 100) / SUPPY_VOLTAGE_MV), 0, 100);
 }
 
 void presentNodeMetadata() {
