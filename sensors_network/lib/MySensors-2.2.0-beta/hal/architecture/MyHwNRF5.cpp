@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -196,6 +196,9 @@ void hwSleepPrepare(unsigned long ms)
 	// Enable low power sleep mode
 	NRF_POWER->TASKS_LOWPWR = 1;
 
+	// Reset RTC trigger flag
+	nrf5_rtc_event_triggered = false;
+
 	if (ms > 0) {
 		// Configure RTC
 #ifdef NRF51
@@ -204,16 +207,25 @@ void hwSleepPrepare(unsigned long ms)
 		// Reset RTC
 		MY_HW_RTC->TASKS_CLEAR = 1;
 
-		// Calculate sleep time
-		// 8 Hz -> max 582.542 hours sleep.
-		MY_HW_RTC->PRESCALER = 4095;
-		// Set compare register to 1/125ms + 2 to garantee event triggering
-		MY_HW_RTC->CC[0] = (ms / 125) + 2;
+		// Calculate sleep time and prescaler
+		if (ms<512000) {
+			// prescaler 0, 30.517 μs resolution -> max 512 s sleep
+			MY_HW_RTC->PRESCALER =  0;
+			// Set compare register to 1/30.517 µs to garantee event triggering
+			// A minimum of 2 ticks must be guaranteed
+			// (1000/32768)<<12 == 125
+			MY_HW_RTC->CC[0] = max(((ms << 12) / 125), 2);
+		} else {
+			// 8 Hz -> max 582.542 hours sleep.
+			MY_HW_RTC->PRESCALER = 4095;
+			// Set compare register to 1/125ms
+			// A minimum of 2 ticks must be guaranteed
+			MY_HW_RTC->CC[0] = max((ms / 125), 2);
+		}
 
 		MY_HW_RTC->INTENSET = RTC_INTENSET_COMPARE0_Msk;
 		MY_HW_RTC->EVTENSET = RTC_EVTENSET_COMPARE0_Msk;
 		MY_HW_RTC->EVENTS_COMPARE[0] = 0;
-		nrf5_rtc_event_triggered = false;
 		MY_HW_RTC->TASKS_START = 1;
 		NVIC_SetPriority(MY_HW_RTC_IRQN, 15);
 		NVIC_ClearPendingIRQ(MY_HW_RTC_IRQN);
@@ -311,8 +323,6 @@ int8_t hwSleep(uint8_t interrupt1, uint8_t mode1, uint8_t interrupt2,
 	// and sleep might cause the MCU to not wakeup from sleep as interrupt has
 	// already be handled!
 	MY_CRITICAL_SECTION {
-		// Fix cppcheck "(style) Variable '__savePriMask' is assigned a value that is never used."
-		//(void)__savePriMask;
 		// attach interrupts
 		_wakeUp1Interrupt = interrupt1;
 		_wakeUp2Interrupt = interrupt2;
@@ -472,10 +482,11 @@ uint16_t hwFreeMem()
 
 void hwDebugPrint(const char *fmt, ...)
 {
+#ifndef MY_DISABLED_SERIAL
 	char fmtBuffer[MY_SERIAL_OUTPUT_SIZE];
-#ifdef MY_GATEWAY_FEATURE
+#ifdef MY_GATEWAY_SERIAL
 	// prepend debug message to be handled correctly by controller (C_INTERNAL, I_LOG_MESSAGE)
-	snprintf(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%d;0;%d;%lu "),
+	snprintf(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%" PRIu8 ";0;%" PRIu8 ";%" PRIu32 " "),
 	         C_INTERNAL, I_LOG_MESSAGE, hwMillis());
 	MY_SERIALDEVICE.print(fmtBuffer);
 #else
@@ -485,15 +496,16 @@ void hwDebugPrint(const char *fmt, ...)
 #endif
 	va_list args;
 	va_start (args, fmt );
-#ifdef MY_GATEWAY_FEATURE
-	// Truncate message if this is gateway node
 	vsnprintf(fmtBuffer, sizeof(fmtBuffer), fmt, args);
+#ifdef MY_GATEWAY_SERIAL
+	// Truncate message if this is gateway node
 	fmtBuffer[sizeof(fmtBuffer) - 2] = '\n';
 	fmtBuffer[sizeof(fmtBuffer) - 1] = '\0';
-#else
-	vsnprintf(fmtBuffer, sizeof(fmtBuffer), fmt, args);
 #endif
 	va_end (args);
 	MY_SERIALDEVICE.print(fmtBuffer);
 	MY_SERIALDEVICE.flush();
+#else
+	(void)fmt;
+#endif
 }

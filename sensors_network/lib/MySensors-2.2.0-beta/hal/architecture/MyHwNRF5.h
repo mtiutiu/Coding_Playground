@@ -63,7 +63,7 @@ void hwWriteConfig(int adr, uint8_t value);
 uint8_t hwReadConfig(int adr);
 void hwRandomNumberInit();
 ssize_t hwGetentropy(void *__buffer, size_t __length);
-#define MY_HW_HAS_GETRANDOM
+#define MY_HW_HAS_GETENTROPY
 
 #ifndef MY_SERIALDEVICE
 #define MY_SERIALDEVICE Serial
@@ -129,14 +129,14 @@ typedef struct {
 	uint8_t ciphertext[16];
 } nrf_ecb_t;
 
-#ifndef DOXYGEN
-#define MY_CRITICAL_SECTION
-// temp. commented, to fix "CircularBuffer.h:94:2: warning: control reaches end of non-void function" error
-#define __MY_CRITICAL_SECTION                                                    \
+#if !defined(DOXYGEN) && !defined(CPPCHECK)
+#define MY_CRITICAL_SECTION                                                    \
 	for (uint32_t __savePriMask                                                  \
 	        __attribute__((__cleanup__(__priMaskRestore))) = __get_PRIMASK(),       \
 	        __ToDo = __disableIntsRetVal();                                         \
 	        __ToDo; __ToDo = 0)
-#endif /* DOXYGEN */
+#else
+#define MY_CRITICAL_SECTION
+#endif /* DOXYGEN || CPPCHECK */
 
 #endif // #ifdef ARDUINO_ARCH_NRF5

@@ -65,7 +65,9 @@
 
 // Enable and select radio type attached
 #define MY_RADIO_NRF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <math.h>       // Conversion equation from resistance to %
 #include <MySensors.h>
@@ -75,7 +77,7 @@
 #define CHILD_ID 0
 
 MyMessage msg(CHILD_ID, V_LEVEL);
-unsigned long SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
+uint32_t SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
 
 long buffer[NUM_READS];
 int idx;

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -26,6 +26,8 @@
 #ifndef MyHw_h
 #define MyHw_h
 
+#define MY_HWID_PADDING_BYTE	(0xAAu)
+
 // Implement these as functions or macros
 /*
 #define hwInit() MY_SERIALDEVICE.begin(BAUD_RATE)
@@ -44,12 +46,12 @@ uint8_t hwReadConfig(int adr);
 */
 
 /**
- * @def MY_HW_HAS_GETRANDOM
+ * @def MY_HW_HAS_GETENTROPY
  * @brief Define this, if hwGetentropy is implemented
  *
  * ssize_t hwGetentropy(void *__buffer, size_t __length);
  */
-//#define MY_HW_HAS_GETRANDOM
+//#define MY_HW_HAS_GETENTROPY
 
 /// @brief unique ID
 typedef uint8_t unique_id_t[16];
@@ -83,7 +85,7 @@ int8_t hwSleep(uint8_t interrupt1, uint8_t mode1, uint8_t interrupt2, uint8_t mo
                unsigned long ms);
 
 /**
-* Retrieve unique ID
+* Retrieve unique hardware ID
 * @param uniqueID unique ID
 * @return True if unique ID successfully retrieved
 */
@@ -141,7 +143,7 @@ void hwDebugPrint(const char *fmt, ... );
  */
 #ifdef DOXYGEN
 #define MY_CRITICAL_SECTION
-#define MY_HW_HAS_GETRANDOM
+#define MY_HW_HAS_GETENTROPY
 #endif  /* DOXYGEN */
 
 #endif // #ifdef MyHw_h

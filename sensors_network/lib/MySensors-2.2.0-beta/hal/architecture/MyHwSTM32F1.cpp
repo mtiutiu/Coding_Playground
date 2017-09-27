@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -169,11 +169,12 @@ uint16_t hwFreeMem()
 
 void hwDebugPrint(const char *fmt, ...)
 {
+#ifndef MY_DISABLED_SERIAL
 	char fmtBuffer[MY_SERIAL_OUTPUT_SIZE];
-#ifdef MY_GATEWAY_FEATURE
+#ifdef MY_GATEWAY_SERIAL
 	// prepend debug message to be handled correctly by controller (C_INTERNAL, I_LOG_MESSAGE)
-	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%d;0;%d;%lu "), C_INTERNAL, I_LOG_MESSAGE,
-	           hwMillis());
+	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%" PRIu8 ";0;%" PRIu8 ";%" PRIu32 " "),
+	           C_INTERNAL, I_LOG_MESSAGE, hwMillis());
 	MY_SERIALDEVICE.print(fmtBuffer);
 #else
 	// prepend timestamp
@@ -182,17 +183,18 @@ void hwDebugPrint(const char *fmt, ...)
 #endif
 	va_list args;
 	va_start(args, fmt);
-#ifdef MY_GATEWAY_FEATURE
-	// Truncate message if this is gateway node
 	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
+#ifdef MY_GATEWAY_SERIAL
+	// Truncate message if this is gateway node
 	fmtBuffer[sizeof(fmtBuffer) - 2] = '\n';
 	fmtBuffer[sizeof(fmtBuffer) - 1] = '\0';
-#else
-	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
 #endif
 	va_end(args);
 	MY_SERIALDEVICE.print(fmtBuffer);
 	// Disable flush since current STM32duino implementation performs a reset
 	// instead of an actual flush
 	//MY_SERIALDEVICE.flush();
+#else
+	(void)fmt;
+#endif
 }

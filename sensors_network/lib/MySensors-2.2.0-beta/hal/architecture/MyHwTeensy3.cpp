@@ -1,4 +1,4 @@
-﻿/**
+/**
 * The MySensors Arduino library handles the wireless radio link and protocol
 * between your home built sensors/actuators and HA controller of choice.
 * The sensors forms a self healing radio network with optional repeaters. Each
@@ -92,7 +92,7 @@ bool hwUniqueID(unique_id_t *uniqueID)
 {
 #if defined(__MKL26Z64__)
 	(void)memcpy((uint8_t*)uniqueID, &SIM_UIDMH, 12);
-	(void)memset((uint8_t*)uniqueID + 12, 0, 4);
+	(void)memset((uint8_t*)uniqueID + 12, MY_HWID_PADDING_BYTE, 4);
 #else
 	(void)memcpy((uint8_t*)uniqueID, &SIM_UIDH, 16);
 #endif
@@ -132,18 +132,33 @@ uint16_t hwFreeMem()
 	return FUNCTION_NOT_SUPPORTED;
 }
 
-void hwRandomNumberInit(void)
+#if defined(MY_HW_HAS_GETENTROPY)
+ssize_t hwGetentropy(void *__buffer, const size_t __length)
 {
-#if defined(__MK64FX512__) || defined(__MK66FX1M0__)
-	// use HW RNG present on Teensy3.5/3.6
-	// init RNG
 	SIM_SCGC6 |= SIM_SCGC6_RNGA; // enable RNG
 	RNG_CR &= ~RNG_CR_SLP_MASK;
-	RNG_CR |= RNG_CR_HA_MASK;  // high assurance
-	// get random number
-	RNG_CR |= RNG_CR_GO_MASK;
-	while (!(RNG_SR & RNG_SR_OREG_LVL(0xF)));
-	const uint32_t seed = RNG_OR;
+	RNG_CR |= RNG_CR_HA_MASK; //high assurance, not needed
+	size_t pos = 0;
+	while (pos < __length) {
+		RNG_CR |= RNG_CR_GO_MASK;
+		while (!(RNG_SR & RNG_SR_OREG_LVL(0xF)));
+		const uint32_t rndVar = RNG_OR;
+		const uint8_t bsize = (__length - pos) > sizeof(rndVar) ? sizeof(rndVar) : (__length - pos);
+		(void)memcpy((uint8_t*)__buffer + pos, &rndVar, bsize);
+		pos += bsize;
+	}
+	SIM_SCGC6 &= ~SIM_SCGC6_RNGA; // disable RNG
+	return pos;
+}
+#endif
+
+void hwRandomNumberInit(void)
+{
+#if defined(MY_HW_HAS_GETENTROPY)
+	// use HW RNG present on Teensy3.5/3.6
+	// init RNG
+	uint32_t seed = 0;
+	hwGetentropy(&seed, sizeof(seed));
 	randomSeed(seed);
 #else
 	randomSeed(analogRead(MY_SIGNING_SOFT_RANDOMSEED_PIN));
@@ -152,10 +167,11 @@ void hwRandomNumberInit(void)
 
 void hwDebugPrint(const char *fmt, ...)
 {
+#ifndef MY_DISABLED_SERIAL
 	char fmtBuffer[MY_SERIAL_OUTPUT_SIZE];
-#ifdef MY_GATEWAY_FEATURE
+#ifdef MY_GATEWAY_SERIAL
 	// prepend debug message to be handled correctly by controller (C_INTERNAL, I_LOG_MESSAGE)
-	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%d;0;%d;%lu "),
+	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%" PRIu8 ";0;%" PRIu8 ";%" PRIu32 " "),
 	           C_INTERNAL, I_LOG_MESSAGE, hwMillis());
 	MY_SERIALDEVICE.print(fmtBuffer);
 #else
@@ -165,14 +181,15 @@ void hwDebugPrint(const char *fmt, ...)
 #endif
 	va_list args;
 	va_start(args, fmt);
-#ifdef MY_GATEWAY_FEATURE
-	// Truncate message if this is gateway node
 	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
+#ifdef MY_GATEWAY_SERIAL
+	// Truncate message if this is gateway node
 	fmtBuffer[sizeof(fmtBuffer) - 2] = '\n';
 	fmtBuffer[sizeof(fmtBuffer) - 1] = '\0';
-#else
-	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
 #endif
 	va_end(args);
 	MY_SERIALDEVICE.print(fmtBuffer);
+#else
+	(void)fmt;
+#endif
 }

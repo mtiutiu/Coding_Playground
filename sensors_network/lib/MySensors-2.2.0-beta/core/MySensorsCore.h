@@ -145,6 +145,10 @@ bool present(const uint8_t sensorId, const uint8_t sensorType, const char *descr
  * @return true Returns true if message reached the first stop on its way to destination.
  */
 bool sendSketchInfo(const char *name, const char *version, const bool ack = false);
+#if !defined(__linux__)
+bool sendSketchInfo(const __FlashStringHelper *name, const __FlashStringHelper *version,
+                    const bool ack = false);
+#endif
 
 /**
 * Sends a message to gateway or one of the other nodes in the radio network
@@ -346,8 +350,15 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep = false,
               const uint8_t interrupt2 = INTERRUPT_NOT_DEFINED, const uint8_t mode2 = MODE_NOT_DEFINED);
 
 
+// **** private functions ********
+
 /**
- * @ingroup MyLockgrp
+ * @defgroup MyLockgrp MyNodeLock
+ * @ingroup internals
+ * @brief API declaration for MyNodeLock
+ * @{
+ */
+/**
  * @brief Lock a node and transmit provided message with 30m intervals
  *
  * This function is called if suspicious activity has exceeded the threshold (see
@@ -362,8 +373,7 @@ void _nodeLock(const char* str);
  * @brief Check node lock status and prevent node execution if locked.
  */
 void _checkNodeLock(void);
-
-// **** private functions ********
+/** @}*/ // Node lock group
 
 /**
 * @brief Node initialisation

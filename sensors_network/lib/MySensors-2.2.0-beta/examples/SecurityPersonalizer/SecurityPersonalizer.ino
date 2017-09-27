@@ -432,8 +432,8 @@ static const uint8_t reset_buffer[32] = {
 void setup()
 {
 	// Delay startup a bit for serial consoles to catch up
-	unsigned long enter = hwMillis();
-	while (hwMillis() - enter < (unsigned long)500);
+	uint32_t enter = hwMillis();
+	while (hwMillis() - enter < (uint32_t)500);
 #ifdef USE_SOFT_SIGNING
 	// initialize pseudo-RNG
 	hwRandomNumberInit();
@@ -527,13 +527,15 @@ static void halt(bool success)
  */
 static bool generate_random_data(uint8_t* data, size_t sz)
 {
-#ifdef USE_SOFT_SIGNING
+#if defined(USE_SOFT_SIGNING) && ! defined(MY_HW_HAS_GETENTROPY)
 	for (size_t i = 0; i < sz; i++) {
 		data[i] = random(256) ^ micros();
-		unsigned long enter = hwMillis();
-		while (hwMillis() - enter < (unsigned long)2);
+		uint32_t enter = hwMillis();
+		while (hwMillis() - enter < (uint32_t)2);
 	}
 	return true;
+#elif defined(USE_SOFT_SIGNING) && defined(MY_HW_HAS_GETENTROPY)
+	hwGetentropy(&data, sz);
 #else
 	ret_code = sha204.sha204m_random(tx_buffer, rx_buffer, RANDOM_SEED_UPDATE);
 	if ((ret_code != SHA204_SUCCESS) || (lockConfig != 0x00)) {

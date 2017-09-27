@@ -18,6 +18,7 @@
  */
 
 #include "MyHwAVR.h"
+#include "avr/boot.h"
 
 bool hwInit(void)
 {
@@ -239,9 +240,18 @@ inline void hwRandomNumberInit()
 
 bool hwUniqueID(unique_id_t* uniqueID)
 {
-	// not implemented yet
-	(void)uniqueID;
-	return false;
+	// padding
+	(void)memset(uniqueID, MY_HWID_PADDING_BYTE, sizeof(unique_id_t));
+	// no unique ID for non-PB AVR, use HW specifics for diversification
+	*((uint8_t*)uniqueID) = boot_signature_byte_get(0x00);
+	*((uint8_t*)uniqueID + 1) = boot_signature_byte_get(0x02);
+	*((uint8_t*)uniqueID + 2) = boot_signature_byte_get(0x04);
+	*((uint8_t*)uniqueID + 3) = boot_signature_byte_get(0x01); //OSCCAL
+	// ATMEGA328PB specifics, has unique ID
+	//for(uint8_t idx = 0; idx < 10; idx++) {
+	//	*((uint8_t*)uniqueID + 4 + idx) = boot_signature_byte_get(0xE + idx);
+	//}
+	return false;	// false, since no unique ID returned
 }
 
 uint16_t hwCPUVoltage()
@@ -303,10 +313,11 @@ uint16_t hwFreeMem()
 
 void hwDebugPrint(const char *fmt, ... )
 {
+#ifndef MY_DISABLED_SERIAL
 	char fmtBuffer[MY_SERIAL_OUTPUT_SIZE];
-#ifdef MY_GATEWAY_FEATURE
+#ifdef MY_GATEWAY_SERIAL
 	// prepend debug message to be handled correctly by controller (C_INTERNAL, I_LOG_MESSAGE)
-	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%d;0;%d;%lu "),
+	snprintf_P(fmtBuffer, sizeof(fmtBuffer), PSTR("0;255;%" PRIu8 ";0;%" PRIu8 ";%" PRIu32 " "),
 	           C_INTERNAL, I_LOG_MESSAGE, hwMillis());
 	MY_SERIALDEVICE.print(fmtBuffer);
 #else
@@ -316,15 +327,16 @@ void hwDebugPrint(const char *fmt, ... )
 #endif
 	va_list args;
 	va_start (args, fmt );
-#ifdef MY_GATEWAY_FEATURE
-	// Truncate message if this is gateway node
 	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
+#ifdef MY_GATEWAY_SERIAL
+	// Truncate message if this is gateway node
 	fmtBuffer[sizeof(fmtBuffer) - 2] = '\n';
 	fmtBuffer[sizeof(fmtBuffer) - 1] = '\0';
-#else
-	vsnprintf_P(fmtBuffer, sizeof(fmtBuffer), fmt, args);
 #endif
 	va_end (args);
 	MY_SERIALDEVICE.print(fmtBuffer);
 	MY_SERIALDEVICE.flush();
+#else
+	(void)fmt;
+#endif
 }

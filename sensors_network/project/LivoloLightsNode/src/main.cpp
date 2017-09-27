@@ -3,18 +3,18 @@
 #include <Arduino.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
-#define LIVOLO_ONE_CHANNEL
-//#define LIVOLO_TWO_CHANNEL
+//#define LIVOLO_ONE_CHANNEL
+#define LIVOLO_TWO_CHANNEL
 // ----------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 #define MY_REPEATER_FEATURE
 
 // NRF24 radio
-//#define MY_RADIO_RF24
+#define MY_RADIO_RF24
 
 //NRF51822 radio
-#define MY_RADIO_NRF5_ESB
+//#define MY_RADIO_NRF5_ESB
 
 // RFM69 radio
 //#define MY_RADIO_RFM69
@@ -25,8 +25,9 @@
 #endif
 
 #ifdef MY_RADIO_RF24
-#define MY_RF24_CE_PIN    7
-#define MY_RF24_CS_PIN    6
+#define MY_RF24_CE_PIN    9
+#define MY_RF24_CS_PIN    10
+#define MY_RF24_DATARATE  RF24_2MBPS
 #define MY_RF24_PA_LEVEL  RF24_PA_MAX
 #endif
 
@@ -43,6 +44,8 @@
 #define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
 #define MY_TRANSPORT_WAIT_READY_MS  3000
 
+//#define MY_OTA_FIRMWARE_FEATURE
+
 #define MY_DISABLED_SERIAL
 
 #define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
@@ -51,15 +54,16 @@
 // --------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
+//#define MTCH_TOUCH_SENSOR
 //#define TOUCH_SENSOR_INVERSE_LOGIC
+
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 300;
+const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 200;
 
 const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
 const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
-const uint8_t TOUCH_SENSE_SENSITIVITY_MEMORY_SAVE_LOCATION_ID = 0;
 
 #if defined (LIVOLO_ONE_CHANNEL)
 #ifdef MY_RADIO_NRF5_ESB
@@ -89,9 +93,9 @@ const uint8_t NODE_SENSORS_COUNT = 2;
 
 const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 180000; //3min status updates
 
-const uint8_t SENSOR_DATA_SEND_RETRIES = 5;
+const uint8_t SENSOR_DATA_SEND_RETRIES = 6;
 const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 1;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 30;
+const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 20;
 
 #define OFF 0
 #define ON  1
@@ -154,7 +158,7 @@ const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
 
 // ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
 const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
-const uint16_t SUPPY_VOLTAGE_MV = 3300;
+const uint16_t SUPPY_VOLTAGE_MV = 3000;
 // -----------------------------------------------------------------------------------------------------------
 
 // --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
@@ -238,11 +242,11 @@ void presentNodeMetadata() {
   loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
 
   sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
-  wait(5);    // don't send next data too fast
+      // don't send next data too fast
 
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
-    wait(5);// don't send next data too fast
+    // don't send next data too fast
   }
 }
 
@@ -251,8 +255,8 @@ void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
 
     for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
          (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random wait interval between retries for collisions
-        wait(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
+        // random sleep interval between retries for collisions
+        hwSleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
             SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
     }
 
@@ -266,13 +270,13 @@ uint8_t getChannelState(uint8_t index) {
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
   if(newState == ON) {
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-    wait(RELAY_PULSE_DELAY_MS);
+    hwSleep(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
     channelState[channel] = ON;
     TURN_RED_LED_ON(channel);
   } else {
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-    wait(RELAY_PULSE_DELAY_MS);
+    hwSleep(RELAY_PULSE_DELAY_MS);
     hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
     channelState[channel] = OFF;
     TURN_BLUE_LED_ON(channel);
@@ -282,7 +286,6 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
 void sendLightsState() {
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     sendData(i + 1, getChannelState(i), V_STATUS);
-    wait(5);
   }
 }
 
@@ -317,7 +320,6 @@ void checkTouchSensor() {
         channelState[i] = !channelState[i];
         setChannelRelaySwitchState(i, channelState[i]);
         sendData(i + 1, channelState[i], V_STATUS);
-        wait(5);
       }
       // latch in RELEASED state
       touchSensorState[i] = RELEASED;
@@ -354,7 +356,7 @@ void receive(const MyMessage &message) {
       if (message.getCommand() == C_SET) {
         // maybe perform some received data validation here ???
         setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-        wait(5);
+        //
         sendData(message.sensor, message.getBool(), V_STATUS);
       }
 
@@ -371,16 +373,15 @@ void receive(const MyMessage &message) {
 void before() {
   wdt_enable(WDTO_8S);
 
+  #ifdef MTCH_TOUCH_SENSOR
   analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 88);
   hwDigitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
+  #endif
 
   // set required mcu pins for reading touch sensors state
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
   }
-
-  // wait a little bit before turning off relays
-  delay(2000);
 
   // lit BLUE leds when starting up
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
@@ -394,7 +395,7 @@ void before() {
       hwPinMode(RELAY_CH_PINS[i][j], OUTPUT);
       // make sure touch switch relays start in OFF state
       hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
-      delay(RELAY_PULSE_DELAY_MS);
+      hwSleep(RELAY_PULSE_DELAY_MS);
       hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
     }
   }
@@ -410,9 +411,7 @@ void loop()  {
   static bool firstInit = false;
   if(!firstInit) {
     sendHeartbeat();
-    wait(5);
     sendBatteryLevel(getSupplyVoltagePercentage());
-    wait(5);
     sendLightsState();
     firstInit = true;
   }
@@ -444,4 +443,16 @@ void loop()  {
   //  presentNodeMetadata();
   //  lastPresentationTimestamp = hwMillis();
   // }
+
+  // trying some magic here to lower powe consumption ...
+  // now the whole board draws around 8-10mA with nrf24l01
+  // but the rx/tx functionality is affected a little bit
+// #ifdef MY_RADIO_RF24
+//   RF24_startListening();
+// #endif
+//   wait(200);  // time window for receiving data if available
+//   sleep(200, false);
+// #ifdef MY_RADIO_RF24
+//   RF24_stopListening();
+// #endif
 }
