@@ -11,10 +11,10 @@
 #define MY_REPEATER_FEATURE
 
 // NRF24 radio
-#define MY_RADIO_RF24
+//#define MY_RADIO_RF24
 
 //NRF51822 radio
-//#define MY_RADIO_NRF5_ESB
+#define MY_RADIO_NRF5_ESB
 
 // RFM69 radio
 //#define MY_RADIO_RFM69
@@ -32,7 +32,8 @@
 #endif
 
 #ifdef MY_RADIO_NRF5_ESB
-#define MY_NRF5_ESB_PA_LEVEL NRF5_PA_MAX
+#define MY_NRF5_ESB_PA_LEVEL NRF5_PA_HIGH
+#define MY_NRF5_ESB_MODE NRF5_2MBPS
 #endif
 
 #define MY_NODE_ID 100  // this needs to be set explicitly
@@ -54,7 +55,9 @@
 // --------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
-//#define MTCH_TOUCH_SENSOR
+#ifdef MY_RADIO_NRF5_ESB
+#define MTCH_TOUCH_SENSOR
+#endif
 //#define TOUCH_SENSOR_INVERSE_LOGIC
 
 #define RELEASED  0
@@ -286,6 +289,7 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
 void sendLightsState() {
   for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
     sendData(i + 1, getChannelState(i), V_STATUS);
+    hwSleep(10);
   }
 }
 
@@ -411,6 +415,7 @@ void loop()  {
   static bool firstInit = false;
   if(!firstInit) {
     sendHeartbeat();
+    hwSleep(10);
     sendBatteryLevel(getSupplyVoltagePercentage());
     sendLightsState();
     firstInit = true;
