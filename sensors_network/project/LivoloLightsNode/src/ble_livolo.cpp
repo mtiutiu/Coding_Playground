@@ -276,7 +276,7 @@ void setup() {
   blePeripheral.begin();
 
   // set TX power - must be called after begin
-  blePeripheral.setTxPower(4);
+  blePeripheral.setTxPower(4); // 4dBm tx power
 }
 
 void loop() {
