@@ -1,13 +1,21 @@
 #include <Arduino.h>
 
 // -------------------------------- NODE CONFIGURABLE FEATURES ----------------------------
+
+// Select number of channels(buttons)
 //#define LIVOLO_ONE_CHANNEL
 #define LIVOLO_TWO_CHANNEL
 
+// Is this switch having touch sensor(s) on it?
 #define HAS_TOUCH_SENSING
+
+// Is this switch using a MTCH102/105 touch controller IC ?
 #define HAS_MTCH_TOUCH_SENSOR
+
+// Is the touch controller outputing a logic LOW level or HIGH when channel(s) touched ?
 //#define TOUCH_SENSOR_INVERSE_LOGIC
 
+// Is this switch using LEDs for signaling when the corresponding button is touched?
 #define HAS_LED_SIGNALING
 // -----------------------------------------------------------------------------------------
 
