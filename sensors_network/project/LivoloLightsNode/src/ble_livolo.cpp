@@ -1,22 +1,27 @@
 #include <Arduino.h>
 
-// -------------------------------- NODE CUSTOM FEATURES ----------------------------
+// -------------------------------- NODE CONFIGURABLE FEATURES ----------------------------
 //#define LIVOLO_ONE_CHANNEL
 #define LIVOLO_TWO_CHANNEL
-#define MTCH_TOUCH_SENSOR
+
+#define HAS_TOUCH_SENSING
+#define HAS_MTCH_TOUCH_SENSOR
 //#define TOUCH_SENSOR_INVERSE_LOGIC
 
+#define HAS_LED_SIGNALING
+// -----------------------------------------------------------------------------------------
+
+
+// ----------------- DON'T TOUCH WHAT COMES NEXT ONLY IF YOU KNOW WHAT YOU'RE DOING ------------
+
+// ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t NODE_SENSORS_COUNT = 1;
+const uint8_t TOUCH_SENSORS_COUNT = 1;
 #elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t NODE_SENSORS_COUNT = 2;
+const uint8_t TOUCH_SENSORS_COUNT = 2;
 #else
 #error "Unknown Livolo switch type!"
 #endif
-// ----------------------------------------------------------------------------------
-
-// ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
-//#define TOUCH_SENSOR_INVERSE_LOGIC
 
 #define RELEASED  0
 #define TOUCHED   1
@@ -27,15 +32,28 @@ const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
 const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
 
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {8};
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8};
 #elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {8, 9};
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8, 9};
 #else
 #error "Unknown Livolo switch type!"
 #endif
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------- LIGHTS SECTION ----------------------
+#if defined (LIVOLO_ONE_CHANNEL)
+const uint8_t RELAY_COUNT = 1;
+const uint8_t LED_COUNT = 1;
+#elif defined (LIVOLO_TWO_CHANNEL)
+const uint8_t RELAY_COUNT = 2;
+const uint8_t LED_COUNT = 2;
+#else
+#error "Unknown Livolo switch type!"
+#endif
+
+#define CHANNEL_1  0
+#define CHANNEL_2  1
+
 #define OFF 0
 #define ON  1
 #define SET_COIL_INDEX     0
@@ -55,11 +73,11 @@ const uint8_t RELAY_CH_PINS[][2] = {
 const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 #if defined (LIVOLO_ONE_CHANNEL)
-uint8_t channelState[] = {OFF};
-const uint8_t LIGHT_STATE_LED_PINS[] = {18};
+uint8_t channelState[RELAY_COUNT] = {OFF};
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18};
 #elif defined (LIVOLO_TWO_CHANNEL)
-uint8_t channelState[] = {OFF, OFF};
-const uint8_t LIGHT_STATE_LED_PINS[] = {18, 19};
+uint8_t channelState[RELAY_COUNT] = {OFF, OFF};
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #else
 #error "Unknown Livolo switch type!"
 #endif
@@ -74,17 +92,12 @@ const uint8_t LIGHT_STATE_LED_PINS[] = {18, 19};
 BLEPeripheral blePeripheral = BLEPeripheral();
 BLEService livoloService = BLEService("CCC0");
 
-#if defined (LIVOLO_ONE_CHANNEL)
-  BLECharCharacteristic livoloSwitchOneCharacteristic = BLECharCharacteristic("BBB0", BLERead | BLEWrite | BLENotify);
-  BLEDescriptor livoloSwitchOneDescriptor = BLEDescriptor("BBD0", "Light1");
-#elif defined (LIVOLO_TWO_CHANNEL)
-  BLECharCharacteristic livoloSwitchOneCharacteristic = BLECharCharacteristic("BBB0", BLERead | BLEWrite | BLENotify);
-  BLEDescriptor livoloSwitchOneDescriptor = BLEDescriptor("BBD0", "Light1");
+BLECharCharacteristic livoloSwitchOneCharacteristic = BLECharCharacteristic("BBB0", BLERead | BLEWrite | BLENotify);
+BLEDescriptor livoloSwitchOneDescriptor = BLEDescriptor("BBD0", "Light1");
 
-  BLECharCharacteristic livoloSwitchTwoCharacteristic = BLECharCharacteristic("BBB1", BLERead | BLEWrite | BLENotify);
-  BLEDescriptor livoloSwitchTwoDescriptor = BLEDescriptor("BBD0", "Light2");
-#else
-  #error "Unknown Livolo switch type!"
+#if defined (LIVOLO_TWO_CHANNEL)
+BLECharCharacteristic livoloSwitchTwoCharacteristic = BLECharCharacteristic("BBB1", BLERead | BLEWrite | BLENotify);
+BLEDescriptor livoloSwitchTwoDescriptor = BLEDescriptor("BBD0", "Light2");
 #endif
 
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
@@ -93,22 +106,26 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
     delay(RELAY_PULSE_DELAY_MS);
     digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
     channelState[channel] = ON;
+#ifdef HAS_LED_SIGNALING
     TURN_RED_LED_ON(channel);
+#endif
   } else {
     digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
     delay(RELAY_PULSE_DELAY_MS);
     digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
     channelState[channel] = OFF;
+#ifdef HAS_LED_SIGNALING
     TURN_BLUE_LED_ON(channel);
+#endif
   }
 }
 
 bool checkTouchSensor() {
-  static uint32_t lastTouchTimestamp[NODE_SENSORS_COUNT];
-  static uint8_t touchSensorState[NODE_SENSORS_COUNT];
+  static uint32_t lastTouchTimestamp[TOUCH_SENSORS_COUNT];
+  static uint8_t touchSensorState[TOUCH_SENSORS_COUNT];
   bool triggered = false;
 
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+  for(uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
   #ifdef TOUCH_SENSOR_INVERSE_LOGIC
     if((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
   #else
@@ -153,20 +170,13 @@ void blePeripheralDisconnectHandler(BLECentral& central) {
 }
 
 // central wrote new value to characteristics, update state
-#if defined (LIVOLO_ONE_CHANNEL)
 void switchOneCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setChannelRelaySwitchState(0, livoloSwitchOneCharacteristic.value());
+  setChannelRelaySwitchState(CHANNEL_1, livoloSwitchOneCharacteristic.value());
 }
-#elif defined (LIVOLO_TWO_CHANNEL)
-void switchOneCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setChannelRelaySwitchState(0, livoloSwitchOneCharacteristic.value());
-}
-
+#if defined (LIVOLO_TWO_CHANNEL)
 void switchTwoCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setChannelRelaySwitchState(1, livoloSwitchTwoCharacteristic.value());
+  setChannelRelaySwitchState(CHANNEL_2, livoloSwitchTwoCharacteristic.value());
 }
-#else
-  #error "Unknown Livolo switch type!"
 #endif
 
 // void disableUart() {
@@ -194,25 +204,29 @@ void setup() {
   // disableSPI();
   // disableTWI();
 
-#ifdef MTCH_TOUCH_SENSOR
+#ifdef HAS_MTCH_TOUCH_SENSOR
   analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 88);
   digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
 #endif
 
+#ifdef HAS_TOUCH_SENSING
   // set required mcu pins for reading touch sensors state
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+  for(uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
     pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
   }
+#endif
 
+#ifdef HAS_LED_SIGNALING
   // lit BLUE leds when starting up
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
+  for(uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
     pinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
     TURN_BLUE_LED_ON(i);
   }
+#endif
 
   // set bistable relays initial state
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    for(uint8_t j = 0; j < NODE_SENSORS_COUNT; j++) {
+  for(uint8_t i = 0; i < RELAY_COUNT; i++) {
+    for(uint8_t j = 0; j < RELAY_COUNT; j++) {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
       // make sure touch switch relays start in OFF state
       digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
@@ -226,16 +240,12 @@ void setup() {
 
   blePeripheral.addAttribute(livoloService);
 
-#if defined (LIVOLO_ONE_CHANNEL)
+
   blePeripheral.addAttribute(livoloSwitchOneCharacteristic);
   blePeripheral.addAttribute(livoloSwitchOneDescriptor);
-#elif defined (LIVOLO_TWO_CHANNEL)
-  blePeripheral.addAttribute(livoloSwitchOneCharacteristic);
-  blePeripheral.addAttribute(livoloSwitchOneDescriptor);
+#if defined (LIVOLO_TWO_CHANNEL)
   blePeripheral.addAttribute(livoloSwitchTwoCharacteristic);
   blePeripheral.addAttribute(livoloSwitchTwoDescriptor);
-#else
-  #error "Unknown Livolo switch type!"
 #endif
 
   // assign event handlers for connected, disconnected to peripheral
@@ -243,22 +253,15 @@ void setup() {
   blePeripheral.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
 
   // assign event handlers for characteristic
-#if defined (LIVOLO_ONE_CHANNEL)
   livoloSwitchOneCharacteristic.setEventHandler(BLEWritten, switchOneCharacteristicWritten);
-#elif defined (LIVOLO_TWO_CHANNEL)
-  livoloSwitchOneCharacteristic.setEventHandler(BLEWritten, switchOneCharacteristicWritten);
+#if defined (LIVOLO_TWO_CHANNEL)
   livoloSwitchTwoCharacteristic.setEventHandler(BLEWritten, switchTwoCharacteristicWritten);
-#else
-  #error "Unknown Livolo switch type!"
 #endif
 
 // set initial values for characteristics
-#if defined (LIVOLO_ONE_CHANNEL)
-  livoloSwitchOneCharacteristic.setValue(0);
-#elif defined (LIVOLO_TWO_CHANNEL)
-  livoloSwitchTwoCharacteristic.setValue(0);
-#else
-  #error "Unknown Livolo switch type!"
+  livoloSwitchOneCharacteristic.setValue(OFF);
+#if defined (LIVOLO_TWO_CHANNEL)
+  livoloSwitchTwoCharacteristic.setValue(OFF);
 #endif
 
   // begin initialization
@@ -272,17 +275,15 @@ void loop() {
   // poll peripheral
   blePeripheral.poll();
 
+#ifdef HAS_TOUCH_SENSING
   // check touch sensors for changes
   if(checkTouchSensor()) {
-#if defined (LIVOLO_ONE_CHANNEL)
-    livoloSwitchOneCharacteristic.setValue(channelState[0]);
-#elif defined (LIVOLO_TWO_CHANNEL)
-    livoloSwitchOneCharacteristic.setValue(channelState[0]);
-    livoloSwitchTwoCharacteristic.setValue(channelState[1]);
-#else
-  #error "Unknown Livolo switch type!"
+    livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
+#if defined (LIVOLO_TWO_CHANNEL)
+    livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
 #endif
   }
+#endif
 
   //sd_app_evt_wait();
 }
