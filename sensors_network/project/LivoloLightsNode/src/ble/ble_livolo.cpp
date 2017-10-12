@@ -103,16 +103,14 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #define DEVICE_LOCAL_NAME "Livolo Lights"
 #define DEVICE_NAME "Livolo Lights"
 
-#define LIVOLO_BLE_SERVICE_UUID  "CCC0"
+#define LIVOLO_BLE_CENTRAL_ADDR "b8:27:eb:cc:de:b2"
 
-#define LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID "BBB0"
-#define LIVOLO_BLE_SWITCH_ONE_DESCRIPTOR_UUID "BBD0"
-#define LIVOLO_BLE_SWITCH_ONE_DESCRIPTOR  "Light1"
+#define LIVOLO_BLE_SERVICE_UUID  "ccc0"
+
+#define LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID "bbb0" // channel 1 read/write
 
 #if defined (LIVOLO_TWO_CHANNEL)
-#define LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID "BBB1"
-#define LIVOLO_BLE_SWITCH_TWO_DESCRIPTOR_UUID "BBD0"
-#define LIVOLO_BLE_SWITCH_TWO_DESCRIPTOR  "Light2"
+#define LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID "bbb1" // channel 2 read/write
 #endif
 
 #define BLE_TX_POWER  4 // 4dBm
@@ -121,12 +119,10 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 BLEPeripheral blePeripheral = BLEPeripheral();
 BLEService livoloService = BLEService(LIVOLO_BLE_SERVICE_UUID);
 
-BLEBoolCharacteristic livoloSwitchOneCharacteristic = BLEBoolCharacteristic(LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
-BLEDescriptor livoloSwitchOneDescriptor = BLEDescriptor(LIVOLO_BLE_SWITCH_ONE_DESCRIPTOR_UUID, LIVOLO_BLE_SWITCH_ONE_DESCRIPTOR);
+BLEUnsignedCharCharacteristic livoloSwitchOneCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 
 #if defined (LIVOLO_TWO_CHANNEL)
-BLEBoolCharacteristic livoloSwitchTwoCharacteristic = BLEBoolCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
-BLEDescriptor livoloSwitchTwoDescriptor = BLEDescriptor(LIVOLO_BLE_SWITCH_TWO_DESCRIPTOR_UUID, LIVOLO_BLE_SWITCH_TWO_DESCRIPTOR);
+BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 #endif
 
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
@@ -192,6 +188,11 @@ bool checkTouchSensor() {
 
 void blePeripheralConnectHandler(BLECentral& central) {
   // central connected event handler
+
+  // let our ble central device only to connect to Livolo
+  if(strcmp(central.address(), LIVOLO_BLE_CENTRAL_ADDR)) {
+    central.disconnect();
+  }
 }
 
 void blePeripheralDisconnectHandler(BLECentral& central) {
@@ -270,13 +271,9 @@ void setup() {
   blePeripheral.setAdvertisedServiceUuid(livoloService.uuid());
 
   blePeripheral.addAttribute(livoloService);
-
-
   blePeripheral.addAttribute(livoloSwitchOneCharacteristic);
-  blePeripheral.addAttribute(livoloSwitchOneDescriptor);
 #if defined (LIVOLO_TWO_CHANNEL)
   blePeripheral.addAttribute(livoloSwitchTwoCharacteristic);
-  blePeripheral.addAttribute(livoloSwitchTwoDescriptor);
 #endif
 
   // assign event handlers for connected, disconnected to peripheral

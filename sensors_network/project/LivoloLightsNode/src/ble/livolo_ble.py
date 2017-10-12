@@ -1,91 +1,83 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# git clone https://github.com/IanHarvey/bluepy.git
-# git checkout 7d28646
-# cd bluepy/bluepy
-# make; make install
-
-import binascii
-import struct
+import gatt
 import time
 import sys
-#import threading
-#import logging
-from bluepy.bluepy.btle import UUID, Peripheral, BTLEException
 
-BLE_LIVOLO_DEVICE_ADDRESS = 'C2:8A:74:27:11:7B'
-LIVOLO_BLE_SWITCH_ONE_UUID = UUID(0xBBB0)
-LIVOLO_BLE_SWITCH_TWO_UUID = UUID(0xBBB1)
+BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
+LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
+LIVOLO_BLE_SWITCH_ONE_UUID = 'bbb0'
+LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
 
-def ble_translate_exception(ex):
-  if ex.code == BTLEException.DISCONNECTED:
-    print("Caught exception: DISCONNECTED")
-  elif ex.code == BTLEException.COMM_ERROR:
-    print("Caught exception: COMM_ERROR")
-  elif ex.code == BTLEException.INTERNAL_ERROR:
-    print("Caught exception: INTERNAL_ERROR")
-  elif ex.code == BTLEException.GATT_ERROR:
-    print("Caught exception: GATT_ERROR")
-  else:
-    print("Caught exception: MGMT_ERROR")
+class LivoloDevice(gatt.Device):
+  def connect_succeeded(self):
+    super().connect_succeeded()
+    print("[%s] Connected to -> %s" % (self.mac_address, self.alias()))
 
-def ble_connect(address):
-  try:
-    p.connect(address, "random")
-  except BTLEException as ex:
-    ble_translate_exception(ex)
-    return False
-  return True
+  def connect_failed(self, error):
+    super().connect_failed(error)
+    print("[%s] Connection failed: %s" % (self.mac_address, str(error)))
+    time.sleep(1)
+    print("[%s] Trying to reconnect ..." % (self.mac_address))
+    self.connect()
 
+  def disconnect_succeeded(self):
+    super().disconnect_succeeded()
+    print("[%s] Disconnected" % (self.mac_address))
+    time.sleep(1)
+    print("[%s] Trying to reconnect ..." % (self.mac_address))
+    self.connect()
 
-def ble_connect_with_retry(device_addr):
-  print("Trying to connect to: %s" % device_addr)
-  while True:
-    if not ble_connect(device_addr):
-      print("Failed to connect to: %s, retrying ..." % device_addr)
-    else:
-      print("Connected to: %s" % device_addr)
-      return
+  def characteristic_enable_notification_succeeded(self):
+    print("[%s] Characteristic notifications subscription succeded" % (self.mac_address))
 
+  def characteristic_enable_notification_failed(self, error):
+    print("[%s] Characteristic notifications subscription failed with error: %s" % (self.mac_address, str(error)))
 
-def ble_get_characterstic_by_uuid(uuid_to_query):
-  return p.getCharacteristics(uuid=uuid_to_query)[0]
+  def services_resolved(self):
+    super().services_resolved()
 
-def ble_fetch_ch_data(characteristic):
-  if (characteristic.supportsRead()):
-    val = binascii.b2a_hex(characteristic.read())
-    val = binascii.unhexlify(val)
-    val = struct.unpack(len(val)*"B", val)[0]
-    return str(val)
+    # print("[%s] Resolved services" % (self.mac_address))
+    # for service in self.services:
+    #   print("[%s]  Service [%s]" % (self.mac_address, service.uuid))
+    #   for characteristic in service.characteristics:
+    #     print("[%s]    Characteristic [%s]" % (self.mac_address, characteristic.uuid))
 
-def ble_livolo_attach():
-  ble_connect_with_retry(BLE_LIVOLO_DEVICE_ADDRESS)
-  return (ble_get_characterstic_by_uuid(LIVOLO_BLE_SWITCH_ONE_UUID),
-          ble_get_characterstic_by_uuid(LIVOLO_BLE_SWITCH_TWO_UUID))
+    livolo_device_lights_service = next(
+      s for s in self.services
+      if LIVOLO_LIGHTS_SERVICE_UUID in s.uuid)
+
+    for c in livolo_device_lights_service.characteristics:
+      c.read_value()
+      c.enable_notifications()
+
+  def characteristic_value_updated(self, characteristic, value):
+    if LIVOLO_BLE_SWITCH_ONE_UUID in characteristic.uuid:
+      print("Light1 state: %s" % int.from_bytes(value, byteorder='little'))
+
+    if LIVOLO_BLE_SWITCH_TWO_UUID in characteristic.uuid:
+      print("Light2 state: %s" % int.from_bytes(value, byteorder='little'))
 
 def setup():
-  global p
-  p = Peripheral()
+  global manager
+  manager = gatt.DeviceManager(adapter_name='hci0')
+
+  global livolo_device
+  livolo_device = LivoloDevice(mac_address=sys.argv[1], manager=manager)
+  livolo_device.connect()
 
 def main():
-  livolo_ch1_char, livolo_ch2_char = ble_livolo_attach()
+  try:
+    manager.run()
+  except KeyboardInterrupt:
+    print("Ctrl-C, exiting ...")
+    if livolo_device.is_connected():
+      livolo_device.disconnect()
 
-  while True:
-    try:
-      channel1_state = ble_fetch_ch_data(livolo_ch1_char)
-      channel2_state = ble_fetch_ch_data(livolo_ch2_char)
-      print("Lights state => CH1: %s CH2: %s" % (channel1_state, channel2_state))
-    except KeyboardInterrupt:
-      if p is not None:
-        print("Catched Ctrl+C, disconnecting ...")
-        p.disconnect()
-      sys.exit(0)
-    except BTLEException as ex:
-      ble_translate_exception(ex)
-      livolo_ch1_char, livolo_ch2_char = ble_livolo_attach()
+if __name__ == '__main__':
+  if len(sys.argv) < 2:
+    print("Usage: %s <ble_address>" % (sys.argv[0]))
+    sys.exit(1)
 
-    time.sleep(1)
-
-if __name__ == "__main__":
   setup()
   main()
