@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+# Using this great python3 library: https://github.com/getsenic/gatt-python
+
 import gatt
 import time
 import sys
+import signal
 
 BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
@@ -58,7 +61,19 @@ class LivoloDevice(gatt.Device):
     if LIVOLO_BLE_SWITCH_TWO_UUID in characteristic.uuid:
       print("Light2 state: %s" % int.from_bytes(value, byteorder='little'))
 
+
+def exit_cleanly(message):
+  print(message)
+  if livolo_device.is_connected():
+    livolo_device.disconnect()
+  sys.exit(0)
+
+def sigint_handler(signal, frame):
+  exit_cleanly("SIGINT issued, exiting ...")
+
 def setup():
+  signal.signal(signal.SIGINT, sigint_handler)
+
   global manager
   manager = gatt.DeviceManager(adapter_name='hci0')
 
@@ -70,9 +85,7 @@ def main():
   try:
     manager.run()
   except KeyboardInterrupt:
-    print("Ctrl-C, exiting ...")
-    if livolo_device.is_connected():
-      livolo_device.disconnect()
+    exit_cleanly("Ctrl-C issued, exiting ...")
 
 if __name__ == '__main__':
   if len(sys.argv) < 2:
