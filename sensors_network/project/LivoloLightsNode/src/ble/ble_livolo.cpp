@@ -100,10 +100,11 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 
 #define MANUFACTURER_DATA (const unsigned char*)"Livolo"
 #define MANUFACTURER_DATA_LEN 6
-#define DEVICE_LOCAL_NAME "Livolo Lights"
-#define DEVICE_NAME "Livolo Lights"
+#define DEVICE_LOCAL_NAME "Livolo"
+#define DEVICE_NAME "Livolo"
 
-#define LIVOLO_BLE_CENTRAL_ADDR "b8:27:eb:cc:de:b2"
+//#define LIVOLO_BLE_CENTRAL_ADDR "b8:27:eb:cc:de:b2" // raspberry pi zero
+#define LIVOLO_BLE_CENTRAL_ADDR "00:1a:7d:da:71:13" // orange pi zero bta-403
 
 #define LIVOLO_BLE_SERVICE_UUID  "ccc0"
 
