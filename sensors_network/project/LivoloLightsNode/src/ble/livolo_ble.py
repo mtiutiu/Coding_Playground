@@ -7,12 +7,31 @@ import time
 import sys
 import signal
 import logging
+import os
+import subprocess
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
 LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
 LIVOLO_BLE_SWITCH_ONE_UUID = 'bbb0'
 LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
+
+class LivoloDeviceManager(gatt.DeviceManager):
+  def __init__(self, adapter_name):
+    super().__init__(adapter_name)
+    self.livolo_device_discovered = False
+
+  def is_device_discovered(self):
+    return self.livolo_device_discovered
+
+  def device_discovered(self, device):
+    if sys.argv[1] in device.mac_address:
+      logging.debug("[%s] Discovered, alias = %s" % (device.mac_address, device.alias()))
+      self.livolo_device_discovered = True
+      self.stop_discovery()
+
+  def make_device(self, mac_address):
+    return LivoloDevice(mac_address=mac_address, manager=self)
 
 class LivoloDevice(gatt.Device):
   def connect_succeeded(self):
@@ -70,6 +89,11 @@ def exit_cleanly(message):
 def sigint_handler(signal, frame):
   exit_cleanly("SIGINT issued, exiting ...")
 
+def is_service_running(name):
+  with open(os.devnull, 'wb') as hide_output:
+    exit_code = subprocess.Popen(['service', name, 'status'], stdout=hide_output, stderr=hide_output).wait()
+    return exit_code == 0
+
 def setup():
   logging.basicConfig(
     level=logging.DEBUG,
@@ -78,15 +102,30 @@ def setup():
 
   signal.signal(signal.SIGINT, sigint_handler)
 
-  global manager
-  manager = gatt.DeviceManager(adapter_name='hci0')
+  while not is_service_running('bluetooth'):
+    logging.debug("Bluetooth service is not running/ready, waiting ...")
+    time.sleep(1)
 
+  logging.debug("Instantiating Livolo manager ...")
+  global manager
+  manager = LivoloDeviceManager(adapter_name='hci0')
+  manager.start_discovery()
+
+  logging.debug("Instantiating Livolo device ...")
   global livolo_device
-  livolo_device = LivoloDevice(mac_address=sys.argv[1], manager=manager)
+  livolo_device = manager.make_device(mac_address=sys.argv[1])
 
 def main():
+  logging.debug("Entering main loop ...")
   while True:
     try:
+      if not manager.is_adapter_powered:
+        logging.debug("Bluetooth adapter is not powered, waiting ...")
+        time.sleep(1)
+        continue
+      if not manager.is_device_discovered():
+        logging.debug("Livolo device wasn't discovered, waiting ...")
+        time.sleep(1)
       if not livolo_device.is_connected():
         logging.debug("[%s] Trying to connect ..." % (sys.argv[1]))
         livolo_device.connect()
