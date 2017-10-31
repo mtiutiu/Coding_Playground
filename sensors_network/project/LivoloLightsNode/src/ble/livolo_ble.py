@@ -89,10 +89,23 @@ def exit_cleanly(message):
 def sigint_handler(signal, frame):
   exit_cleanly("SIGINT issued, exiting ...")
 
+def sigterm_handler(signal, frame):
+  exit_cleanly("SIGTERM issued, exiting ...")
+
 def is_service_running(name):
   with open(os.devnull, 'wb') as hide_output:
     exit_code = subprocess.Popen(['service', name, 'status'], stdout=hide_output, stderr=hide_output).wait()
     return exit_code == 0
+
+def check_bluetooth_service():
+  while not is_service_running('bluetooth'):
+    logging.debug("Bluetooth service is not running/ready, waiting ...")
+    time.sleep(1)
+
+def check_bluetooth_power():
+  while not manager.is_adapter_powered:
+    logging.debug("Bluetooth adapter is not powered, waiting ...")
+    time.sleep(1)
 
 def setup():
   logging.basicConfig(
@@ -101,28 +114,27 @@ def setup():
   )
 
   signal.signal(signal.SIGINT, sigint_handler)
-
-  while not is_service_running('bluetooth'):
-    logging.debug("Bluetooth service is not running/ready, waiting ...")
-    time.sleep(1)
+  signal.signal(signal.SIGTERM, sigterm_handler)
 
   logging.debug("Instantiating Livolo manager ...")
   global manager
   manager = LivoloDeviceManager(adapter_name='hci0')
-  manager.start_discovery()
 
   logging.debug("Instantiating Livolo device ...")
   global livolo_device
   livolo_device = manager.make_device(mac_address=sys.argv[1])
 
+  check_bluetooth_service()
+  check_bluetooth_power()
+
+  manager.start_discovery()
+
 def main():
   logging.debug("Entering main loop ...")
   while True:
     try:
-      if not manager.is_adapter_powered:
-        logging.debug("Bluetooth adapter is not powered, waiting ...")
-        time.sleep(1)
-        continue
+      check_bluetooth_service()
+      check_bluetooth_power()
       if not manager.is_device_discovered():
         logging.debug("Livolo device wasn't discovered, waiting ...")
         time.sleep(1)
