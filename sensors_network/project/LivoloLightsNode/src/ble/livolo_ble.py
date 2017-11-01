@@ -19,6 +19,11 @@ LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
 LIVOLO_BLE_SWITCH_ONE_UUID = 'bbb0'
 LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
 
+# -------------------------------- UTILS ---------------------------------------
+def millis():
+  return int(round(time.time() * 1000))
+# ------------------------------------------------------------------------------
+
 # ------------------------------ MQTT ------------------------------------------
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -58,9 +63,10 @@ class LivoloDeviceManager(gatt.DeviceManager):
     return self.livolo_device_discovered
 
   def device_discovered(self, device):
-    if sys.argv[1] in device.mac_address:
+    if device.mac_address == sys.argv[1]:
       logging.debug("[%s] Discovered, alias = %s" % (device.mac_address, device.alias()))
       self.livolo_device_discovered = True
+      logging.debug("Stopping BLE discovery ...")
       self.stop_discovery()
 
   def make_device(self, mac_address):
@@ -116,13 +122,13 @@ class LivoloDevice(gatt.Device):
 
 def exit_cleanly(message):
   logging.debug(message)
-
-  if livolo_device.is_connected():
-    logging.debug("[%s] Disconnecting" % (sys.argv[1]))
-    livolo_device.disconnect()
-
-  mqtt_client.disconnect()
-  sys.exit(0)
+  try:
+    if livolo_device.is_connected():
+      logging.debug("[%s] Disconnecting from Livolo device ..." % (sys.argv[1]))
+      livolo_device.disconnect()
+    mqtt_client.disconnect()
+  finally:
+    sys.exit(0)
 
 def sigint_handler(signal, frame):
   exit_cleanly("SIGINT issued, exiting ...")
@@ -165,11 +171,12 @@ def setup():
   check_bluetooth_service()
   check_bluetooth_power()
 
+  logging.debug("Starting BLE discovery ...")
   manager.start_discovery()
 
   logging.debug("Instantiating mqtt client ...")
   global mqtt_client
-  mqtt_client = mqtt.Client(client_id="livolo_ble", clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
+  mqtt_client = mqtt.Client(client_id="livolo_ble_%s" % millis(), clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
   mqtt_client.on_connect = on_connect
   mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
@@ -193,6 +200,9 @@ def main():
         time.sleep(1)
       else:
         manager.run()
+    except Exception:
+      # main loop must continue on other exceptions
+      continue
     except KeyboardInterrupt:
       exit_cleanly("Ctrl-C issued, exiting ...")
 
