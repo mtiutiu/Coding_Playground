@@ -9,6 +9,8 @@ import signal
 import logging
 import os
 import subprocess
+import paho.mqtt.client as mqtt
+from mysensors_helper import g2m
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
@@ -16,6 +18,23 @@ LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
 LIVOLO_BLE_SWITCH_ONE_UUID = 'bbb0'
 LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
 
+# ------------------------------ MQTT ------------------------------------------
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+  logging.debug("Connected to mqtt broker: %s with result code: %s " % (sys.argv[2], rc))
+  client.subscribe("mys-in/#")
+  g2m(client, "10;1;0;0;3;Light1", "mys-out")
+  g2m(client, "10;2;0;0;3;Light2", "mys-out")
+
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+  data = msg.payload.decode('ascii')
+  channel = int(msg.topic.split('/')[2])
+  logging.debug("Received data: %s on topic: %s" % (data, msg.topic))
+  livolo_device.lights_service.characteristics[channel-1].write_value([int(data)])
+# ------------------------------------------------------------------------------
+
+# -------------------------------------- BLE -----------------------------------
 class LivoloDeviceManager(gatt.DeviceManager):
   def __init__(self, adapter_name):
     super().__init__(adapter_name)
@@ -55,6 +74,7 @@ class LivoloDevice(gatt.Device):
     logging.debug("[%s] Characteristic notifications subscription failed with error: %s" % (self.mac_address, str(error)))
 
   def services_resolved(self):
+    logging.debug("[%s] Services resolved" % (self.mac_address))
     super().services_resolved()
 
     # logger.debug("[%s] Resolved services" % (self.mac_address))
@@ -63,20 +83,22 @@ class LivoloDevice(gatt.Device):
     #   for characteristic in service.characteristics:
     #     logger.debug("[%s]    Characteristic [%s]" % (self.mac_address, characteristic.uuid))
 
-    livolo_device_lights_service = next(
+    self.lights_service = next(
       s for s in self.services
       if LIVOLO_LIGHTS_SERVICE_UUID in s.uuid)
 
-    for c in livolo_device_lights_service.characteristics:
+    for c in self.lights_service.characteristics:
       c.read_value()
       c.enable_notifications()
 
   def characteristic_value_updated(self, characteristic, value):
     if LIVOLO_BLE_SWITCH_ONE_UUID in characteristic.uuid:
       logging.debug("[%s] Light1 state: %s" % (self.mac_address, int.from_bytes(value, byteorder='little')))
+      g2m(mqtt_client, "10;1;1;0;2;%s" % (int.from_bytes(value, byteorder='little')), "mys-out")
 
     if LIVOLO_BLE_SWITCH_TWO_UUID in characteristic.uuid:
       logging.debug("[%s] Light2 state: %s" % (self.mac_address, int.from_bytes(value, byteorder='little')))
+      g2m(mqtt_client, "10;2;1;0;2;%s" % (int.from_bytes(value, byteorder='little')), "mys-out")
 
 def exit_cleanly(message):
   logging.debug(message)
@@ -84,6 +106,8 @@ def exit_cleanly(message):
   if livolo_device.is_connected():
     logging.debug("[%s] Disconnecting" % (sys.argv[1]))
     livolo_device.disconnect()
+
+  mqtt_client.disconnect()
   sys.exit(0)
 
 def sigint_handler(signal, frame):
@@ -129,6 +153,16 @@ def setup():
 
   manager.start_discovery()
 
+  logging.debug("Instantiating mqtt client ...")
+  global mqtt_client
+  mqtt_client = mqtt.Client(client_id="livolo_ble", clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
+  mqtt_client.on_connect = on_connect
+  mqtt_client.on_message = on_message
+  logging.debug("Connecting to mqtt broker: %s ..." %(sys.argv[2]))
+  mqtt_client.connect(sys.argv[2], 1883, 60)
+  logging.debug("Starting mqtt main loop thread ...")
+  mqtt_client.loop_start()
+
 def main():
   logging.debug("Entering main loop ...")
   while True:
@@ -148,8 +182,8 @@ def main():
       exit_cleanly("Ctrl-C issued, exiting ...")
 
 if __name__ == '__main__':
-  if len(sys.argv) < 2:
-    print("Usage: %s <ble_address>" % (sys.argv[0]))
+  if len(sys.argv) < 3:
+    print("Usage: %s <ble_address> <mqtt_broker_address>" % (sys.argv[0]))
     sys.exit(1)
   setup()
   main()
