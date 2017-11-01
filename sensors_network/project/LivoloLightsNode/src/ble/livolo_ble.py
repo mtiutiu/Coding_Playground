@@ -11,6 +11,7 @@ import os
 import subprocess
 import paho.mqtt.client as mqtt
 from mysensors_helper import g2m
+import mtypes
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
@@ -21,17 +22,30 @@ LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
 # ------------------------------ MQTT ------------------------------------------
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-  logging.debug("Connected to mqtt broker: %s with result code: %s " % (sys.argv[2], rc))
+  logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (sys.argv[2], rc))
   client.subscribe("mys-in/#")
   g2m(client, "10;1;0;0;3;Light1", "mys-out")
   g2m(client, "10;2;0;0;3;Light2", "mys-out")
 
+def on_disconnect(client, userdata, rc=0):
+  logging.debug("Got disconnect from mqtt broker with result code: %s ..." % (rc))
+
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
-  data = msg.payload.decode('ascii')
-  channel = int(msg.topic.split('/')[2])
-  logging.debug("Received data: %s on topic: %s" % (data, msg.topic))
-  livolo_device.lights_service.characteristics[channel-1].write_value([int(data)])
+  logging.debug("Received data: %s on topic: %s" % (msg.payload.decode('ascii'), msg.topic))
+  mqtt_topic_data = msg.topic.split('/')
+  node_id = int(mqtt_topic_data[1])
+  child_id = int(mqtt_topic_data[2])
+  cmd_type = int(mqtt_topic_data[3])
+  ack = int(mqtt_topic_data[4])
+  sub_type = int(mqtt_topic_data[5])
+  msg_type = mtypes.message_types[cmd_type]
+  if msg_type == 'M_SET':
+    data = msg.payload.decode('ascii')
+    channel = int(child_id)
+    livolo_device.lights_service.characteristics[channel-1].write_value([int(data)])
+  if msg_type == 'M_INTERNAL':
+    pass
 # ------------------------------------------------------------------------------
 
 # -------------------------------------- BLE -----------------------------------
@@ -157,6 +171,7 @@ def setup():
   global mqtt_client
   mqtt_client = mqtt.Client(client_id="livolo_ble", clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
   mqtt_client.on_connect = on_connect
+  mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
   logging.debug("Connecting to mqtt broker: %s ..." %(sys.argv[2]))
   mqtt_client.connect(sys.argv[2], 1883, 60)
