@@ -37,7 +37,7 @@ def g2m(mqtt_client, line, topic_prefix):
     #   topic = topic + '/' + mtypes.set_sub_types[sub_type]
     topic = "%s/%s/%s/%s/%s/%s" % (topic_prefix, node_id, child_sensor_id, msg_type_s, ack_s, sub_type_s)
     qos=1
-    retain=False
+    retain=True
     logging.debug("Publishing: %s on topic: %s" % (payload, topic))
     mqtt_client.publish(topic, payload, qos, retain)
   except ValueError:

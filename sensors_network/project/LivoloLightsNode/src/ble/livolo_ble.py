@@ -37,20 +37,27 @@ def on_disconnect(client, userdata, rc=0):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
-  logging.debug("Received data: %s on topic: %s" % (msg.payload.decode('ascii'), msg.topic))
   mqtt_topic_data = msg.topic.split('/')
   node_id = int(mqtt_topic_data[1])
   child_id = int(mqtt_topic_data[2])
   cmd_type = int(mqtt_topic_data[3])
   ack = int(mqtt_topic_data[4])
   sub_type = int(mqtt_topic_data[5])
-  msg_type = mtypes.message_types[cmd_type]
-  if msg_type == 'M_SET':
+  if cmd_type == mtypes.M_SET:
     data = msg.payload.decode('ascii')
-    channel = int(child_id)
-    livolo_device.lights_service.characteristics[channel-1].write_value([int(data)])
-  if msg_type == 'M_INTERNAL':
-    pass
+    logging.debug("Received M_SET command with value: %s on topic: %s" % (data, msg.topic))
+    livolo_device.lights_service.characteristics[child_id-1].write_value([int(data)])
+  elif cmd_type == mtypes.M_INTERNAL:
+    if sub_type == mtypes.I_PRESENTATION:
+      logging.debug("Received I_PRESENTATION internal command on topic: %s" % (msg.topic))
+    if sub_type == mtypes.I_DISCOVER_REQUEST:
+      logging.debug("Received I_DISCOVER_REQUEST internal command on topic: %s" % (msg.topic))
+    if sub_type == mtypes.I_HEARTBEAT_REQUEST:
+      logging.debug("Received I_HEARTBEAT_REQUEST internal command on topic: %s" % (msg.topic))
+    if sub_type == mtypes.I_REBOOT:
+      logging.debug("Received I_REBOOT internal command on topic: %s" % (msg.topic))
+  else:
+    logging.debug("Received data: %s on topic: %s" % (msg.payload.decode('ascii'), msg.topic))
 # ------------------------------------------------------------------------------
 
 # -------------------------------------- BLE -----------------------------------
@@ -181,7 +188,14 @@ def setup():
   mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
   logging.debug("Connecting to mqtt broker: %s ..." %(sys.argv[2]))
-  mqtt_client.connect(sys.argv[2], 1883, 60)
+  is_mqtt_connected = False
+  while not is_mqtt_connected:
+    try:
+      is_mqtt_connected = (mqtt_client.connect(sys.argv[2], 1883, 60) == mqtt.MQTT_ERR_SUCCESS)
+    except Exception:
+      logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(sys.argv[2]))
+      time.sleep(1)
+      continue
   logging.debug("Starting mqtt main loop thread ...")
   mqtt_client.loop_start()
 
