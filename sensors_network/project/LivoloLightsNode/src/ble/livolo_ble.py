@@ -9,6 +9,7 @@ import signal
 import logging
 import os
 import subprocess
+from argparse import ArgumentParser
 import paho.mqtt.client as mqtt
 from mysensors_helper import g2m
 import mtypes
@@ -27,10 +28,10 @@ def millis():
 # ------------------------------ MQTT ------------------------------------------
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-  logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (sys.argv[2], rc))
+  logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (args.mqtt_broker, rc))
   client.subscribe("mys-in/#")
-  g2m(client, "10;1;0;0;3;Light1", "mys-out")
-  g2m(client, "10;2;0;0;3;Light2", "mys-out")
+  g2m(client, "%s;1;0;0;3;Light1" % (args.node_id), "mys-out")
+  g2m(client, "%s;2;0;0;3;Light2" % (args.node_id), "mys-out")
 
 def on_disconnect(client, userdata, rc=0):
   logging.debug("Got disconnect from mqtt broker with result code: %s ..." % (rc))
@@ -70,7 +71,7 @@ class LivoloDeviceManager(gatt.DeviceManager):
     return self.livolo_device_discovered
 
   def device_discovered(self, device):
-    if device.mac_address == sys.argv[1]:
+    if device.mac_address == args.ble_mac:
       logging.debug("[%s] Discovered, alias = %s" % (device.mac_address, device.alias()))
       self.livolo_device_discovered = True
       logging.debug("Stopping BLE discovery ...")
@@ -83,15 +84,18 @@ class LivoloDevice(gatt.Device):
   def connect_succeeded(self):
     super().connect_succeeded()
     logging.debug("[%s] Connected to: %s" % (self.mac_address, self.alias()))
+    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 1, 1, True)
 
   def connect_failed(self, error):
     super().connect_failed(error)
     logging.debug("[%s] Connection failed: %s" % (self.mac_address, str(error)))
+    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def disconnect_succeeded(self):
     super().disconnect_succeeded()
     logging.debug("[%s] Disconnected" % (self.mac_address))
+    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def characteristic_enable_notification_succeeded(self):
@@ -131,7 +135,7 @@ def exit_cleanly(message):
   logging.debug(message)
   try:
     if livolo_device.is_connected():
-      logging.debug("[%s] Disconnecting from Livolo device ..." % (sys.argv[1]))
+      logging.debug("[%s] Disconnecting from Livolo device ..." % (args.ble_mac))
       livolo_device.disconnect()
     mqtt_client.disconnect()
   finally:
@@ -173,7 +177,7 @@ def setup():
 
   logging.debug("Instantiating Livolo device ...")
   global livolo_device
-  livolo_device = manager.make_device(mac_address=sys.argv[1])
+  livolo_device = manager.make_device(mac_address=args.ble_mac)
 
   check_bluetooth_service()
   check_bluetooth_power()
@@ -187,13 +191,13 @@ def setup():
   mqtt_client.on_connect = on_connect
   mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
-  logging.debug("Connecting to mqtt broker: %s ..." %(sys.argv[2]))
+  logging.debug("Connecting to mqtt broker: %s ..." %(args.mqtt_broker))
   is_mqtt_connected = False
   while not is_mqtt_connected:
     try:
-      is_mqtt_connected = (mqtt_client.connect(sys.argv[2], 1883, 60) == mqtt.MQTT_ERR_SUCCESS)
+      is_mqtt_connected = (mqtt_client.connect(args.mqtt_broker, 1883, 60) == mqtt.MQTT_ERR_SUCCESS)
     except Exception:
-      logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(sys.argv[2]))
+      logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(args.mqtt_broker))
       time.sleep(1)
       continue
   logging.debug("Starting mqtt main loop thread ...")
@@ -209,7 +213,7 @@ def main():
         logging.debug("Livolo device wasn't discovered, waiting ...")
         time.sleep(1)
       if not livolo_device.is_connected():
-        logging.debug("[%s] Trying to connect ..." % (sys.argv[1]))
+        logging.debug("[%s] Trying to connect ..." % (args.ble_mac))
         livolo_device.connect()
         time.sleep(1)
       else:
@@ -221,8 +225,11 @@ def main():
       exit_cleanly("Ctrl-C issued, exiting ...")
 
 if __name__ == '__main__':
-  if len(sys.argv) < 3:
-    print("Usage: %s <ble_address> <mqtt_broker_address>" % (sys.argv[0]))
-    sys.exit(1)
+  arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
+  arg_parser.add_argument('ble_mac', help="MAC address of BLE device to connect")
+  arg_parser.add_argument('mqtt_broker', help="MQTT broker address to connect")
+  arg_parser.add_argument('node_id', help="MySensors node id")
+  global args
+  args = arg_parser.parse_args()
   setup()
   main()

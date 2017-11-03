@@ -1,0 +1,103 @@
+<html lang="en">
+   <head>
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="">
+      <meta name="author" content="">
+      <META HTTP-EQUIV="refresh" CONTENT="5">
+      <title>BLE Control Panel</title>
+      <!-- Bootstrap Core CSS -->
+      <link href="static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+      <!-- MetisMenu CSS -->
+      <link href="static/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+      <!-- Custom CSS -->
+      <link href="static/dist/css/sb-admin-2.css" rel="stylesheet">
+      <!-- Custom Fonts -->
+      <link href="static/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+      <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+      <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+      <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+      <![endif]-->
+   </head>
+   <body>
+      <div class="panel panel-green">
+         <div class="panel-heading">
+            Livolo BLE Node
+         </div>
+         <!-- /.panel-heading -->
+         <div class="panel-body">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs">
+               <li class="active"><a href="#home" data-toggle="tab" aria-expanded="true">Home</a>
+               </li>
+               <li class=""><a href="#ble" data-toggle="tab" aria-expanded="false">BLE</a>
+               </li>
+               <li class=""><a href="#mqtt" data-toggle="tab" aria-expanded="false">MQTT</a>
+               </li>
+               <li class=""><a href="#settings" data-toggle="tab" aria-expanded="false">Settings</a>
+               </li>
+            </ul>
+            <!-- Tab panes -->
+            <div class="tab-content">
+               <div class="tab-pane active" id="home">
+                  <div class="panel panel-default">
+                        <div class="panel-heading">
+                            BLE Devices
+                        </div>
+                        <!-- /.panel-heading -->
+                        <div class="panel-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Device</th>
+                                            <th>MAC Address</th>
+                                            <th>Status</th>
+                                            <th>Last Seen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>1</td>
+                                            <td>{{ble.get('device_mac_address', None)}}</td>
+                                            <td>{{ble.get('device_state', None)}}</td>
+                                            <td>14:45:56</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- /.table-responsive -->
+                        </div>
+                        <!-- /.panel-body -->
+                    </div>
+               </div>
+               <div class="tab-pane" id="ble">
+                  <h4>BLE Status</h4>
+                  <p>...</p>
+               </div>
+               <div class="tab-pane" id="mqtt">
+                  <h4>MQTT Status</h4>
+                  <p>...</p>
+               </div>
+               <div class="tab-pane" id="settings">
+                  <h4>Settings</h4>
+                  <p>...</p>
+               </div>
+            </div>
+         </div>
+         <!-- /.panel-body -->
+      </div>
+      <!-- /#wrapper -->
+      <!-- jQuery -->
+      <script src="static/vendor/jquery/jquery.min.js"></script>
+      <!-- Bootstrap Core JavaScript -->
+      <script src="static/vendor/bootstrap/js/bootstrap.min.js"></script>
+      <!-- Metis Menu Plugin JavaScript -->
+      <script src="static/vendor/metisMenu/metisMenu.min.js"></script>
+      <!-- Custom Theme JavaScript -->
+      <script src="static/dist/js/sb-admin-2.js"></script>
+   </body>
+</html>
