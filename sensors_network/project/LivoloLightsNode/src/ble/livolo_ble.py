@@ -83,7 +83,7 @@ class LivoloDeviceManager(gatt.DeviceManager):
 class LivoloDevice(gatt.Device):
   def connect_succeeded(self):
     super().connect_succeeded()
-    logging.debug("[%s] Connected to: %s" % (self.mac_address, self.alias()))
+    logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
     mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 1, 1, True)
 
   def connect_failed(self, error):
@@ -130,7 +130,10 @@ class LivoloDevice(gatt.Device):
     if LIVOLO_BLE_SWITCH_TWO_UUID in characteristic.uuid:
       logging.debug("[%s] Light2 state: %s" % (self.mac_address, int.from_bytes(value, byteorder='little')))
       g2m(mqtt_client, "10;2;1;0;2;%s" % (int.from_bytes(value, byteorder='little')), "mys-out")
-
+  def read_rssi(self):
+    #return self._properties.Get('org.bluez.Device1', 'RSSI')
+    pass
+  
 def exit_cleanly(message):
   logging.debug(message)
   try:
@@ -159,7 +162,8 @@ def check_bluetooth_service():
 
 def check_bluetooth_power():
   while not manager.is_adapter_powered:
-    logging.debug("Bluetooth adapter is not powered, waiting ...")
+    logging.debug("Bluetooth adapter is not powered, trying to power it on ...")
+    manager.is_adapter_powered = True
     time.sleep(1)
 
 def setup():
