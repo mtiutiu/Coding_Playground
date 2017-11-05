@@ -13,26 +13,31 @@ app.config['MQTT_REFRESH_TIME'] = 1.0  # refresh time in seconds
 mqtt = Mqtt(app)
 
 # mqtt ble devices topics
-mqtt.subscribe('devices/ble/#')
+mqtt.subscribe('mys/devices/ble/#')
 
-ble = {}
-ble['device_mac_address'] = 'none'
-ble['device_state'] = 'none'
+ble_devices = []
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
   if 'state' in message.topic:
-    device_mac_address = message.topic.split('/')[-2]
-    print("Got BLE device with mac address: %s and state: %s" % (device_mac_address, message.payload.decode('ascii')))
-    #with app.app_context():
-    #  g.ble_device_mac_address = device_mac_address
-    #  g.ble_device_state = message.payload.decode('ascii')
-    ble['device_mac_address'] = device_mac_address
-    ble['device_state'] = message.payload.decode('ascii')
+    device_states = {'0':'Offline', '1':'Online'}
+    mac_address = message.topic.split('/')[-2]
+    state = message.payload.decode('ascii')
+    print("Got BLE device with mac address: %s and state: %s" % (mac_address, state))
+    for ble_device in ble_devices:
+      if ble_device['mac_address'] == mac_address:
+        ble_device['state'] = device_states[state]
+        return
+    ble_devices.append({'mac_address': mac_address, 'state': device_states[state]})
+		  
 
 @app.route('/')
 def index_page():
-  return render_template('index.html', ble=ble)
+  return render_template('index.html', ble_devices=ble_devices)
+
+@app.route('/ble')
+def ble_page():
+  return render_template('index.html', ble_devices=ble_devices)
 
 if __name__ == "__main__":
-  app.run(host='0.0.0.0')
+  app.run(debug=True, host='0.0.0.0')

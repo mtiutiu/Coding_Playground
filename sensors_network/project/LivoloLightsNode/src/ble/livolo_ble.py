@@ -84,18 +84,18 @@ class LivoloDevice(gatt.Device):
   def connect_succeeded(self):
     super().connect_succeeded()
     logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
-    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 1, 1, True)
+    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 1, 1, True)
 
   def connect_failed(self, error):
     super().connect_failed(error)
     logging.debug("[%s] Connection failed: %s" % (self.mac_address, str(error)))
-    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 0, 1, True)
+    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def disconnect_succeeded(self):
     super().disconnect_succeeded()
     logging.debug("[%s] Disconnected" % (self.mac_address))
-    mqtt_client.publish("devices/ble/%s/state" % (self.mac_address), 0, 1, True)
+    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def characteristic_enable_notification_succeeded(self):
