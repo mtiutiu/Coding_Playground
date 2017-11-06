@@ -234,7 +234,7 @@ def setup():
 
   logging.debug("Instantiating Livolo manager ...")
   global manager
-  manager = LivoloDeviceManager(adapter_name='hci1')
+  manager = LivoloDeviceManager(adapter_name='hci0')
 
   logging.debug("Instantiating Livolo device ...")
   global livolo_device
