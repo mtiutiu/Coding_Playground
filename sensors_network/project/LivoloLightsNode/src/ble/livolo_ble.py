@@ -9,6 +9,7 @@ import signal
 import logging
 import os
 import subprocess
+import threading
 from argparse import ArgumentParser
 import paho.mqtt.client as mqtt
 from mysensors_helper import g2m
@@ -17,8 +18,13 @@ import mtypes
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
 LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
-LIVOLO_BLE_SWITCH_ONE_UUID = 'bbb0'
-LIVOLO_BLE_SWITCH_TWO_UUID = 'bbb1'
+LIVOLO_BLE_SWITCH_ONE_UUID = '0000bbb0-0000-1000-8000-00805f9b34fb'
+LIVOLO_BLE_SWITCH_TWO_UUID = '0000bbb1-0000-1000-8000-00805f9b34fb'
+# map characteristic uuid's to channel number
+LIVOLO_CHANNEL_BY_UUID = {
+  LIVOLO_BLE_SWITCH_ONE_UUID:'1',
+  LIVOLO_BLE_SWITCH_TWO_UUID:'2'
+}
 
 # -------------------------------- UTILS ---------------------------------------
 def millis():
@@ -30,6 +36,7 @@ def millis():
 def on_connect(client, userdata, flags, rc):
   logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (args.mqtt_broker, rc))
   client.subscribe("mys-in/#")
+  # send mysensors node presentation
   g2m(client, "%s;1;0;0;3;Light1" % (args.node_id), "mys-out")
   g2m(client, "%s;2;0;0;3;Light2" % (args.node_id), "mys-out")
 
@@ -81,21 +88,30 @@ class LivoloDeviceManager(gatt.DeviceManager):
     return LivoloDevice(mac_address=mac_address, manager=self)
 
 class LivoloDevice(gatt.Device):
+  def register_mqtt_client(self, mqtt_client):
+    self.mqtt_client = mqtt_client
+
   def connect_succeeded(self):
     super().connect_succeeded()
     logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
-    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 1, 1, True)
+    if self.mqtt_client:
+      # send mysensors node presentation
+      g2m(self.mqtt_client, "%s;1;0;0;3;Light1" % (args.node_id), "mys-out")
+      g2m(self.mqtt_client, "%s;2;0;0;3;Light2" % (args.node_id), "mys-out")
+      self.mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 1, 1, True)
 
   def connect_failed(self, error):
     super().connect_failed(error)
     logging.debug("[%s] Connection failed: %s" % (self.mac_address, str(error)))
-    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
+    if self.mqtt_client:
+      self.mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def disconnect_succeeded(self):
     super().disconnect_succeeded()
     logging.debug("[%s] Disconnected" % (self.mac_address))
-    mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
+    if self.mqtt_client:
+      self.mqtt_client.publish("mys/devices/ble/%s/state" % (self.mac_address), 0, 1, True)
     self.manager.stop()
 
   def characteristic_enable_notification_succeeded(self):
@@ -123,23 +139,25 @@ class LivoloDevice(gatt.Device):
       c.enable_notifications()
 
   def characteristic_value_updated(self, characteristic, value):
-    if LIVOLO_BLE_SWITCH_ONE_UUID in characteristic.uuid:
-      logging.debug("[%s] Light1 state: %s" % (self.mac_address, int.from_bytes(value, byteorder='little')))
-      g2m(mqtt_client, "10;1;1;0;2;%s" % (int.from_bytes(value, byteorder='little')), "mys-out")
+    channel = LIVOLO_CHANNEL_BY_UUID[characteristic.uuid]
+    channel_state = int.from_bytes(value, byteorder='little')
+    logging.debug("[%s] Light_%s state: %s" % (self.mac_address, channel, channel_state))
+    if self.mqtt_client:
+      g2m(self.mqtt_client, "%s;%s;1;0;2;%s" % (args.node_id, channel, channel_state), "mys-out")
 
-    if LIVOLO_BLE_SWITCH_TWO_UUID in characteristic.uuid:
-      logging.debug("[%s] Light2 state: %s" % (self.mac_address, int.from_bytes(value, byteorder='little')))
-      g2m(mqtt_client, "10;2;1;0;2;%s" % (int.from_bytes(value, byteorder='little')), "mys-out")
   def read_rssi(self):
     #return self._properties.Get('org.bluez.Device1', 'RSSI')
     pass
 
 def exit_cleanly(message):
   logging.debug(message)
+  ble_discovery_t.do_run = False
+  ble_device_connection_t.do_run = False
   try:
-    if livolo_device.is_connected():
+    if manager.is_device_discovered() and livolo_device.is_connected():
       logging.debug("[%s] Disconnecting from Livolo device ..." % (args.ble_mac))
       livolo_device.disconnect()
+      mqtt_client.publish("mys/devices/ble/%s/state" % (args.ble_mac), 2, 1, True)
     mqtt_client.disconnect()
   finally:
     sys.exit(0)
@@ -166,6 +184,19 @@ def check_bluetooth_power():
     manager.is_adapter_powered = True
     time.sleep(1)
 
+def check_bluetooth_discovery(manager):
+  while getattr(threading.currentThread(), "do_run", True):
+    time.sleep(1)
+    if not manager.is_device_discovered():
+      logging.debug("[%s] Livolo device wasn't discovered, waiting ..." % (args.ble_mac))
+
+def check_bluetooth_device_connection(manager, device):
+  while getattr(threading.currentThread(), "do_run", True):
+    time.sleep(1)
+    if manager.is_device_discovered() and not device.is_connected():
+      logging.debug("[%s] Trying to connect ..." % (args.ble_mac))
+      device.connect()
+
 def setup():
   logging.basicConfig(
     level=logging.DEBUG,
@@ -174,20 +205,6 @@ def setup():
 
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
-
-  logging.debug("Instantiating Livolo manager ...")
-  global manager
-  manager = LivoloDeviceManager(adapter_name='hci0')
-
-  logging.debug("Instantiating Livolo device ...")
-  global livolo_device
-  livolo_device = manager.make_device(mac_address=args.ble_mac)
-
-  check_bluetooth_service()
-  check_bluetooth_power()
-
-  logging.debug("Starting BLE discovery ...")
-  manager.start_discovery()
 
   logging.debug("Instantiating mqtt client ...")
   global mqtt_client
@@ -208,21 +225,41 @@ def setup():
   logging.debug("Starting mqtt main loop thread ...")
   mqtt_client.loop_start()
 
+  logging.debug("Instantiating Livolo manager ...")
+  global manager
+  manager = LivoloDeviceManager(adapter_name='hci0')
+
+  logging.debug("Instantiating Livolo device ...")
+  global livolo_device
+  livolo_device = manager.make_device(mac_address=args.ble_mac)
+  try:
+    livolo_device.disconnect()
+  except Exception:
+    pass
+  livolo_device.register_mqtt_client(mqtt_client)
+
+  check_bluetooth_service()
+  check_bluetooth_power()
+
+  logging.debug("Starting BLE discovery ...")
+  manager.start_discovery()
+
+  global ble_discovery_t
+  ble_discovery_t = threading.Thread(target=check_bluetooth_discovery, args=(manager,))
+  ble_discovery_t.start()
+
+  global ble_device_connection_t
+  ble_device_connection_t = threading.Thread(target=check_bluetooth_device_connection, args=(manager,livolo_device,))
+  ble_device_connection_t.start()
+
 def main():
   logging.debug("Entering main loop ...")
   while True:
+    time.sleep(1)
     try:
       check_bluetooth_service()
       check_bluetooth_power()
-      if not manager.is_device_discovered():
-        logging.debug("Livolo device wasn't discovered, waiting ...")
-        time.sleep(1)
-      if not livolo_device.is_connected():
-        logging.debug("[%s] Trying to connect ..." % (args.ble_mac))
-        livolo_device.connect()
-        time.sleep(1)
-      else:
-        manager.run()
+      manager.run()
     except Exception as ex:
       # main loop must continue on other exceptions
       logging.debug("Main loop - got exception: %s" %(ex.message))
