@@ -1,0 +1,7 @@
+{% for ble_device in ble_devices %}
+<tr>
+   <td>{{ loop.index }}</td>
+   <td>{{ ble_device['mac_address'] }}</td>
+   <td><i class="fa {{ 'fa-arrow-circle-down' if not ble_device['connected'] else 'fa-arrow-circle-up' }}" aria-hidden="true"></i></td>
+</tr>
+{% endfor %}

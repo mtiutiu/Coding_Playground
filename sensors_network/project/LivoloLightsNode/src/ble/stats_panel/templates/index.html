@@ -7,13 +7,13 @@
       <meta name="author" content="">
       <title>BLE Control Panel</title>
       <!-- Bootstrap Core CSS -->
-      <link href="static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+      <link href="/static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
       <!-- MetisMenu CSS -->
-      <link href="static/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+      <link href="/static/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
       <!-- Custom CSS -->
-      <link href="static/dist/css/sb-admin-2.css" rel="stylesheet">
+      <link href="/static/dist/css/sb-admin-2.css" rel="stylesheet">
       <!-- Custom Fonts -->
-      <link href="static/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+      <link href="/static/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
       <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
       <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
       <!--[if lt IE 9]>
@@ -50,31 +50,59 @@
                            <table class="table table-striped table-bordered table-hover">
                               <thead>
                                  <tr>
-                                    <th>Device</th>
+                                    <th>ID</th>
                                     <th>MAC Address</th>
                                     <th>Status</th>
                                     <!--th>Last Seen</th-->
                                  </tr>
                               </thead>
-                              <tbody>
-                                 {% for ble_device in ble_devices %}
-                                 <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ ble_device['mac_address'] }}</td>
-                                    <td>{{ ble_device['state'] }}</td>
-                                 </tr>
-                                 {% endfor %}
+                              <tbody id="ble_dev_list">
+
                               </tbody>
                            </table>
                         </div>
                         <!-- /.table-responsive -->
+                        <div class="row">
+                          <div class="col-xs-8">
+                          </div>
+                          <button type="button" class="btn btn-success" id = "ble_refresh">Refresh</button>
+                        </div>
                      </div>
                      <!-- /.panel-body -->
                   </div>
                </div>
                <div class="tab-pane" id="mqtt">
-                  <h4>MQTT Status</h4>
-                  <p>...</p>
+                 <div class="panel panel-default">
+                    <div class="panel-heading">
+                       MQTT Brokers
+                    </div>
+                    <!-- /.panel-heading -->
+                    <div class="panel-body">
+                       <div class="table-responsive">
+                          <table class="table table-striped table-bordered table-hover">
+                             <thead>
+                                <tr>
+                                   <th>ID</th>
+                                   <th>Address</th>
+                                   <th>Port</th>
+                                   <th>Status</th>
+                                   <!--th>Last Seen</th-->
+                                </tr>
+                             </thead>
+                             <tbody id="mqtt_broker_list">
+
+                             </tbody>
+                          </table>
+                       </div>
+                       <!-- /.table-responsive -->
+                       <div class="row">
+                         <div class="col-xs-8">
+                         </div>
+                         <button type="button" class="btn btn-success" id = "mqtt_refresh">Refresh</button>
+                       </div>
+                    </div>
+                    <!-- /.panel-body -->
+                 </div>
                </div>
                <div class="tab-pane" id="settings">
                   <h4>Settings</h4>
@@ -86,12 +114,40 @@
       </div>
       <!-- /#wrapper -->
       <!-- jQuery -->
-      <script src="static/vendor/jquery/jquery.min.js"></script>
+      <script src="/static/vendor/jquery/jquery.min.js"></script>
       <!-- Bootstrap Core JavaScript -->
-      <script src="static/vendor/bootstrap/js/bootstrap.min.js"></script>
+      <script src="/static/vendor/bootstrap/js/bootstrap.min.js"></script>
       <!-- Metis Menu Plugin JavaScript -->
-      <script src="static/vendor/metisMenu/metisMenu.min.js"></script>
+      <script src="/static/vendor/metisMenu/metisMenu.min.js"></script>
       <!-- Custom Theme JavaScript -->
-      <script src="static/dist/js/sb-admin-2.js"></script>
+      <script src="/static/dist/js/sb-admin-2.js"></script>
+      <!-- Sijax -->
+      <script type="text/javascript" src="/static/js/sijax/sijax.js"></script>
+      <script type="text/javascript">
+        {{ g.sijax.get_js()|safe }}
+      </script>
+
+      <script>
+        $(document).ready(function(){
+          //Sijax.request('ble_devices_list_update');
+          // --------------- BLE -------------------------
+          $('.nav-tabs a[href="#ble"]').click(function(){
+            Sijax.request('ble_devices_list_update');
+          });
+
+          $('#ble_refresh').on('click', function (ev) {
+            Sijax.request('ble_devices_list_update');
+          });
+
+          // -------------------- MQTT --------------------
+          $('.nav-tabs a[href="#mqtt"]').click(function(){
+            Sijax.request('mqtt_broker_list_update');
+          });
+
+          $('#mqtt_refresh').on('click', function (ev) {
+            Sijax.request('mqtt_broker_list_update');
+          });
+        });
+      </script>
    </body>
 </html>

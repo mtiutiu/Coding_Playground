@@ -1,0 +1,8 @@
+{% for mqtt_broker in mqtt_brokers %}
+<tr>
+   <td>{{ loop.index }}</td>
+   <td>{{ mqtt_broker['address'] }}</td>
+   <td>{{ mqtt_broker['port'] }}</td>
+   <td><i class="fa {{ 'fa-arrow-circle-down' if not mqtt_broker['connected'] else 'fa-arrow-circle-up' }}" aria-hidden="true"></i></td>
+</tr>
+{% endfor %}

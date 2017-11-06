@@ -133,7 +133,7 @@ class LivoloDevice(gatt.Device):
   def read_rssi(self):
     #return self._properties.Get('org.bluez.Device1', 'RSSI')
     pass
-  
+
 def exit_cleanly(message):
   logging.debug(message)
   try:
@@ -191,19 +191,19 @@ def setup():
 
   logging.debug("Instantiating mqtt client ...")
   global mqtt_client
-  mqtt_client = mqtt.Client(client_id="livolo_ble_%s" % millis(), clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
+  mqtt_client = mqtt.Client(clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
   mqtt_client.on_connect = on_connect
   mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
   logging.debug("Connecting to mqtt broker: %s ..." %(args.mqtt_broker))
   is_mqtt_connected = False
   while not is_mqtt_connected:
+    time.sleep(1)
     try:
       is_mqtt_connected = (mqtt_client.connect(args.mqtt_broker, 1883, 60) == mqtt.MQTT_ERR_SUCCESS)
+      break
     except Exception:
       logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(args.mqtt_broker))
-      time.sleep(1)
-      continue
   logging.debug("Starting mqtt main loop thread ...")
   mqtt_client.loop_start()
 
@@ -222,8 +222,9 @@ def main():
         time.sleep(1)
       else:
         manager.run()
-    except Exception:
+    except Exception as ex:
       # main loop must continue on other exceptions
+      logging.debug("Main loop - got exception: %s" %(ex.message))
       continue
     except KeyboardInterrupt:
       exit_cleanly("Ctrl-C issued, exiting ...")
