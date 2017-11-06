@@ -26,6 +26,11 @@ LIVOLO_CHANNEL_BY_UUID = {
   LIVOLO_BLE_SWITCH_TWO_UUID:'2'
 }
 
+LIVOLO_UUID_BY_CHANNEL = {
+  '1':LIVOLO_BLE_SWITCH_ONE_UUID,
+  '2':LIVOLO_BLE_SWITCH_TWO_UUID
+}
+
 # -------------------------------- UTILS ---------------------------------------
 def millis():
   return int(round(time.time() * 1000))
@@ -35,10 +40,10 @@ def millis():
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
   logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (args.mqtt_broker, rc))
-  client.subscribe("mys-in/#")
+  client.subscribe("mys-in/%s/#" % (args.node_id))
   # send mysensors node presentation
-  g2m(client, "%s;1;0;0;3;Light1" % (args.node_id), "mys-out")
-  g2m(client, "%s;2;0;0;3;Light2" % (args.node_id), "mys-out")
+  #g2m(client, "%s;1;0;0;3;Light1" % (args.node_id), "mys-out")
+  #g2m(client, "%s;2;0;0;3;Light2" % (args.node_id), "mys-out")
 
 def on_disconnect(client, userdata, rc=0):
   logging.debug("Got disconnect from mqtt broker with result code: %s ..." % (rc))
@@ -47,14 +52,16 @@ def on_disconnect(client, userdata, rc=0):
 def on_message(client, userdata, msg):
   mqtt_topic_data = msg.topic.split('/')
   node_id = int(mqtt_topic_data[1])
-  child_id = int(mqtt_topic_data[2])
+  child_id = mqtt_topic_data[2]
   cmd_type = int(mqtt_topic_data[3])
   ack = int(mqtt_topic_data[4])
   sub_type = int(mqtt_topic_data[5])
   if cmd_type == mtypes.M_SET:
-    data = msg.payload.decode('ascii')
+    data = int(msg.payload.decode('ascii'))
     logging.debug("Received M_SET command with value: %s on topic: %s" % (data, msg.topic))
-    livolo_device.lights_service.characteristics[child_id-1].write_value([int(data)])
+    for characteristic in livolo_device.lights_service.characteristics:
+      if characteristic.uuid == LIVOLO_UUID_BY_CHANNEL[child_id]:
+        characteristic.write_value([data])
   elif cmd_type == mtypes.M_INTERNAL:
     if sub_type == mtypes.I_PRESENTATION:
       logging.debug("Received I_PRESENTATION internal command on topic: %s" % (msg.topic))
@@ -227,7 +234,7 @@ def setup():
 
   logging.debug("Instantiating Livolo manager ...")
   global manager
-  manager = LivoloDeviceManager(adapter_name='hci0')
+  manager = LivoloDeviceManager(adapter_name='hci1')
 
   logging.debug("Instantiating Livolo device ...")
   global livolo_device
