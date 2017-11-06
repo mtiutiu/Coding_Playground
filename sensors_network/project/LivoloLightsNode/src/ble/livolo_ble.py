@@ -195,6 +195,7 @@ def setup():
   mqtt_client.on_connect = on_connect
   mqtt_client.on_disconnect = on_disconnect
   mqtt_client.on_message = on_message
+  mqtt_client.will_set("mys/devices/ble/%s/state" % (args.ble_mac), 2, 1, True)
   logging.debug("Connecting to mqtt broker: %s ..." %(args.mqtt_broker))
   is_mqtt_connected = False
   while not is_mqtt_connected:
