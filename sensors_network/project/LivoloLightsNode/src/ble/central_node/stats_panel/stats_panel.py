@@ -12,6 +12,9 @@ import signal
 import logging
 import sys
 import os
+import psutil
+import platform
+from uptime import uptime
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
@@ -34,6 +37,38 @@ mqtt = Mqtt()
 is_mqtt_subscribed = False
 
 ble_devices = []
+
+def uptime_format(up):
+  parts = []
+
+  days, up = up // 86400, up % 86400
+  if days:
+    parts.append('%d d' % (days))
+
+  hours, up = up // 3600, up % 3600
+  if hours:
+    parts.append('%d h' % (hours))
+
+  minutes, up = up // 60, up % 60
+  if minutes:
+    parts.append('%d min' % (minutes))
+
+  if up or not parts:
+    parts.append('%d sec' % up)
+
+  return ', '.join(parts)
+
+def system_stats_check():
+  system_stats = {}
+  system_stats['cpu_usage_percent'] = round(psutil.cpu_percent())
+  system_stats['memory_usage_percent'] = round(psutil.virtual_memory().percent)
+  system_stats['disk_usage_percent'] = round(psutil.disk_usage('/').percent)
+  system_stats['machine_arch'] = platform.machine()
+  system_stats['system'] = platform.system()
+  system_stats['release'] = platform.release()
+  system_stats['uptime'] = uptime_format(uptime())
+
+  return system_stats
 
 def mqtt_check(mqtt):
   while getattr(threading.currentThread(), "do_run", True):
@@ -88,6 +123,9 @@ def handle_mqtt_message(client, userdata, message):
 
 @flask_sijax.route(app, '/')
 def index_page():
+  def get_system_stats(obj_response):
+    obj_response.html("#system_stats", render_template('system_stats.html', system_stats=system_stats_check()))
+
   def ble_devices_list_update(obj_response):
     obj_response.html("#ble_dev_list", render_template('ble_dev_list.html', ble_devices=ble_devices))
 
@@ -102,10 +140,11 @@ def index_page():
 
   if g.sijax.is_sijax_request:
     # Sijax request detected - let Sijax handle it
+    g.sijax.register_callback('get_system_stats', get_system_stats)
     g.sijax.register_callback('ble_devices_list_update', ble_devices_list_update)
     g.sijax.register_callback('mqtt_broker_list_update', mqtt_broker_list_update)
     return g.sijax.process_request()
-  return render_template('index.html', ble_devices=ble_devices)
+  return render_template('index.html')
 
 def exit_cleanly(message):
   logging.debug(message)
@@ -132,6 +171,7 @@ def setup():
   global mqtt_init_t
   mqtt_init_t = threading.Thread(target=mqtt_init, args=(app,mqtt,))
   mqtt_init_t.start()
+
   global mqtt_check_t
   mqtt_check_t = threading.Thread(target=mqtt_check, args=(mqtt,))
   mqtt_check_t.start()

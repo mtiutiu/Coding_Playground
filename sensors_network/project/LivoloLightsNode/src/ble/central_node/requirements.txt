@@ -1,0 +1,8 @@
+psutil
+uptime
+gatt
+paho-mqtt
+flask
+flask-mqtt
+flask-sijax
+flask-ini

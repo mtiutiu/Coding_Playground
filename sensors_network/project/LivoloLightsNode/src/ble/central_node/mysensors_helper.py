@@ -28,7 +28,7 @@ class MySensor():
     mqtt_message = msg.payload.decode('ascii')
     mqtt_topic_data = msg.topic.split('/')
     node_id = int(mqtt_topic_data[1])
-    child_id = mqtt_topic_data[2]
+    child_id = int(mqtt_topic_data[2])
     cmd_type = int(mqtt_topic_data[3])
     ack = int(mqtt_topic_data[4])
     sub_type = int(mqtt_topic_data[5])

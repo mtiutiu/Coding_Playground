@@ -28,8 +28,8 @@ LIVOLO_CHANNEL_BY_UUID = {
 }
 
 LIVOLO_UUID_BY_CHANNEL = {
-  '1':LIVOLO_BLE_SWITCH_ONE_UUID,
-  '2':LIVOLO_BLE_SWITCH_TWO_UUID
+  1:LIVOLO_BLE_SWITCH_ONE_UUID,
+  2:LIVOLO_BLE_SWITCH_TWO_UUID
 }
 
 # -------------------------------- UTILS ---------------------------------------
