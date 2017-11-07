@@ -6,3 +6,12 @@
    <td><i class="fa {{ 'fa-arrow-circle-down' if not mqtt_broker['connected'] else 'fa-arrow-circle-up' }}" aria-hidden="true"></i></td>
 </tr>
 {% endfor %}
+
+{% if mqtt_brokers|length == 0 %}
+<tr>
+  <td>None</td>
+  <td>None</td>
+  <td>None</td>
+  <td>None</td>
+</tr>
+{% endif %}

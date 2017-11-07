@@ -54,9 +54,7 @@ S_WATER_QUALITY         = 39  # Water quality sensor	V_TEMP, V_PH, V_ORP, V_EC, 
 V_TEMP                  = 0   # Temperature
 V_HUM                   = 1   # Humidity
 V_STATUS                = 2   # Binary status. 0=off 1=on
-V_LIGHT                 = 2   # Deprecated. Alias for V_STATUS. Light status. 0=off 1=on
 V_PERCENTAGE            = 3   # Percentage value. 0-100 (%)
-V_DIMMER                = 3   # Deprecated. Alias for V_PERCENTAGE. Dimmer value. 0-100 (%)
 V_PRESSURE              = 4   # Atmospheric Pressure
 V_FORECAST              = 5   # Weather forecast. One of "stable", "sunny", "cloudy", "unstable", "thunderstorm" or "unknown"
 V_RAIN                  = 6   # Amount of rain

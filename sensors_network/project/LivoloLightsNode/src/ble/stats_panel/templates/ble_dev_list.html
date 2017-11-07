@@ -11,3 +11,11 @@
   {% endif %}
 </tr>
 {% endfor %}
+
+{% if ble_devices|length == 0 %}
+<tr>
+  <td>None</td>
+  <td>None</td>
+  <td>None</td>
+</tr>
+{% endif %}

@@ -3,6 +3,7 @@
 from flask import Flask,g
 from flask import render_template
 from flask_mqtt import Mqtt
+from flask_ini import FlaskIni
 import flask_sijax
 import paho.mqtt.client as mqtt
 import threading
@@ -13,11 +14,17 @@ import sys
 import os
 
 app = Flask(__name__)
-app.config['MQTT_BROKER_URL'] = 'localhost'
-app.config['MQTT_BROKER_PORT'] = 1883
-app.config['MQTT_USERNAME'] = ''
-app.config['MQTT_PASSWORD'] = ''
-app.config['MQTT_REFRESH_TIME'] = 1.0  # refresh time in seconds
+app.iniconfig = FlaskIni()
+with app.app_context():
+  app.iniconfig.read('/etc/default/flask_ble.conf')
+  app.config['MQTT_BROKER_URL'] = app.iniconfig.get('mqtt', 'broker')
+  app.config['MQTT_BROKER_PORT'] = app.iniconfig.getint('mqtt', 'port', fallback=1883)
+  app.config['MQTT_USERNAME'] = app.iniconfig.get('mqtt', 'user', fallback='')
+  app.config['MQTT_PASSWORD'] = app.iniconfig.get('mqtt', 'password', fallback='')
+  app.config['MQTT_REFRESH_TIME'] = app.iniconfig.getfloat('mqtt', 'refresh_time', fallback=1.0)  # refresh time in seconds
+  app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
+  app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
+  app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
 
 app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
 app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
@@ -36,7 +43,7 @@ def mqtt_check(mqtt):
     else:
       # mqtt ble devices topics
       if not is_mqtt_subscribed:
-        mqtt.subscribe('mys/devices/ble/#')
+        mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
 
 def mqtt_init(app, mqtt):
   while getattr(threading.currentThread(), "do_run", True):
@@ -47,9 +54,9 @@ def mqtt_init(app, mqtt):
     except Exception:
       logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(app.config['MQTT_BROKER_URL']))
       continue
-  # mqtt ble devices topics
-  if not is_mqtt_subscribed:
-    mqtt.subscribe('mys/devices/ble/#')
+    # mqtt ble devices topics
+    if not is_mqtt_subscribed:
+      mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
 
 @mqtt.on_subscribe()
 def handle_subscribe(client, userdata, mid, granted_qos):
@@ -131,4 +138,4 @@ def setup():
 
 if __name__ == "__main__":
   setup()
-  app.run(debug=True, host='0.0.0.0')
+  app.run(host=app.config['FLASK_HOST'], port=app.config['FLASK_PORT'])
