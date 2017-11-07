@@ -1,0 +1,12 @@
+[Unit]
+Description=Livolo BLE Stats Panel
+After=network.target
+
+[Service]
+User=root
+Restart=on-failure
+WorkingDirectory=/home/livolo/stats_panel/
+ExecStart=/home/livolo/stats_panel/ble_stats_panel.py
+
+[Install]
+WantedBy=multi-user.target

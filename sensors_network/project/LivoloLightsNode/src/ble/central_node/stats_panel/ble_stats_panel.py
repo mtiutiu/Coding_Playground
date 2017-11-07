@@ -15,23 +15,10 @@ import os
 import psutil
 import platform
 from uptime import uptime
+from argparse import ArgumentParser
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
-with app.app_context():
-  app.iniconfig.read('/etc/default/flask_ble.conf')
-  app.config['MQTT_BROKER_URL'] = app.iniconfig.get('mqtt', 'broker')
-  app.config['MQTT_BROKER_PORT'] = app.iniconfig.getint('mqtt', 'port', fallback=1883)
-  app.config['MQTT_USERNAME'] = app.iniconfig.get('mqtt', 'user', fallback='')
-  app.config['MQTT_PASSWORD'] = app.iniconfig.get('mqtt', 'password', fallback='')
-  app.config['MQTT_REFRESH_TIME'] = app.iniconfig.getfloat('mqtt', 'refresh_time', fallback=1.0)  # refresh time in seconds
-  app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
-  app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
-  app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
-
-app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
-app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
-flask_sijax.Sijax(app)
 
 mqtt = Mqtt()
 is_mqtt_subscribed = False
@@ -168,6 +155,21 @@ def setup():
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
 
+  with app.app_context():
+    app.iniconfig.read(args.config)
+    app.config['MQTT_BROKER_URL'] = app.iniconfig.get('mqtt', 'broker')
+    app.config['MQTT_BROKER_PORT'] = app.iniconfig.getint('mqtt', 'port', fallback=1883)
+    app.config['MQTT_USERNAME'] = app.iniconfig.get('mqtt', 'user', fallback='')
+    app.config['MQTT_PASSWORD'] = app.iniconfig.get('mqtt', 'password', fallback='')
+    app.config['MQTT_REFRESH_TIME'] = app.iniconfig.getfloat('mqtt', 'refresh_time', fallback=1.0)  # refresh time in seconds
+    app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
+    app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
+    app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
+
+  app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
+  app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
+  flask_sijax.Sijax(app)
+
   global mqtt_init_t
   mqtt_init_t = threading.Thread(target=mqtt_init, args=(app,mqtt,))
   mqtt_init_t.start()
@@ -177,5 +179,10 @@ def setup():
   mqtt_check_t.start()
 
 if __name__ == "__main__":
+  arg_parser = ArgumentParser(description="BLE Stats Panel")
+  arg_parser.add_argument('config', help="Configuration file")
+  global args
+  args = arg_parser.parse_args()
+
   setup()
   app.run(host=app.config['FLASK_HOST'], port=app.config['FLASK_PORT'])
