@@ -153,35 +153,42 @@
       </script>
 
       <script>
+        function do_sijax(req) {
+          Sijax.request(req, [], { error: function(jqXHR, textStatus, errorThrown) {
+            alert("Ajax call failed! Maybe your connection or the server is offline?");
+            //console.log(errorThrown);
+          }});
+        }
         $(document).ready(function(){
-          Sijax.request('get_system_stats');
+          // load data for the active tab
+          do_sijax('get_system_stats');
 
           // --------------- System stats ------------------
           $('.nav-tabs a[href="#system"]').click(function(){
-            Sijax.request('get_system_stats');
+            do_sijax('get_system_stats');
           });
 
           $('#system_stats_refresh').on('click', function (ev) {
-            Sijax.request('get_system_stats');
+            do_sijax('get_system_stats');
           });
           // ----------------------------------------------
 
           // --------------- BLE -------------------------
           $('.nav-tabs a[href="#ble"]').click(function(){
-            Sijax.request('ble_devices_list_update');
+            do_sijax('ble_devices_list_update');
           });
 
           $('#ble_refresh').on('click', function (ev) {
-            Sijax.request('ble_devices_list_update');
+            do_sijax('ble_devices_list_update');
           });
           // ----------------------------------------------
           // -------------------- MQTT --------------------
           $('.nav-tabs a[href="#mqtt"]').click(function(){
-            Sijax.request('mqtt_broker_list_update');
+            do_sijax('mqtt_broker_list_update');
           });
 
           $('#mqtt_refresh').on('click', function (ev) {
-            Sijax.request('mqtt_broker_list_update');
+            do_sijax('mqtt_broker_list_update');
           });
           // ----------------------------------------------
         });
