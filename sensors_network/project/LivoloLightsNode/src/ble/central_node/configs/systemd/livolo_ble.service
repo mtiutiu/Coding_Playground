@@ -3,10 +3,10 @@ Description=Livolo BLE Central Node
 After=network.target,bluetooth.target
 
 [Service]
-User=root
+User=alarm
 Restart=on-failure
 WorkingDirectory=/home/livolo/
-ExecStart=/home/livolo/livolo_ble.py
+ExecStart=/usr/bin/sudo /home/livolo/livolo_ble.py /home/livolo/configs/livolo_ble.conf
 
 [Install]
 WantedBy=multi-user.target
