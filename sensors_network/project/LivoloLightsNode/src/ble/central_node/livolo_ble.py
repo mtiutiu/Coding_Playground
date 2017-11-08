@@ -9,12 +9,12 @@ import signal
 import logging
 import os
 import subprocess
-import threading
 import configparser
 from argparse import ArgumentParser
 import paho.mqtt.client as mqtt
 from mysensors_helper import MySensor
 import mtypes
+from gi.repository import GLib
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
@@ -172,8 +172,6 @@ class LivoloDevice(gatt.Device):
 
 def exit_cleanly(message):
   logging.debug(message)
-  ble_discovery_t.do_run = False
-  ble_device_connection_t.do_run = False
   try:
     if manager.livolo_device_discovered and livolo_device.is_connected():
       logging.debug("[%s] Disconnecting from Livolo device ..." % (config.get('ble','mac_address')))
@@ -213,20 +211,6 @@ def check_bluetooth_power():
     manager.is_adapter_powered = True
     time.sleep(1)
 
-def check_bluetooth_discovery(manager):
-  while getattr(threading.currentThread(), "do_run", True):
-    time.sleep(1)
-    if not manager.livolo_device_discovered:
-      logging.debug("[%s] Livolo device wasn't discovered, waiting ..." % (config.get('ble','mac_address')))
-      manager.start_discovery()
-
-def check_bluetooth_device_connection(manager, device):
-  while getattr(threading.currentThread(), "do_run", True):
-    time.sleep(1)
-    if manager.livolo_device_discovered and not device.is_connected():
-      logging.debug("[%s] Trying to connect ..." % (config.get('ble','mac_address')))
-      device.connect()
-
 def setup():
   logging.basicConfig(
     level=logging.DEBUG,
@@ -235,6 +219,17 @@ def setup():
 
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
+
+  # very important - TO STOP the fucking dbus main loop
+  if hasattr(GLib, 'unix_signal_add'):
+    unix_signal_add = GLib.unix_signal_add
+  else:
+    unix_signal_add = GLib.unix_signal_add_full
+
+  unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, sigint_handler, None, None)
+  unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, sigterm_handler, None, None)
+  #unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, sigint_handler, mainloop)
+  #unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, sigterm_handler, mainloop)
 
   logging.debug("Instantiating mqtt client ...")
   global mqtt_client
@@ -294,14 +289,6 @@ def setup():
   logging.debug("Starting BLE discovery ...")
   manager.start_discovery()
 
-  global ble_discovery_t
-  ble_discovery_t = threading.Thread(target=check_bluetooth_discovery, args=(manager,))
-  ble_discovery_t.start()
-
-  global ble_device_connection_t
-  ble_device_connection_t = threading.Thread(target=check_bluetooth_device_connection, args=(manager,livolo_device,))
-  ble_device_connection_t.start()
-
 def main():
   logging.debug("Entering main loop ...")
   while True:
@@ -309,13 +296,18 @@ def main():
     try:
       check_bluetooth_service()
       check_bluetooth_power()
-      manager.run()
+      if not manager.livolo_device_discovered:
+        logging.debug("[%s] Livolo device wasn't discovered, waiting ..." % (config.get('ble','mac_address')))
+        time.sleep(1)
+      if not livolo_device.is_connected():
+        logging.debug("[%s] Trying to connect ..." % (config.get('ble','mac_address')))
+        livolo_device.connect()
+      else:
+        manager.run()
     except Exception as ex:
       # main loop must continue on other exceptions
       logging.debug("Main loop - got exception: %s" %(ex.message))
       continue
-    except KeyboardInterrupt:
-      exit_cleanly("Ctrl-C issued, exiting ...")
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")

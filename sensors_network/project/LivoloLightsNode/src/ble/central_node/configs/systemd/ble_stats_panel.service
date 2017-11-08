@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 User=alarm
-Restart=on-failure
-WorkingDirectory=/home/livolo/stats_panel/
-ExecStart=/usr/bin/sudo /home/livolo/stats_panel/ble_stats_panel.py /home/livolo/configs/ble_stats_panel.conf
+#Restart=on-failure
+WorkingDirectory=/home/alarm/livolo/stats_panel/
+ExecStart=/usr/bin/sudo /home/alarm/livolo/stats_panel/ble_stats_panel.py /home/alarm/livolo/configs/ble_stats_panel.conf
 
 [Install]
 WantedBy=multi-user.target

@@ -4,9 +4,9 @@ After=network.target,bluetooth.target
 
 [Service]
 User=alarm
-Restart=on-failure
-WorkingDirectory=/home/livolo/
-ExecStart=/usr/bin/sudo /home/livolo/livolo_ble.py /home/livolo/configs/livolo_ble.conf
+#Restart=on-failure
+WorkingDirectory=/home/alarm/livolo/
+ExecStart=/usr/bin/sudo /home/alarm/livolo/livolo_ble.py /home/alarm/livolo/configs/livolo_ble.conf
 
 [Install]
 WantedBy=multi-user.target
