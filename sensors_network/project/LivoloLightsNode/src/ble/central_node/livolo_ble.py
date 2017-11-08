@@ -172,21 +172,22 @@ class LivoloDevice(gatt.Device):
 
 def exit_cleanly(message):
   logging.debug(message)
-  ble_discovery_t.do_run = False
-  ble_device_connection_t.do_run = False
+  if ble_discovery_t is not None:
+    ble_discovery_t.do_run = False
+  if ble_device_connection_t is not None:
+    ble_device_connection_t.do_run = False
   try:
     if manager.livolo_device_discovered and livolo_device.is_connected():
       logging.debug("[%s] Disconnecting from Livolo device ..." % (config.get('ble','mac_address')))
       livolo_device.disconnect()
-      if self.mqtt_client is not None:
+      if mqtt_client is not None:
         mqtt_client.publish(
           "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), config.get('ble','mac_address')),
           2,
           1,
           True
         )
-    if self.mqtt_client is not None:
-      mqtt_client.disconnect()
+        mqtt_client.disconnect()
   except Exception:
     pass
   finally:

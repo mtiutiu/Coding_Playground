@@ -135,9 +135,11 @@ def index_page():
 
 def exit_cleanly(message):
   logging.debug(message)
-  mqtt_init_t.do_run = False
-  mqtt_check_t.do_run = False
-  if mqtt.connected:
+  if mqtt_init_t is not None:
+    mqtt_init_t.do_run = False
+  if mqtt_check_t is not None:
+    mqtt_check_t.do_run = False
+  if mqtt is not None and mqtt.connected:
     mqtt.client.disconnect()
   sys.exit(0)
 
