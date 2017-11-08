@@ -172,10 +172,8 @@ class LivoloDevice(gatt.Device):
 
 def exit_cleanly(message):
   logging.debug(message)
-  if ble_discovery_t is not None:
-    ble_discovery_t.do_run = False
-  if ble_device_connection_t is not None:
-    ble_device_connection_t.do_run = False
+  ble_discovery_t.do_run = False
+  ble_device_connection_t.do_run = False
   try:
     if manager.livolo_device_discovered and livolo_device.is_connected():
       logging.debug("[%s] Disconnecting from Livolo device ..." % (config.get('ble','mac_address')))
