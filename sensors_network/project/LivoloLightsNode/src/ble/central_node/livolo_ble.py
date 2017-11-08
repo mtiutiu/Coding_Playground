@@ -15,6 +15,7 @@ import paho.mqtt.client as mqtt
 from mysensors_helper import MySensor
 import mtypes
 from gi.repository import GLib
+import threading
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
@@ -37,60 +38,30 @@ def millis():
   return int(round(time.time() * 1000))
 # ------------------------------------------------------------------------------
 
-# ------------------------------ MQTT ------------------------------------------
-# The callback for when the client receives a CONNACK response from the server.
-def on_connect(client, userdata, flags, rc):
-  logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (config.get('mqtt','broker'), rc))
-  client.subscribe("%s/%s/#" % (config.get('mqtt','mysensors_in_topic_prefix'), config.get('mys','node_id')))
-  # send mysensors node presentation
-
-def on_disconnect(client, userdata, rc=0):
-  logging.debug("Got disconnect from mqtt broker with result code: %s ..." % (rc))
-
-# The callback for when a PUBLISH message is received from the server.
-# Process MySensors messages and take decisions
-def on_message(client, userdata, msg):
-  child_id, cmd_type, sub_type, payload = mys_livolo_node.read(msg)
-  if cmd_type == mtypes.M_SET:
-    data = int(payload)
-    logging.debug("Received M_SET command with value: %s on topic: %s" % (data, msg.topic))
-    for characteristic in livolo_device.lights_service.characteristics:
-      if characteristic.uuid == LIVOLO_UUID_BY_CHANNEL[child_id]:
-        characteristic.write_value([data])
-  elif cmd_type == mtypes.M_REQ:
-    logging.debug("Received M_REQ command on topic: %s" % (msg.topic))
-  elif cmd_type == mtypes.M_INTERNAL:
-    if sub_type == mtypes.I_PRESENTATION:
-      logging.debug("Received I_PRESENTATION internal command on topic: %s" % (msg.topic))
-    elif sub_type == mtypes.I_DISCOVER_REQUEST:
-      logging.debug("Received I_DISCOVER_REQUEST internal command on topic: %s" % (msg.topic))
-    elif sub_type == mtypes.I_HEARTBEAT_REQUEST:
-      logging.debug("Received I_HEARTBEAT_REQUEST internal command on topic: %s" % (msg.topic))
-    elif sub_type == mtypes.I_REBOOT:
-      logging.debug("Received I_REBOOT internal command on topic: %s" % (msg.topic))
-    else:
-      logging.debug("Received data: %s on topic: %s" % (payload, msg.topic))
-  else:
-    logging.debug("Received data: %s on topic: %s" % (payload, msg.topic))
-# ------------------------------------------------------------------------------
-
 # -------------------------------------- BLE -----------------------------------
 class LivoloDeviceManager(gatt.DeviceManager):
-  def __init__(self, adapter_name):
-    super().__init__(adapter_name)
+  def __init__(self, config, mac_address_to_match):
     self.livolo_device_discovered = False
+    self.mac_address_to_match = mac_address_to_match
+    self.config = config
+    super().__init__(self.config.get('ble','hci_device'))
 
   def device_discovered(self, device):
-    if device.mac_address == config.get('ble','mac_address'):
+    if device.mac_address == self.mac_address_to_match:
       logging.debug("[%s] Discovered, alias = %s" % (device.mac_address, device.alias()))
       self.livolo_device_discovered = True
       logging.debug("Stopping BLE discovery ...")
       self.stop_discovery()
 
-  def make_device(self, mac_address):
-    return LivoloDevice(mac_address=mac_address, manager=self)
-
 class LivoloDevice(gatt.Device):
+  def __init__(self, config, manager, mac_address, mys_livolo_node):
+    self.config = config
+    self.mac_address = mac_address
+    self.manager = manager
+    self.mys_livolo_node = mys_livolo_node
+    self.config = config
+    super().__init__(self.mac_address, self.manager)
+    
   def register_mqtt_client(self, mqtt_client):
     self.mqtt_client = mqtt_client
 
@@ -99,11 +70,11 @@ class LivoloDevice(gatt.Device):
     logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
     if self.mqtt_client is not None:
       # send mysensors node presentation
-      mys_livolo_node.send_presentation(1, mtypes.S_BINARY, 'Light1')
-      mys_livolo_node.send_presentation(2, mtypes.S_BINARY, 'Light2')
+      self.mys_livolo_node.send_presentation(1, mtypes.S_BINARY, 'Light1')
+      self.mys_livolo_node.send_presentation(2, mtypes.S_BINARY, 'Light2')
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
         1,
         1,
         True
@@ -115,7 +86,7 @@ class LivoloDevice(gatt.Device):
     if self.mqtt_client is not None:
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
         0,
         1,
         True
@@ -128,7 +99,7 @@ class LivoloDevice(gatt.Device):
     if self.mqtt_client is not None:
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
         0,
         1,
         True
@@ -164,52 +135,175 @@ class LivoloDevice(gatt.Device):
     channel_state = int.from_bytes(value, byteorder='little')
     logging.debug("[%s] Light_%s state: %s" % (self.mac_address, channel, channel_state))
     if self.mqtt_client is not None:
-      mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
+      self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
 
   def read_rssi(self):
     #return self._properties.Get('org.bluez.Device1', 'RSSI')
     pass
 
+class LivoloCentralBLE(threading.Thread):
+  def __init__(self, config, mac_address, mysensor_node_id):
+    threading.Thread.__init__(self)
+    self.must_run = True
+    self.config = config
+    self.mac_address = mac_address
+    self.mysensor_node_id = mysensor_node_id
+    
+    logging.debug("Instantiating mqtt client ...")
+    self.mqtt_client = mqtt.Client(clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
+    self.mqtt_client.on_connect = self.on_connect
+    self.mqtt_client.on_disconnect = self.on_disconnect
+    self.mqtt_client.on_message = self.on_message
+    self.mqtt_client.will_set(
+      "%s/%s/state" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
+      2,
+      1,
+      True
+    )
+    logging.debug("Connecting to mqtt broker: %s ..." % (self.config.get('mqtt','broker')))
+    self.is_mqtt_connected = False
+    while not self.is_mqtt_connected:
+      time.sleep(1)
+      try:
+        self.is_mqtt_connected = ( self.mqtt_client.connect(
+          self.config.get('mqtt','broker'),
+          self.config.getint('mqtt','port',fallback=1883),
+          self.config.getint('mqtt','keepalive',fallback=60)
+        ) == mqtt.MQTT_ERR_SUCCESS )
+        break
+      except Exception:
+        logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(self.config.get('mqtt','broker')))
+    logging.debug("Starting mqtt main loop thread ...")
+    self.mqtt_client.loop_start()
+
+    self.mys_livolo_node = MySensor(
+      self.mysensor_node_id,
+      'Livolo'
+    )
+    self.mys_livolo_node.register_mqtt(
+      self.mqtt_client,
+      self.config.get('mqtt','mysensors_in_topic_prefix'),
+      self.config.get('mqtt','mysensors_out_topic_prefix')
+    )
+
+    logging.debug("Instantiating Livolo manager ...")
+    self.manager = LivoloDeviceManager(self.config, self.mac_address)
+
+    logging.debug("Instantiating Livolo device ...")
+    self.livolo_device = LivoloDevice(self.config, self.manager, self.mac_address, self.mys_livolo_node)
+    try:
+      self.livolo_device.disconnect()
+    except Exception:
+      pass
+    self.livolo_device.register_mqtt_client(self.mqtt_client)
+
+    self.check_bluetooth_service()
+    self.check_bluetooth_power()
+
+    logging.debug("Starting BLE discovery ...")
+    self.manager.start_discovery()
+    
+  # ------------------------------ MQTT ------------------------------------------
+  # The callback for when the client receives a CONNACK response from the server.
+  def on_connect(self, client, userdata, flags, rc):
+    logging.debug("Connected to mqtt broker: %s with result code: %s ..." % (self.config.get('mqtt','broker'), rc))
+    client.subscribe("%s/%s/#" % (self.config.get('mqtt','mysensors_in_topic_prefix'), self.mysensor_node_id))
+    # send mysensors node presentation
+
+  def on_disconnect(self, client, userdata, rc=0):
+    logging.debug("Got disconnect from mqtt broker with result code: %s ..." % (rc))
+
+  # The callback for when a PUBLISH message is received from the server.
+  # Process MySensors messages and take decisions
+  def on_message(self, client, userdata, msg):
+    child_id, cmd_type, sub_type, payload = self.mys_livolo_node.read(msg)
+    if cmd_type == mtypes.M_SET:
+      data = int(payload)
+      logging.debug("Received M_SET command with value: %s on topic: %s" % (data, msg.topic))
+      for characteristic in self.livolo_device.lights_service.characteristics:
+        if characteristic.uuid == LIVOLO_UUID_BY_CHANNEL[child_id]:
+          characteristic.write_value([data])
+    elif cmd_type == mtypes.M_REQ:
+      logging.debug("Received M_REQ command on topic: %s" % (msg.topic))
+    elif cmd_type == mtypes.M_INTERNAL:
+      if sub_type == mtypes.I_PRESENTATION:
+        logging.debug("Received I_PRESENTATION internal command on topic: %s" % (msg.topic))
+      elif sub_type == mtypes.I_DISCOVER_REQUEST:
+        logging.debug("Received I_DISCOVER_REQUEST internal command on topic: %s" % (msg.topic))
+      elif sub_type == mtypes.I_HEARTBEAT_REQUEST:
+        logging.debug("Received I_HEARTBEAT_REQUEST internal command on topic: %s" % (msg.topic))
+      elif sub_type == mtypes.I_REBOOT:
+        logging.debug("Received I_REBOOT internal command on topic: %s" % (msg.topic))
+      else:
+        logging.debug("Received data: %s on topic: %s" % (payload, msg.topic))
+    else:
+      logging.debug("Received data: %s on topic: %s" % (payload, msg.topic))
+  # ------------------------------------------------------------------------------
+  
+  def is_service_running(self, name):
+    with open(os.devnull, 'wb') as hide_output:
+      exit_code = subprocess.Popen(['systemctl', 'status', name], stdout=hide_output, stderr=hide_output).wait()
+      return exit_code == 0
+
+  def check_bluetooth_service(self):
+    while not self.is_service_running('bluetooth'):
+      logging.debug("Bluetooth service is not running/ready, waiting ...")
+      time.sleep(1)
+
+  def check_bluetooth_power(self):
+    while not self.manager.is_adapter_powered:
+      logging.debug("Bluetooth adapter is not powered, trying to power it on ...")
+      self.manager.is_adapter_powered = True
+      time.sleep(1)
+  
+  def run(self):
+    logging.debug("Entering main loop ...")
+    while self.must_run:
+      time.sleep(1)
+      try:
+        self.check_bluetooth_service()
+        self.check_bluetooth_power()
+        if not self.manager.livolo_device_discovered:
+          logging.debug("[%s] Livolo device wasn't discovered, waiting ..." % (self.mac_address))
+          time.sleep(1)
+        if not self.livolo_device.is_connected():
+          logging.debug("[%s] Trying to connect ..." % (self.mac_address))
+          self.livolo_device.connect()
+        else:
+          self.manager.run()
+      except Exception as ex:
+        # main loop must continue on other exceptions
+        logging.debug("Main loop - got exception: %s" %(ex.message))
+        continue
+        
+  def stop(self):
+    self.must_run = False
+    try:
+      if self.manager.livolo_device_discovered and self.livolo_device.is_connected():
+        logging.debug("[%s] Disconnecting from Livolo device ..." % (self.mac_address))
+        self.livolo_device.disconnect()
+        if selfmqtt_client is not None:
+          self.mqtt_client.publish(
+            "%s/%s/state" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
+            2,
+            1,
+            True
+          )
+          self.mqtt_client.disconnect()
+    except Exception:
+      pass
+    
 def exit_cleanly(message):
   logging.debug(message)
-  try:
-    if manager.livolo_device_discovered and livolo_device.is_connected():
-      logging.debug("[%s] Disconnecting from Livolo device ..." % (config.get('ble','mac_address')))
-      livolo_device.disconnect()
-      if mqtt_client is not None:
-        mqtt_client.publish(
-          "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), config.get('ble','mac_address')),
-          2,
-          1,
-          True
-        )
-        mqtt_client.disconnect()
-  except Exception:
-    pass
-  finally:
-    sys.exit(0)
+  livoloCentralBLE1.stop()
+  livoloCentralBLE2.stop()
+  sys.exit(0)
 
 def sigint_handler(signal, frame):
   exit_cleanly("SIGINT issued, exiting ...")
 
 def sigterm_handler(signal, frame):
   exit_cleanly("SIGTERM issued, exiting ...")
-
-def is_service_running(name):
-  with open(os.devnull, 'wb') as hide_output:
-    exit_code = subprocess.Popen(['systemctl', 'status', name], stdout=hide_output, stderr=hide_output).wait()
-    return exit_code == 0
-
-def check_bluetooth_service():
-  while not is_service_running('bluetooth'):
-    logging.debug("Bluetooth service is not running/ready, waiting ...")
-    time.sleep(1)
-
-def check_bluetooth_power():
-  while not manager.is_adapter_powered:
-    logging.debug("Bluetooth adapter is not powered, trying to power it on ...")
-    manager.is_adapter_powered = True
-    time.sleep(1)
 
 def setup():
   logging.basicConfig(
@@ -231,91 +325,28 @@ def setup():
   #unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, sigint_handler, mainloop)
   #unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, sigterm_handler, mainloop)
 
-  logging.debug("Instantiating mqtt client ...")
-  global mqtt_client
-  mqtt_client = mqtt.Client(clean_session=True, userdata=None, protocol=mqtt.MQTTv311)
-  mqtt_client.on_connect = on_connect
-  mqtt_client.on_disconnect = on_disconnect
-  mqtt_client.on_message = on_message
-  mqtt_client.will_set(
-    "%s/%s/state" % (config.get('mqtt','stats_topic_prefix'), config.get('ble','mac_address')),
-    2,
-    1,
-    True
-  )
-  logging.debug("Connecting to mqtt broker: %s ..." % (config.get('mqtt','broker')))
-  is_mqtt_connected = False
-  while not is_mqtt_connected:
-    time.sleep(1)
-    try:
-      is_mqtt_connected = ( mqtt_client.connect(
-        config.get('mqtt','broker'),
-        config.getint('mqtt','port',fallback=1883),
-        config.getint('mqtt','keepalive',fallback=60)
-      ) == mqtt.MQTT_ERR_SUCCESS )
-      break
-    except Exception:
-      logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(config.get('mqtt','broker')))
-  logging.debug("Starting mqtt main loop thread ...")
-  mqtt_client.loop_start()
-
-  global mys_livolo_node
-  mys_livolo_node = MySensor(
-    config.get('mys','node_id'),
-    'Livolo'
-  )
-  mys_livolo_node.register_mqtt(
-    mqtt_client,
-    config.get('mqtt','mysensors_in_topic_prefix'),
-    config.get('mqtt','mysensors_out_topic_prefix')
-  )
-
-  logging.debug("Instantiating Livolo manager ...")
-  global manager
-  manager = LivoloDeviceManager(adapter_name=config.get('ble','hci_device'))
-
-  logging.debug("Instantiating Livolo device ...")
-  global livolo_device
-  livolo_device = manager.make_device(mac_address=config.get('ble','mac_address'))
-  try:
-    livolo_device.disconnect()
-  except Exception:
-    pass
-  livolo_device.register_mqtt_client(mqtt_client)
-
-  check_bluetooth_service()
-  check_bluetooth_power()
-
-  logging.debug("Starting BLE discovery ...")
-  manager.start_discovery()
+  global config
+  config = configparser.ConfigParser()
+  config.read(args.config)
+  
+  global livoloCentralBLE1
+  livoloCentralBLE1 = LivoloCentralBLE(config, 'c2:8a:74:27:11:7b', 100)
+  livoloCentralBLE1.setDaemon(True)
+  livoloCentralBLE1.start()
+  
+  global livoloCentralBLE2
+  livoloCentralBLE2 = LivoloCentralBLE(config, 'de:62:20:8f:8e:91', 101)
+  livoloCentralBLE2.setDaemon(True)
+  livoloCentralBLE2.start()
 
 def main():
-  logging.debug("Entering main loop ...")
-  while True:
-    time.sleep(1)
-    try:
-      check_bluetooth_service()
-      check_bluetooth_power()
-      if not manager.livolo_device_discovered:
-        logging.debug("[%s] Livolo device wasn't discovered, waiting ..." % (config.get('ble','mac_address')))
-        time.sleep(1)
-      if not livolo_device.is_connected():
-        logging.debug("[%s] Trying to connect ..." % (config.get('ble','mac_address')))
-        livolo_device.connect()
-      else:
-        manager.run()
-    except Exception as ex:
-      # main loop must continue on other exceptions
-      logging.debug("Main loop - got exception: %s" %(ex.message))
-      continue
+  livoloCentralBLE1.join()
+  livoloCentralBLE2.join()
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
   arg_parser.add_argument('config', help="Configuration file")
   global args
   args = arg_parser.parse_args()
-  global config
-  config = configparser.ConfigParser()
-  config.read(args.config)
   setup()
   main()
