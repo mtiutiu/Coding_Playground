@@ -201,7 +201,7 @@ def sigterm_handler(signal, frame):
 
 def is_service_running(name):
   with open(os.devnull, 'wb') as hide_output:
-    exit_code = subprocess.Popen(['service', name, 'status'], stdout=hide_output, stderr=hide_output).wait()
+    exit_code = subprocess.Popen(['systemctl', 'status', name], stdout=hide_output, stderr=hide_output).wait()
     return exit_code == 0
 
 def check_bluetooth_service():
