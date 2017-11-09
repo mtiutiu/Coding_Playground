@@ -94,19 +94,24 @@ def handle_unsubscribe(client, userdata, mid):
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-  if 'state' in message.topic:
+  if app.iniconfig.get('mqtt', 'stats_topic_prefix') in message.topic:
     mac_address = message.topic.split('/')[-2]
-    state = message.payload.decode('ascii')
-    logging.debug("Got BLE device with mac address: %s and state: %s" % (mac_address, state))
+    data = message.payload.decode('ascii')
+    if 'state' in message.topic:
+      logging.debug("Got BLE device with mac address: %s and state: %s" % (mac_address, data))
     # check if device already added to list and return
     for ble_device in ble_devices:
       if ble_device['mac_address'] == mac_address:
-        # if new state is different from previous then do an update
-        if state != ble_device['connected']:
-          ble_device['connected'] = state
+        # if new data is different from previous then do an update
+        if 'state' in message.topic:
+          if data != ble_device['state']:
+            ble_device['state'] = data
+        if 'alias' in message.topic:
+          if data != ble_device['alias']:
+            ble_device['alias'] = data
         return
     # if device not known then add it
-    ble_devices.append({'mac_address': mac_address, 'connected': state})
+    ble_devices.append({'mac_address': mac_address, 'state': data, 'alias': data})
 
 @flask_sijax.route(app, '/')
 def index_page():

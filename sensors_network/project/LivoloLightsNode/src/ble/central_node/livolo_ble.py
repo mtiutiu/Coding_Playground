@@ -73,6 +73,12 @@ class LivoloDevice(gatt.Device):
         1,
         True
       )
+      self.mqtt_client.publish(
+        "%s/%s/alias" % (self.config.get('mqtt','stats_topic_prefix'), self.mac_address),
+        self.alias(),
+        1,
+        True
+      )
 
   def connect_failed(self, error):
     super().connect_failed(error)

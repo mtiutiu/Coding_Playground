@@ -2,9 +2,10 @@
 <tr>
   <td>{{ loop.index }}</td>
   <td>{{ ble_device['mac_address'] }}</td>
-  {% if '0' in ble_device['connected'] %}
+  <td>{{ ble_device['alias'] }}</td>
+  {% if '0' in ble_device['state'] %}
     <td><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></td>
-  {% elif '1' in ble_device['connected'] %}
+  {% elif '1' in ble_device['state'] %}
     <td><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></td>
   {% else %}
     <td><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></td>
@@ -14,6 +15,7 @@
 
 {% if ble_devices|length == 0 %}
 <tr>
+  <td>None</td>
   <td>None</td>
   <td>None</td>
   <td>None</td>
