@@ -146,7 +146,6 @@ def exit_cleanly(message):
     mqtt_check_t.do_run = False
   if mqtt is not None and mqtt.connected:
     mqtt.client.disconnect()
-    mqtt.loop_stop()
   sys.exit(0)
 
 def sigint_handler(signal, frame):

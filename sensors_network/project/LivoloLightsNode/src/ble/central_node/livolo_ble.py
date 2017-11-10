@@ -44,12 +44,19 @@ class LivoloDeviceManager(gatt.DeviceManager):
   def device_discovered(self, device):
     if device.mac_address == self.mac_address_to_match:
       logging.debug(
-        "[%s] Discovered, alias = %s" %
-        (device.mac_address, device.alias())
+        "[%s] Device discovered with alias = %s" % (device.mac_address, device.alias())
       )
       self.livolo_device_discovered = True
-      logging.debug("Stopping BLE discovery ...")
       self.stop_discovery()
+
+  def start_discovery(self):
+    logging.debug("Starting BLE discovery ...")
+    self.livolo_device_discovered = False
+    super().start_discovery()
+
+  def stop_discovery(self):
+    logging.debug("Stopping BLE discovery ...")
+    super().stop_discovery()
 
 class LivoloDevice(gatt.Device):
   def __init__(self, config, manager, mac_address, mys_livolo_node, mqtt_client=None):
@@ -91,7 +98,6 @@ class LivoloDevice(gatt.Device):
         1,
         True
       )
-    self.manager.stop()
 
   def disconnect_succeeded(self):
     super().disconnect_succeeded()
@@ -104,7 +110,6 @@ class LivoloDevice(gatt.Device):
         1,
         True
       )
-    self.manager.stop()
 
   def characteristic_enable_notification_succeeded(self):
     logging.debug(
@@ -154,6 +159,7 @@ class LivoloCentralBLE(threading.Thread):
     self.mysensor_node_alias = mysensor_node_alias
     self.mysensor_child_aliases = mysensor_child_aliases
     self.must_run = True
+    self.ble_dev_conn_check_must_run = True
     threading.Thread.__init__(self)
 
     logging.debug("Instantiating mqtt client ...")
@@ -228,6 +234,10 @@ class LivoloCentralBLE(threading.Thread):
 
     logging.debug("Starting BLE discovery ...")
     self.manager.start_discovery()
+
+    self.ble_dev_conn_check_t = threading.Thread(target=self.check_ble_device_connection)
+    self.ble_dev_conn_check_t.setDaemon(True)
+    self.ble_dev_conn_check_t.start()
 
   # The callback for when the client receives a CONNACK response from the server.
   def on_connect(self, client, userdata, flags, rc):
@@ -315,45 +325,48 @@ class LivoloCentralBLE(threading.Thread):
       self.manager.is_adapter_powered = True
       time.sleep(1)
 
+  def check_ble_device_connection(self):
+    while self.ble_dev_conn_check_must_run:
+      try:
+        time.sleep(1)
+        if not self.manager.livolo_device_discovered:
+          logging.debug(
+            "[%s] Livolo device wasn't discovered, initiating discovery ..." % (self.mac_address)
+          )
+          self.manager.start_discovery()
+          continue
+        if not self.livolo_device.is_connected():
+          logging.debug(
+            "[%s] Trying to connect ..." % (self.mac_address)
+          )
+          self.livolo_device.connect()
+      except Exception as ex:
+        logging.debug("[%s] BLE dev connection exception occured: " % (ex))
+        continue
+
   def run(self):
     logging.debug("Entering main loop ...")
     while self.must_run:
       time.sleep(1)
       try:
-        self.check_bluetooth_service()
-        self.check_bluetooth_power()
-        if not self.manager.livolo_device_discovered:
-          logging.debug(
-            "[%s] Livolo device wasn't discovered, waiting ..." %
-            (self.mac_address)
-          )
-          time.sleep(1)
-        if not self.livolo_device.is_connected():
-          logging.debug(
-            "[%s] Trying to connect ..." %
-            (self.mac_address)
-          )
-          self.livolo_device.connect()
-        else:
-          self.manager.run()
+        self.manager.run()
       except Exception as ex:
         # main loop must continue on other exceptions
-        logging.debug(
-          "Main loop - got exception: %s" %
-          (ex.message)
-        )
+        logging.debug("Main loop - got exception: %s" % (ex.message))
         continue
 
   def stop(self):
+    self.manager.stop_discovery()
+    self.manager.stop()
+    self.ble_dev_conn_check_must_run = False
     self.must_run = False
     try:
-      if self.manager.livolo_device_discovered and self.livolo_device.is_connected():
+      if self.livolo_device.is_connected():
         logging.debug(
-          "[%s] Disconnecting from Livolo device ..." %
-          (self.mac_address)
+          "[%s] Disconnecting from Livolo device ..." % (self.mac_address)
         )
         self.livolo_device.disconnect()
-      if selfmqtt_client is not None:
+      if self.mqtt_client is not None:
         self.mqtt_client.publish(
           "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
           2,
@@ -426,8 +439,11 @@ def setup():
     mys_ble_devices[index].start()
 
 def main():
-  for mys_ble_device in mys_ble_devices:
-    mys_ble_device.join()
+  while True:
+    time.sleep(1)
+    for ble_device in mys_ble_devices:
+      ble_device.check_bluetooth_service()
+      ble_device.check_bluetooth_power()
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
