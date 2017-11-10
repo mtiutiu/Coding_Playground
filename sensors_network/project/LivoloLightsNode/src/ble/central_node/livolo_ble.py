@@ -160,6 +160,7 @@ class LivoloCentralBLE(threading.Thread):
     self.mysensor_child_aliases = mysensor_child_aliases
     self.must_run = True
     self.ble_dev_conn_check_must_run = True
+    self.mqtt_conn_check_must_run = True
     threading.Thread.__init__(self)
 
     logging.debug("Instantiating mqtt client ...")
@@ -177,26 +178,8 @@ class LivoloCentralBLE(threading.Thread):
       1,
       True
     )
-    logging.debug(
-      "Connecting to mqtt broker: %s ..." % (self.config.get('mqtt', 'broker'))
-    )
-    self.is_mqtt_connected = False
-    while not self.is_mqtt_connected:
-      time.sleep(1)
-      try:
-        self.is_mqtt_connected = (self.mqtt_client.connect(
-          self.config.get('mqtt', 'broker'),
-          self.config.getint('mqtt', 'port', fallback=1883),
-          self.config.getint('mqtt', 'keepalive' ,fallback=60)
-        ) == mqtt.MQTT_ERR_SUCCESS)
-        break
-      except Exception:
-        logging.debug(
-          "Could not connect to mqtt broker: %s, retrying ..." %
-          (self.config.get('mqtt', 'broker'))
-        )
-    logging.debug("Starting mqtt main loop thread ...")
-    self.mqtt_client.loop_start()
+    self.mqtt_connect_t = threading.Thread(target=self.connect_to_mqtt_broker)
+    self.mqtt_connect_t.start()
 
     self.mys_livolo_node = MySensor(
       self.mysensor_node_id,
@@ -344,6 +327,29 @@ class LivoloCentralBLE(threading.Thread):
         logging.debug("[%s] BLE dev connection exception occured: " % (ex))
         continue
 
+  def connect_to_mqtt_broker(self):
+    logging.debug(
+      "Connecting to mqtt broker: %s ..." % (self.config.get('mqtt', 'broker'))
+    )
+    self.is_mqtt_connected = False
+    while self.mqtt_conn_check_must_run and not self.is_mqtt_connected:
+      time.sleep(1)
+      try:
+        self.is_mqtt_connected = (self.mqtt_client.connect(
+          self.config.get('mqtt', 'broker'),
+          self.config.getint('mqtt', 'port', fallback=1883),
+          self.config.getint('mqtt', 'keepalive' ,fallback=60)
+        ) == mqtt.MQTT_ERR_SUCCESS)
+        break
+      except Exception:
+        logging.debug(
+          "Could not connect to mqtt broker: %s, retrying ..." %
+          (self.config.get('mqtt', 'broker'))
+        )
+    if self.is_mqtt_connected:
+      logging.debug("Starting mqtt main loop thread ...")
+      self.mqtt_client.loop_start()
+
   def run(self):
     logging.debug("Entering main loop ...")
     while self.must_run:
@@ -356,11 +362,12 @@ class LivoloCentralBLE(threading.Thread):
         continue
 
   def stop(self):
-    self.manager.stop_discovery()
-    self.manager.stop()
+    self.mqtt_conn_check_must_run = False
     self.ble_dev_conn_check_must_run = False
     self.must_run = False
     try:
+      self.manager.stop_discovery()
+      self.manager.stop()
       if self.livolo_device.is_connected():
         logging.debug(
           "[%s] Disconnecting from Livolo device ..." % (self.mac_address)
