@@ -61,7 +61,7 @@ def mqtt_check(mqtt):
   while getattr(threading.currentThread(), "do_run", True):
     time.sleep(1) # give some break to CPU
     if not mqtt.connected:
-      logging.debug("Not connected to mqtt broker: %s ..." %(app.config['MQTT_BROKER_URL']))
+      logging.debug("Not connected to mqtt broker: %s ..." % (app.config['MQTT_BROKER_URL']))
     else:
       # mqtt ble devices topics
       if not is_mqtt_subscribed:
@@ -74,7 +74,7 @@ def mqtt_init(app, mqtt):
       mqtt.init_app(app)
       break
     except Exception:
-      logging.debug("Could not connect to mqtt broker: %s, retrying ..." %(app.config['MQTT_BROKER_URL']))
+      logging.debug("Could not connect to mqtt broker: %s, retrying ..." % (app.config['MQTT_BROKER_URL']))
       continue
     # mqtt ble devices topics
     if not is_mqtt_subscribed:
@@ -82,7 +82,7 @@ def mqtt_init(app, mqtt):
 
 @mqtt.on_subscribe()
 def handle_subscribe(client, userdata, mid, granted_qos):
-  logging.debug('Subscription id {} granted with qos {}.'.format(mid, granted_qos))
+  logging.debug("Subscription id %s granted with qos %s ..." % (mid, granted_qos))
   global is_mqtt_subscribed
   is_mqtt_subscribed = True
 
@@ -146,6 +146,7 @@ def exit_cleanly(message):
     mqtt_check_t.do_run = False
   if mqtt is not None and mqtt.connected:
     mqtt.client.disconnect()
+    mqtt.loop_stop()
   sys.exit(0)
 
 def sigint_handler(signal, frame):
@@ -172,9 +173,9 @@ def setup():
     app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
     app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
     app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
+    app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
+    app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
-  app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
-  app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
   flask_sijax.Sijax(app)
 
   global mqtt_init_t
