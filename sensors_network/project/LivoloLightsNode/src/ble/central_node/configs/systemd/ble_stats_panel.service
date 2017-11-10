@@ -3,10 +3,10 @@ Description=Livolo BLE Stats Panel
 After=network.target
 
 [Service]
-User=alarm
+User=pi
 #Restart=on-failure
-WorkingDirectory=/home/alarm/livolo/stats_panel/
-ExecStart=/usr/bin/sudo /home/alarm/livolo/stats_panel/ble_stats_panel.py /home/alarm/livolo/configs/ble_stats_panel.conf
+WorkingDirectory=/home/pi/livolo/stats_panel/
+ExecStart=/usr/bin/sudo /home/pi/livolo/stats_panel/ble_stats_panel.py /home/pi/livolo/configs/ble_stats_panel.conf
 
 [Install]
 WantedBy=multi-user.target
