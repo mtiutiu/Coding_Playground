@@ -246,6 +246,13 @@ class LivoloCentralBLE(threading.Thread):
   # The callback for when a PUBLISH message is received from the server.
   # Process MySensors messages and take decisions
   def on_message(self, client, userdata, msg):
+    # if no BLE device is connected then there's no point to continue
+    if not self.livolo_device.is_connected():
+      logging.debug(
+        "[%s] Livolo device not connected, not doing any mqtt in/out operations ..." % (self.mac_address)
+      )
+      return
+
     child_id, cmd_type, sub_type, payload = self.mys_livolo_node.read(msg)
     if cmd_type == mtypes.M_SET:
       data = int(payload)
