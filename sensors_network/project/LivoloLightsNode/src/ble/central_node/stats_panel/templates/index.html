@@ -231,12 +231,16 @@
           // ----------------------------------------------
           // --------------- Services ---------------------
           $('.nav-tabs a[href="#services"]').click(function(){
-            $('#livolo_ble_central_service_status').text('WAIT ...')
+            $('#livolo_ble_central_service_status').html(
+              '<p class="text-info">WORKING</p>'
+            )
             do_sijax('livolo_ble_central_service_status');
           });
 
           $('#livolo_ble_central_service_restart').on('click', function (ev) {
-            $('#livolo_ble_central_service_status').html('<p class="text-info">WAITING</p>')
+            $('#livolo_ble_central_service_status').html(
+              '<p class="text-info">WORKING</p>'
+            )
             do_sijax('livolo_ble_central_service_restart');
           });
           // ----------------------------------------------
