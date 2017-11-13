@@ -50,8 +50,11 @@ def system_stats_check():
   system_stats = {}
   system_stats['cpu_usage_percent'] = round(psutil.cpu_percent())
   system_stats['memory_usage_percent'] = round(psutil.virtual_memory().percent)
-  with open('/etc/armbianmonitor/datasources/soctemp', 'r') as temp:
-    system_stats['cpu_temp'] = round(int(temp.readline())/1000, 2)
+  try:
+    with open('/etc/armbianmonitor/datasources/soctemp', 'r') as temp:
+      system_stats['cpu_temp'] = round(int(temp.read())/1000, 2)
+  except Exception:
+    system_stats['cpu_temp'] = 0.0
   system_stats['machine_arch'] = platform.machine()
   system_stats['system'] = platform.system()
   system_stats['release'] = platform.release()

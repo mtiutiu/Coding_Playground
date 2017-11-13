@@ -6,7 +6,7 @@ After=network.target
 User=pi
 #Restart=on-failure
 WorkingDirectory=/home/pi/livolo/stats_panel/
-ExecStart=/usr/bin/sudo /home/pi/livolo/stats_panel/ble_stats_panel.py /home/pi/livolo/configs/ble_stats_panel.conf
+ExecStart=/usr/bin/sudo /home/pi/livolo/stats_panel/ble_stats_panel.py /home/pi/livolo/configs/mys_ble.conf
 
 [Install]
 WantedBy=multi-user.target

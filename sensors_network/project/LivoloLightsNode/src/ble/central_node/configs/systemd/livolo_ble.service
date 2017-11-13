@@ -6,7 +6,7 @@ After=network.target,bluetooth.target
 User=pi
 #Restart=on-failure
 WorkingDirectory=/home/pi/livolo/
-ExecStart=/usr/bin/sudo /home/pi/livolo/livolo_ble.py /home/pi/livolo/configs/livolo_ble.conf
+ExecStart=/usr/bin/sudo /home/pi/livolo/livolo_ble.py /home/pi/livolo/configs/mys_ble.conf
 
 [Install]
 WantedBy=multi-user.target
