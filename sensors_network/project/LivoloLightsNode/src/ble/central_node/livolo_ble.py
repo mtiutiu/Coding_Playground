@@ -78,13 +78,13 @@ class LivoloDevice(gatt.Device):
         "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
         1,
         1,
-        True
+        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
       )
       self.mqtt_client.publish(
         "%s/%s/alias" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
         self.alias(),
         1,
-        True
+        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
       )
 
   def connect_failed(self, error):
@@ -96,7 +96,7 @@ class LivoloDevice(gatt.Device):
         "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
         0,
         1,
-        True
+        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
       )
 
   def disconnect_succeeded(self):
@@ -108,7 +108,7 @@ class LivoloDevice(gatt.Device):
         "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
         0,
         1,
-        True
+        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
       )
 
   def characteristic_enable_notification_succeeded(self):
@@ -190,7 +190,8 @@ class LivoloCentralBLE(threading.Thread):
     self.mys_livolo_node.register_mqtt(
       self.mqtt_client,
       self.config.get('mqtt', 'mysensors_in_topic_prefix'),
-      self.config.get('mqtt', 'mysensors_out_topic_prefix')
+      self.config.get('mqtt', 'mysensors_out_topic_prefix'),
+      retain=self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
     )
 
     logging.debug("Instantiating Livolo manager ...")
@@ -385,7 +386,7 @@ class LivoloCentralBLE(threading.Thread):
           "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
           2,
           1,
-          True
+          self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
         )
         self.mqtt_client.disconnect()
     except Exception:
