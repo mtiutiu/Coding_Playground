@@ -78,6 +78,7 @@ def mqtt_check(mqtt):
     else:
       # mqtt ble devices topics
       if not is_mqtt_subscribed:
+        logging.debug("Subscribing to MQTT topic(s): %s/#" % (app.config['MYS_BLE_STATS_TOPIC']))
         mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
 
 def mqtt_init(app, mqtt):
@@ -91,17 +92,18 @@ def mqtt_init(app, mqtt):
       continue
     # mqtt ble devices topics
     if not is_mqtt_subscribed:
+      logging.debug("Subscribing to MQTT topic(s): %s/#" % (app.config['MYS_BLE_STATS_TOPIC']))
       mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
 
 @mqtt.on_subscribe()
 def handle_subscribe(client, userdata, mid, granted_qos):
-  logging.debug("Subscription id %s granted with qos %s ..." % (mid, granted_qos))
+  logging.debug("MQTT subscribing succedeed with qos %s ..." % (granted_qos))
   global is_mqtt_subscribed
   is_mqtt_subscribed = True
 
 @mqtt.on_unsubscribe()
 def handle_unsubscribe(client, userdata, mid):
-  logging.debug('Unsubscribed from topic (id: {})'.format(mid))
+  logging.debug("Unsubscribed from topic id: %s" % (mid))
   global is_mqtt_subscribed
   is_mqtt_subscribed = False
 
@@ -191,7 +193,7 @@ def setup():
     app.config['MQTT_BROKER_PORT'] = app.iniconfig.getint('mqtt', 'port', fallback=1883)
     app.config['MQTT_USERNAME'] = app.iniconfig.get('mqtt', 'user', fallback='')
     app.config['MQTT_PASSWORD'] = app.iniconfig.get('mqtt', 'password', fallback='')
-    app.config['MQTT_REFRESH_TIME'] = app.iniconfig.getfloat('mqtt', 'refresh_time', fallback=1.0)  # refresh time in seconds
+    app.config['MQTT_KEEPALIVE'] = app.iniconfig.getint('mqtt', 'keepalive', fallback=60)
     app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
     app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
     app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
