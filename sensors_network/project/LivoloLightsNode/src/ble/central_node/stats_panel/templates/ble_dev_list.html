@@ -4,11 +4,11 @@
   <td>{{ ble_device['mac_address'] }}</td>
   <td>{{ ble_device['alias'] }}</td>
   {% if '0' in ble_device['state'] %}
-    <td><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></td>
+    <td class="text-center"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></td>
   {% elif '1' in ble_device['state'] %}
-    <td><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></td>
+    <td class="text-center"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></td>
   {% else %}
-    <td><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></td>
+    <td class="text-center"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></td>
   {% endif %}
 </tr>
 {% endfor %}

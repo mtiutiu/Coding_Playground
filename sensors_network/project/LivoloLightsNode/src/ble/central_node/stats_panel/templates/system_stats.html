@@ -3,33 +3,43 @@
       <tbody>
         <tr>
           <td><strong>CPU Temperature</strong></td>
-          <td><strong>
-            <p class={{ 'text-success' if system_stats['cpu_temp'] < 70.0 else 'text-danger' }}> {{ system_stats['cpu_temp'] }} &deg;C </p>
-          </strong></td>
+          <td>
+            <strong>
+              <p class={{ 'text-success' if system_stats['cpu_temp'] < 70.0 else 'text-danger' }}> {{ system_stats['cpu_temp'] }} &deg;C </p>
+            </strong>
+          </td>
         </tr>
         <tr>
           <td><strong>CPU Usage</strong></td>
-          <td><strong>
-            <p class={{ 'text-success' if system_stats['cpu_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['cpu_usage_percent'] }} % </p>
-          </strong></td>
+          <td>
+            <strong>
+              <p class={{ 'text-success' if system_stats['cpu_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['cpu_usage_percent'] }} % </p>
+            </strong>
+          </td>
         </tr>
         <tr>
           <td><strong>Virtual Memory Usage</strong></td>
-          <td><strong>
-            <p class={{ 'text-success' if system_stats['memory_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['memory_usage_percent'] }} % </p>
-          </strong></td>
+          <td>
+            <strong>
+              <p class={{ 'text-success' if system_stats['memory_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['memory_usage_percent'] }} % </p>
+            </strong>
+          </td>
         </tr>
         <tr>
-          <td><strong>System</strong></td><td><strong>{{ system_stats['system'] }}</strong></td>
+          <td><strong>System</strong></td>
+          <td><strong>{{ system_stats['system'] }}</strong></td>
         </tr>
         <tr>
-          <td><strong>Architecture</strong></td><td><strong>{{ system_stats['machine_arch'] }}</strong></td>
+          <td><strong>Architecture</strong></td>
+          <td><strong>{{ system_stats['machine_arch'] }}</strong></td>
         </tr>
         <tr>
-          <td><strong>Kernel</strong></td><td><strong>{{ system_stats['release'] }}</strong></td>
+          <td><strong>Kernel</strong></td>
+          <td><strong>{{ system_stats['release'] }}</strong></td>
         </tr>
         <tr>
-          <td><strong>Uptime</strong></td><td><strong>{{ system_stats['uptime'] }}</strong></td>
+          <td><strong>Uptime</strong></td>
+          <td><strong>{{ system_stats['uptime'] }}</strong></td>
         </tr>
       </tbody>
    </table>

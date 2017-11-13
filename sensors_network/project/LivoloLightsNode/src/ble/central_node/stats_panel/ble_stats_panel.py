@@ -16,6 +16,7 @@ import psutil
 import platform
 from uptime import uptime
 from argparse import ArgumentParser
+import subprocess
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
@@ -57,6 +58,14 @@ def system_stats_check():
   system_stats['uptime'] = uptime_format(uptime())
 
   return system_stats
+
+def service_operation(name, operation):
+  with open(os.devnull, 'wb') as hide_output:
+    return subprocess.Popen(
+      ['systemctl', operation, name],
+      stdout=hide_output,
+      stderr=hide_output
+    ).wait() == 0
 
 def mqtt_check(mqtt):
   while getattr(threading.currentThread(), "do_run", True):
@@ -131,11 +140,21 @@ def index_page():
     ]
     obj_response.html("#mqtt_broker_list", render_template('mqtt_broker_list.html', mqtt_brokers=mqtt_brokers))
 
+  def livolo_ble_central_service_restart(obj_response):
+    obj_response.html("#livolo_ble_central_service_status",
+      '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'restart') else '<p class="text-danger">FAILED</p>')
+
+  def livolo_ble_central_service_status(obj_response):
+    obj_response.html("#livolo_ble_central_service_status",
+      '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'status') else '<p class="text-danger">FAILED</p>')
+
   if g.sijax.is_sijax_request:
     # Sijax request detected - let Sijax handle it
     g.sijax.register_callback('get_system_stats', get_system_stats)
     g.sijax.register_callback('ble_devices_list_update', ble_devices_list_update)
     g.sijax.register_callback('mqtt_broker_list_update', mqtt_broker_list_update)
+    g.sijax.register_callback('livolo_ble_central_service_restart', livolo_ble_central_service_restart)
+    g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
     return g.sijax.process_request()
   return render_template('index.html')
 
