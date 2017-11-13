@@ -1,48 +1,24 @@
-<div class="row-xs-1">
-  <span class="label label-default">CPU Usage {{ system_stats['cpu_usage_percent'] }}%</span>
-</div>
-<br/>
-<div class="progress">
-  <div class="progress-bar {{ 'progress-bar-success' if system_stats['cpu_usage_percent'] <= 75.0 else 'progress-bar-warning' }}"
-    role="progressbar"
-    aria-valuenow="{{ system_stats['cpu_usage_percent'] }}"
-    aria-valuemin="0"
-    aria-valuemax="100"
-    style="width:{{ system_stats['cpu_usage_percent'] }}%">
-  </div>
-</div>
-
-<div class="row-xs-1">
-  <span class="label label-default">Virtual Memory Usage {{ system_stats['memory_usage_percent'] }}%</span>
-</div>
-<br/>
-<div class="progress">
-  <div class="progress-bar {{ 'progress-bar-success' if system_stats['memory_usage_percent'] <= 75.0 else 'progress-bar-warning' }}"
-    role="progressbar"
-    aria-valuenow="{{ system_stats['memory_usage_percent'] }}"
-    aria-valuemin="0"
-    aria-valuemax="100"
-    style="width:{{ system_stats['memory_usage_percent'] }}%">
-  </div>
-</div>
-
-<div class="row-xs-1">
-  <span class="label label-default">Disk Usage {{ system_stats['disk_usage_percent'] }}%</span>
-</div>
-<br/>
-<div class="progress">
-  <div class="progress-bar {{ 'progress-bar-success' if system_stats['disk_usage_percent'] <= 75.0 else 'progress-bar-warning' }}"
-    role="progressbar"
-    aria-valuenow="{{ system_stats['disk_usage_percent'] }}"
-    aria-valuemin="0"
-    aria-valuemax="100"
-    style="width:{{ system_stats['disk_usage_percent'] }}%">
-  </div>
-</div>
-
 <div class="table-responsive">
    <table class="table">
       <tbody>
+        <tr>
+          <td><strong>CPU Temperature</strong></td>
+          <td><strong>
+            <p class={{ 'text-success' if system_stats['cpu_temp'] < 70.0 else 'text-danger' }}> {{ system_stats['cpu_temp'] }} &deg;C </p>
+          </strong></td>
+        </tr>
+        <tr>
+          <td><strong>CPU Usage</strong></td>
+          <td><strong>
+            <p class={{ 'text-success' if system_stats['cpu_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['cpu_usage_percent'] }} % </p>
+          </strong></td>
+        </tr>
+        <tr>
+          <td><strong>Virtual Memory Usage</strong></td>
+          <td><strong>
+            <p class={{ 'text-success' if system_stats['memory_usage_percent'] < 90.0 else 'text-danger' }}> {{ system_stats['memory_usage_percent'] }} % </p>
+          </strong></td>
+        </tr>
         <tr>
           <td><strong>System</strong></td><td><strong>{{ system_stats['system'] }}</strong></td>
         </tr>
