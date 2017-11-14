@@ -87,7 +87,7 @@ def read_config_file_settings(cfg_file):
 def service_operation(name, operation):
   with open(os.devnull, 'wb') as hide_output:
     return subprocess.Popen(
-      ['systemctl', operation, name],
+      ['sudo', 'systemctl', operation, name],
       stdout=hide_output,
       stderr=hide_output
     ).wait() == 0
@@ -171,11 +171,11 @@ def index_page():
 
   def livolo_ble_central_service_restart(obj_response):
     obj_response.html("#livolo_ble_central_service_status",
-      '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'restart') else '<p class="text-danger">FAILED</p>')
+      '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'restart') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
 
   def livolo_ble_central_service_status(obj_response):
     obj_response.html("#livolo_ble_central_service_status",
-      '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'status') else '<p class="text-danger">FAILED</p>')
+      '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'status') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
 
   def settings_page_update(obj_response):
     obj_response.html("#settings_page_content", render_template('settings.html', settings=read_config_file_settings(args.config)))

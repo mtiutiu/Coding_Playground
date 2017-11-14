@@ -151,13 +151,11 @@
                             </thead>
                             <tbody>
                               <tr>
-                                <td>
-                                  <strong>Livolo BLE</strong>
-                                </td>
+                                <td>Livolo BLE</td>
                                 <td class="text-center">
                                   <strong>
                                     <div id="livolo_ble_central_service_status">
-                                      <p class="text-warning">UNKNOWN</p>
+                                      <i class="fa fa-gear fa-spin" style="font-size:24px"></i>
                                     </div>
                                   </strong>
                                 </td>
@@ -184,7 +182,7 @@
                      <div class="row">
                        <div class="col-xs-8">
                        </div>
-                       <button type="button" class="btn btn-success" id="settings_save">Save</button>
+                       <button type="button" class="btn btn-success" id="settings_save" name="button">Save</button>
                      </div>
                    </div>
                    <!-- /.panel-body -->
@@ -213,6 +211,9 @@
         function do_sijax(req, data = [], retries = 10) {
           Sijax.request(req, data,
             {
+              complete: function() {
+
+              },
               error: function(jqXHR, textStatus, errorThrown) {
                 if(retries > 0 && textStatus == 'error') {
                   setTimeout(function() {
@@ -262,14 +263,14 @@
           // --------------- Services ---------------------
           $('.nav-tabs a[href="#services"]').click(function(){
             $('#livolo_ble_central_service_status').html(
-              '<p class="text-info">WORKING</p>'
+              '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
             )
             do_sijax('livolo_ble_central_service_status');
           });
 
           $('#livolo_ble_central_service_restart').on('click', function (ev) {
             $('#livolo_ble_central_service_status').html(
-              '<p class="text-info">WORKING</p>'
+              '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
             )
             do_sijax('livolo_ble_central_service_restart');
           });
@@ -292,6 +293,7 @@
               'nodes_alias': $('#nodes_alias').val(),
               'mac_addresses': $('#mac_addresses').val()
             };
+            //$(this).html('Save <i class="fa fa-gear fa-spin">');
             do_sijax('settings_page_save', [settings_fields]);
           });
           // ----------------------------------------------
