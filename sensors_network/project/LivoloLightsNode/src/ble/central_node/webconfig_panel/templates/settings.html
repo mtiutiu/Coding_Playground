@@ -1,0 +1,58 @@
+<p class="text-success"><strong>MQTT</strong></p>
+<hr/>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Broker host</span>
+  <input type="text" class="form-control" placeholder="host" aria-describedby="basic-addon1" id="mqtt_broker" value="{{ settings['mqtt_broker_url'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Port</span>
+  <input type="text" class="form-control" placeholder="port" aria-describedby="basic-addon1" id="mqtt_broker_port" value="{{ settings['mqtt_broker_port'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">User</span>
+  <input type="text" class="form-control" placeholder="user" aria-describedby="basic-addon1" id="mqtt_broker_user" value="{{ settings['mqtt_broker_user'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Password</span>
+  <input type="text" class="form-control" placeholder="password" aria-describedby="basic-addon1" id="mqtt_broker_password" value="{{ settings['mqtt_broker_password'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">MySensors publish topic</span>
+  <input type="text" class="form-control" placeholder="topic" aria-describedby="basic-addon1" id="mysensors_mqtt_in_topic_prefix" value="{{ settings['mysensors_mqtt_in_topic_prefix'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">MySensors subscribe topic</span>
+  <input type="text" class="form-control" placeholder="topic" aria-describedby="basic-addon1" id="mysensors_mqtt_out_topic_prefix" value="{{ settings['mysensors_mqtt_out_topic_prefix'] }}">
+</div>
+<hr/>
+
+<p class="text-success"><strong>MySensors Livolo</strong></p>
+<hr/>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Nodes id</span>
+  <input type="text" class="form-control" placeholder="ids" aria-describedby="basic-addon1" id="nodes_id" value="{{ settings['nodes_id'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Childs alias</span>
+  <input type="text" class="form-control" placeholder="aliases" aria-describedby="basic-addon1" id="node_childs_alias" value="{{ settings['node_childs_alias'] }}">
+</div>
+<br>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">Nodes alias</span>
+  <input type="text" class="form-control" placeholder="aliases" aria-describedby="basic-addon1" id="nodes_alias" value="{{ settings['nodes_alias'] }}">
+</div>
+<hr/>
+
+<p class="text-success"><strong>Livolo BLE Advanced</strong></p>
+<hr/>
+<div class="input-group">
+  <span class="input-group-addon" id="basic-addon1">MAC Adresses</span>
+  <input type="text" class="form-control" placeholder="adresses" aria-describedby="basic-addon1" id="mac_addresses" value="{{ settings['mac_addresses'] }}">
+</div>
+<hr/>

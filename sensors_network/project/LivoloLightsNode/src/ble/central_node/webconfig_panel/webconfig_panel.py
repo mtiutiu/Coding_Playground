@@ -155,30 +155,46 @@ def index_page():
     obj_response.html("#livolo_ble_central_service_status",
       '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'status') else '<p class="text-danger">FAILED</p>')
 
+  def read_config_file_settings():
+    with app.app_context():
+      app.iniconfig.read(args.config)
+      settings = {
+        'mqtt_broker_url': app.config['MQTT_BROKER_URL'],
+        'mqtt_broker_user': app.iniconfig.get('mqtt', 'user', fallback=''),
+        'mqtt_broker_password': app.iniconfig.get('mqtt', 'password', fallback=''),
+        'mqtt_broker_port': app.iniconfig.get('mqtt', 'port', fallback=''),
+        'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
+        'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
+        'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback='Unknown'),
+        'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback='Unknown'),
+        'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='Unknown'),
+        'mac_addresses': app.iniconfig.get('ble', 'mac_addresses', fallback='Unknown')
+      }
+    return settings
+
   def settings_page_update(obj_response):
-    settings = {
-      'mqtt_broker_url': app.config['MQTT_BROKER_URL'],
-      'mqtt_broker_port': app.config['MQTT_BROKER_PORT'],
-      'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
-      'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
-      'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback=''),
-      'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback=''),
-      'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='')
-    }
-    obj_response.html("#settings_page_content", render_template('settings.html', settings=settings))
+    obj_response.html("#settings_page_content", render_template('settings.html', settings=read_config_file_settings()))
 
   def settings_page_save(obj_response, data):
     with app.app_context():
       app.iniconfig.set('mqtt', 'broker', data['mqtt_broker'])
+      app.iniconfig.set('mqtt', 'user', data['mqtt_broker_user'])
+      app.iniconfig.set('mqtt', 'password', data['mqtt_broker_password'])
       app.iniconfig.set('mqtt', 'port', data['mqtt_broker_port'])
       app.iniconfig.set('mqtt', 'mysensors_in_topic_prefix', data['mysensors_mqtt_in_topic_prefix'])
       app.iniconfig.set('mqtt', 'mysensors_out_topic_prefix', data['mysensors_mqtt_out_topic_prefix'])
       app.iniconfig.set('mysensors', 'nodes_id', data['nodes_id'])
       app.iniconfig.set('mysensors', 'node_childs_alias', data['node_childs_alias'])
       app.iniconfig.set('mysensors', 'nodes_alias', data['nodes_alias'])
+      app.iniconfig.set('ble', 'mac_addresses', data['mac_addresses'])
 
       with open(args.config, 'w') as config_file:
         app.iniconfig.write(config_file)
+        config_file.flush()
+        # synchronize file config change checker thread with write operations on it
+        # very important - unwanted things can happen otherwise
+        with ini_file_write:
+          ini_file_write.notifyAll()
     obj_response.alert('Settings saved!')
 
   if g.sijax.is_sijax_request:
@@ -231,11 +247,13 @@ def app_cfg_check():
   while getattr(threading.currentThread(), "do_run", True):
     if check_file_md5sum(args.config) != cfg_file_hash:
       logging.debug("Configuration file: %s changed, reloading application ..." % (args.config))
-      # stop main application cleanly
-      stop_app_cleanly()
-      os.execv(__file__, sys.argv)
-      # there's no point in doing anything else here as the main process will be replaced
-      #cfg_file_hash = check_file_md5sum(args.config)
+      # synchronize file config change checker thread with write operations on it
+      # very important - unwanted things can happen otherwise
+      with ini_file_write:
+        ini_file_write.wait()
+        # stop main application cleanly
+        stop_app_cleanly()
+        os.execv(__file__, sys.argv)
 
 def setup():
   logging.basicConfig(
@@ -274,6 +292,11 @@ def setup():
   app_cfg_check_t = threading.Thread(target=app_cfg_check)
   app_cfg_check_t.setDaemon(True)
   app_cfg_check_t.start()
+
+  # synchronize file config change checker thread with write operations on it
+  # very important - unwanted things can happen otherwise
+  global ini_file_write
+  ini_file_write = threading.Condition()
 
 if __name__ == "__main__":
   arg_parser = ArgumentParser(description="BLE Stats Panel")

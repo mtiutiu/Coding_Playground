@@ -1,12 +1,12 @@
 [Unit]
-Description=Livolo BLE Stats Panel
+Description=Livolo BLE Web Config Panel
 After=network.target
 
 [Service]
 User=pi
 #Restart=on-failure
-WorkingDirectory=/home/pi/livolo/stats_panel/
-ExecStart=/usr/bin/sudo /home/pi/livolo/stats_panel/ble_stats_panel.py /home/pi/livolo/configs/mys_ble.conf
+WorkingDirectory=/home/pi/livolo/webconfig_panel/
+ExecStart=/usr/bin/sudo /home/pi/livolo/webconfig_panel/webconfig_panel.py /home/pi/livolo/configs/mys_ble.conf
 
 [Install]
 WantedBy=multi-user.target

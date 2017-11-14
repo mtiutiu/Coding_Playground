@@ -210,14 +210,21 @@
       </script>
 
       <script>
-        function do_sijax(req, data = []) {
+        function do_sijax(req, data = [], retries = 10) {
           Sijax.request(req, data,
             {
               error: function(jqXHR, textStatus, errorThrown) {
-                //alert("Ajax call failed! Maybe your connection or the server is offline?");
-              }
-            }
-          );
+                if(retries > 0 && textStatus == 'error') {
+                  setTimeout(function() {
+                    do_sijax(req, data, retries-1);
+                  }, 500);
+                }
+                if(retries == 0) {
+                  alert("Ajax call failed! Maybe your connection or the server is offline?");
+                }
+              },
+              timeout: 5000
+            });
         }
 
         $(document).ready(function(){
@@ -271,20 +278,20 @@
           $('.nav-tabs a[href="#settings"]').click(function(){
             do_sijax('settings_page_update');
           });
+
           $('#settings_save').on('click', function (ev) {
             var settings_fields = {
               'mqtt_broker': $('#mqtt_broker').val(),
               'mqtt_broker_port': $('#mqtt_broker_port').val(),
+              'mqtt_broker_user': $('#mqtt_broker_user').val(),
+              'mqtt_broker_password': $('#mqtt_broker_password').val(),
               'mysensors_mqtt_in_topic_prefix': $('#mysensors_mqtt_in_topic_prefix').val(),
               'mysensors_mqtt_out_topic_prefix': $('#mysensors_mqtt_out_topic_prefix').val(),
               'nodes_id': $('#nodes_id').val(),
               'node_childs_alias': $('#node_childs_alias').val(),
-              'nodes_alias': $('#nodes_alias').val()
+              'nodes_alias': $('#nodes_alias').val(),
+              'mac_addresses': $('#mac_addresses').val()
             };
-            //$(this).text('Working ...')
-            // window.setTimeout(function() {
-            //   do_sijax('settings_page_update');
-            // }, 3000)
             do_sijax('settings_page_save', [settings_fields]);
           });
           // ----------------------------------------------
