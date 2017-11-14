@@ -1,0 +1,37 @@
+<form class="form" id="mqtt_settings_form" onSubmit="" action="">
+  <p class="text-success"><strong>MQTT</strong></p>
+  <hr/>
+    <div class="form-group">
+     <label for="mqtt_broker">IP:</label>
+     <input type="mqtt_broker" class="form-control" id="mqtt_broker" value="{{ settings['mqtt_broker_url'] }}">
+    </div>
+    <div class="form-group">
+      <label for="mqtt_broker_port">Port:</label>
+      <input type="mqtt_broker_port" class="form-control" id="mqtt_broker_port" value="{{ settings['mqtt_broker_port'] }}">
+    </div>
+    <div class="form-group">
+      <label for="mysensors_mqtt_in_topic_prefix">MySensors IN topic prefix:</label>
+      <input type="mysensors_mqtt_in_topic_prefix" class="form-control" id="mysensors_mqtt_in_topic_prefix" value="{{ settings['mysensors_mqtt_in_topic_prefix'] }}">
+    </div>
+    <div class="form-group">
+      <label for="mysensors_mqtt_out_topic_prefix">MySensors OUT topic prefix:</label>
+      <input type="mysensors_mqtt_out_topic_prefix" class="form-control" id="mysensors_mqtt_out_topic_prefix" value="{{ settings['mysensors_mqtt_out_topic_prefix'] }}">
+    </div>
+  <hr/>
+
+  <p class="text-success"><strong>MySensors</strong></p>
+  <hr/>
+    <div class="form-group">
+      <label for="nodes_id">Livolo nodes id:</label>
+      <input type="nodes_id" class="form-control" id="nodes_id" value="{{ settings['nodes_id'] }}">
+    </div>
+    <div class="form-group">
+      <label for="node_childs_alias">Livolo childs alias:</label>
+      <input type="node_childs_alias" class="form-control" id="node_childs_alias" value="{{ settings['node_childs_alias'] }}">
+    </div>
+    <div class="form-group">
+      <label for="nodes_alias">Livolo nodes alias:</label>
+      <input type="nodes_alias" class="form-control" id="nodes_alias" value="{{ settings['nodes_alias'] }}">
+    </div>
+  <hr/>
+</form>

@@ -16,6 +16,7 @@ from mysensors_helper import MySensor
 import mtypes
 from gi.repository import GLib
 import threading
+import hashlib
 
 #BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
 #BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
@@ -75,13 +76,13 @@ class LivoloDevice(gatt.Device):
       self.mys_livolo_node.send_presentation(present_node_name=True)
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
         1,
         1,
         self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
       )
       self.mqtt_client.publish(
-        "%s/%s/alias" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+        "%s/%s/alias" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
         self.alias(),
         1,
         self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
@@ -93,7 +94,7 @@ class LivoloDevice(gatt.Device):
     if self.mqtt_client is not None:
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
         0,
         1,
         self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
@@ -105,7 +106,7 @@ class LivoloDevice(gatt.Device):
     if self.mqtt_client is not None:
       # publish device new state
       self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
         0,
         1,
         self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
@@ -173,12 +174,13 @@ class LivoloCentralBLE(threading.Thread):
     self.mqtt_client.on_disconnect = self.on_disconnect
     self.mqtt_client.on_message = self.on_message
     self.mqtt_client.will_set(
-      "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+      "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
       2,
       1,
       True
     )
     self.mqtt_connect_t = threading.Thread(target=self.connect_to_mqtt_broker)
+    self.mqtt_connect_t.setDaemon(True)
     self.mqtt_connect_t.start()
 
     self.mys_livolo_node = MySensor(
@@ -383,7 +385,7 @@ class LivoloCentralBLE(threading.Thread):
         self.livolo_device.disconnect()
       if self.mqtt_client is not None:
         self.mqtt_client.publish(
-          "%s/%s/state" % (self.config.get('mqtt', 'stats_topic_prefix'), self.mac_address),
+          "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
           2,
           1,
           self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
@@ -396,10 +398,13 @@ class LivoloCentralBLE(threading.Thread):
         self.mqtt_client.loop_stop()
 # -------------------------------------END MAIN APP CLASS ----------------------
 
-def exit_cleanly(message):
-  logging.debug(message)
+def stop_app_cleanly():
   for mys_ble_device in mys_ble_devices:
     mys_ble_device.stop()
+
+def exit_cleanly(message):
+  logging.debug(message)
+  stop_app_cleanly()
   sys.exit(0)
 
 def sigint_handler(signal, frame):
@@ -407,6 +412,18 @@ def sigint_handler(signal, frame):
 
 def sigterm_handler(signal, frame):
   exit_cleanly("SIGTERM issued, exiting ...")
+
+def check_file_md5sum(file):
+  hash = 0
+  m = hashlib.md5()
+  with open(file, "rb") as f:
+    while True:
+      buf = f.read(4096)
+      if not buf:
+        break
+      m.update(buf)
+      hash = m.hexdigest()
+  return hash
 
 def setup():
   logging.basicConfig(
@@ -454,11 +471,19 @@ def setup():
     mys_ble_devices[index].start()
 
 def main():
+  cfg_file_hash = check_file_md5sum(args.config)
   while True:
     time.sleep(1)
     for ble_device in mys_ble_devices:
       ble_device.check_bluetooth_service()
       ble_device.check_bluetooth_power()
+    if check_file_md5sum(args.config) != cfg_file_hash:
+      logging.debug("Configuration file: %s changed, reloading application ..." % (args.config))
+      # stop main application cleanly
+      stop_app_cleanly()
+      os.execv(__file__, sys.argv)
+      # there's no point in doing anything else here as the main process will be replaced
+      #cfg_file_hash = check_file_md5sum(args.config)
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")

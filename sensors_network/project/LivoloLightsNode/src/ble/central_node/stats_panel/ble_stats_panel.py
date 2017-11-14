@@ -17,6 +17,7 @@ import platform
 from uptime import uptime
 from argparse import ArgumentParser
 import subprocess
+import hashlib
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
@@ -109,7 +110,7 @@ def handle_unsubscribe(client, userdata, mid):
 
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
-  if app.iniconfig.get('mqtt', 'stats_topic_prefix') in message.topic:
+  if app.iniconfig.get('mqtt', 'ble_stats_topic_prefix') in message.topic:
     mac_address = message.topic.split('/')[-2]
     data = message.payload.decode('ascii')
     if 'state' in message.topic:
@@ -138,9 +139,10 @@ def index_page():
 
   def mqtt_broker_list_update(obj_response):
     mqtt_brokers = [
-      { 'address':app.config['MQTT_BROKER_URL'],
-        'port':app.config['MQTT_BROKER_PORT'],
-        'connected':mqtt.connected
+      {
+        'address': app.config['MQTT_BROKER_URL'],
+        'port': app.config['MQTT_BROKER_PORT'],
+        'connected': mqtt.connected
       }
     ]
     obj_response.html("#mqtt_broker_list", render_template('mqtt_broker_list.html', mqtt_brokers=mqtt_brokers))
@@ -153,6 +155,32 @@ def index_page():
     obj_response.html("#livolo_ble_central_service_status",
       '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'status') else '<p class="text-danger">FAILED</p>')
 
+  def settings_page_update(obj_response):
+    settings = {
+      'mqtt_broker_url': app.config['MQTT_BROKER_URL'],
+      'mqtt_broker_port': app.config['MQTT_BROKER_PORT'],
+      'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
+      'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
+      'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback=''),
+      'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback=''),
+      'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='')
+    }
+    obj_response.html("#settings_page_content", render_template('settings.html', settings=settings))
+
+  def settings_page_save(obj_response, data):
+    with app.app_context():
+      app.iniconfig.set('mqtt', 'broker', data['mqtt_broker'])
+      app.iniconfig.set('mqtt', 'port', data['mqtt_broker_port'])
+      app.iniconfig.set('mqtt', 'mysensors_in_topic_prefix', data['mysensors_mqtt_in_topic_prefix'])
+      app.iniconfig.set('mqtt', 'mysensors_out_topic_prefix', data['mysensors_mqtt_out_topic_prefix'])
+      app.iniconfig.set('mysensors', 'nodes_id', data['nodes_id'])
+      app.iniconfig.set('mysensors', 'node_childs_alias', data['node_childs_alias'])
+      app.iniconfig.set('mysensors', 'nodes_alias', data['nodes_alias'])
+
+      with open(args.config, 'w') as config_file:
+        app.iniconfig.write(config_file)
+    obj_response.alert('Settings saved!')
+
   if g.sijax.is_sijax_request:
     # Sijax request detected - let Sijax handle it
     g.sijax.register_callback('get_system_stats', get_system_stats)
@@ -160,17 +188,24 @@ def index_page():
     g.sijax.register_callback('mqtt_broker_list_update', mqtt_broker_list_update)
     g.sijax.register_callback('livolo_ble_central_service_restart', livolo_ble_central_service_restart)
     g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
+    g.sijax.register_callback('settings_page_update', settings_page_update)
+    g.sijax.register_callback('settings_page_save', settings_page_save)
     return g.sijax.process_request()
   return render_template('index.html')
 
-def exit_cleanly(message):
-  logging.debug(message)
+def stop_app_cleanly():
   if mqtt_init_t is not None:
     mqtt_init_t.do_run = False
   if mqtt_check_t is not None:
     mqtt_check_t.do_run = False
+  if app_cfg_check_t is not None:
+    app_cfg_check_t.do_run = False
   if mqtt is not None and mqtt.connected:
     mqtt.client.disconnect()
+
+def exit_cleanly(message):
+  logging.debug(message)
+  stop_app_cleanly()
   sys.exit(0)
 
 def sigint_handler(signal, frame):
@@ -178,6 +213,29 @@ def sigint_handler(signal, frame):
 
 def sigterm_handler(signal, frame):
   exit_cleanly("SIGTERM issued, exiting ...")
+
+def check_file_md5sum(file):
+  hash = 0
+  m = hashlib.md5()
+  with open(file, "rb") as f:
+    while True:
+      buf = f.read(4096)
+      if not buf:
+        break
+      m.update(buf)
+      hash = m.hexdigest()
+  return hash
+
+def app_cfg_check():
+  cfg_file_hash = check_file_md5sum(args.config)
+  while getattr(threading.currentThread(), "do_run", True):
+    if check_file_md5sum(args.config) != cfg_file_hash:
+      logging.debug("Configuration file: %s changed, reloading application ..." % (args.config))
+      # stop main application cleanly
+      stop_app_cleanly()
+      os.execv(__file__, sys.argv)
+      # there's no point in doing anything else here as the main process will be replaced
+      #cfg_file_hash = check_file_md5sum(args.config)
 
 def setup():
   logging.basicConfig(
@@ -196,7 +254,7 @@ def setup():
     app.config['MQTT_KEEPALIVE'] = app.iniconfig.getint('mqtt', 'keepalive', fallback=60)
     app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
     app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
-    app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'stats_topic_prefix')
+    app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'ble_stats_topic_prefix')
     app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
     app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
@@ -204,11 +262,18 @@ def setup():
 
   global mqtt_init_t
   mqtt_init_t = threading.Thread(target=mqtt_init, args=(app,mqtt,))
+  mqtt_init_t.setDaemon(True)
   mqtt_init_t.start()
 
   global mqtt_check_t
   mqtt_check_t = threading.Thread(target=mqtt_check, args=(mqtt,))
+  mqtt_check_t.setDaemon(True)
   mqtt_check_t.start()
+
+  global app_cfg_check_t
+  app_cfg_check_t = threading.Thread(target=app_cfg_check)
+  app_cfg_check_t.setDaemon(True)
+  app_cfg_check_t.start()
 
 if __name__ == "__main__":
   arg_parser = ArgumentParser(description="BLE Stats Panel")

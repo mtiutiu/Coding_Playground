@@ -38,6 +38,8 @@
               </li>
               <li class=""><a href="#services" data-toggle="tab" aria-expanded="false">Services</a>
               </li>
+              <li class=""><a href="#settings" data-toggle="tab" aria-expanded="false">Settings</a>
+              </li>
             </ul>
             <!-- Tab panes -->
             <div class="tab-content">
@@ -171,6 +173,23 @@
                    <!-- /.panel-body -->
                </div>
               </div>
+              <div class="tab-pane" id="settings">
+                <div class="panel panel-default">
+                   <div class="panel-heading">
+                      Application settings
+                   </div>
+                   <!-- /.panel-heading -->
+                   <div class="panel-body">
+                     <div id="settings_page_content"></div>
+                     <div class="row">
+                       <div class="col-xs-8">
+                       </div>
+                       <button type="button" class="btn btn-success" id="settings_save">Save</button>
+                     </div>
+                   </div>
+                   <!-- /.panel-body -->
+               </div>
+              </div>
             </div>
         </div>
          <!-- /.panel-body -->
@@ -191,12 +210,16 @@
       </script>
 
       <script>
-        function do_sijax(req) {
-          Sijax.request(req, [], { error: function(jqXHR, textStatus, errorThrown) {
-            alert("Ajax call failed! Maybe your connection or the server is offline?");
-            //console.log(errorThrown);
-          }});
+        function do_sijax(req, data = []) {
+          Sijax.request(req, data,
+            {
+              error: function(jqXHR, textStatus, errorThrown) {
+                //alert("Ajax call failed! Maybe your connection or the server is offline?");
+              }
+            }
+          );
         }
+
         $(document).ready(function(){
           // load data for the active tab
           do_sijax('get_system_stats');
@@ -242,6 +265,27 @@
               '<p class="text-info">WORKING</p>'
             )
             do_sijax('livolo_ble_central_service_restart');
+          });
+          // ----------------------------------------------
+          // ------------------ Settings ------------------
+          $('.nav-tabs a[href="#settings"]').click(function(){
+            do_sijax('settings_page_update');
+          });
+          $('#settings_save').on('click', function (ev) {
+            var settings_fields = {
+              'mqtt_broker': $('#mqtt_broker').val(),
+              'mqtt_broker_port': $('#mqtt_broker_port').val(),
+              'mysensors_mqtt_in_topic_prefix': $('#mysensors_mqtt_in_topic_prefix').val(),
+              'mysensors_mqtt_out_topic_prefix': $('#mysensors_mqtt_out_topic_prefix').val(),
+              'nodes_id': $('#nodes_id').val(),
+              'node_childs_alias': $('#node_childs_alias').val(),
+              'nodes_alias': $('#nodes_alias').val()
+            };
+            //$(this).text('Working ...')
+            // window.setTimeout(function() {
+            //   do_sijax('settings_page_update');
+            // }, 3000)
+            do_sijax('settings_page_save', [settings_fields]);
           });
           // ----------------------------------------------
         });
