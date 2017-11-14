@@ -63,6 +63,27 @@ def system_stats_check():
 
   return system_stats
 
+def read_config_file_settings(cfg_file):
+  with app.app_context():
+    app.iniconfig.read(cfg_file)
+    settings = {
+      'mqtt_broker_url': app.iniconfig.get('mqtt', 'broker', fallback='localhost'),
+      'mqtt_broker_user': app.iniconfig.get('mqtt', 'user', fallback=''),
+      'mqtt_broker_password': app.iniconfig.get('mqtt', 'password', fallback=''),
+      'mqtt_broker_port': app.iniconfig.getint('mqtt', 'port', fallback=1883),
+      'mqtt_broker_keepalive': app.iniconfig.getint('mqtt', 'keepalive', fallback=60),
+      'flask_host': app.iniconfig.get('flask', 'host', fallback='localhost'),
+      'flask_port': app.iniconfig.getint('flask', 'port', fallback=5000),
+      'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
+      'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
+      'ble_stats_topic_prefix': app.iniconfig.get('mqtt', 'ble_stats_topic_prefix', fallback='mys/stats/devices/ble'),
+      'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback='Unknown'),
+      'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback='Unknown'),
+      'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='Unknown'),
+      'mac_addresses': app.iniconfig.get('ble', 'mac_addresses', fallback='Unknown')
+    }
+  return settings
+
 def service_operation(name, operation):
   with open(os.devnull, 'wb') as hide_output:
     return subprocess.Popen(
@@ -86,7 +107,8 @@ def mqtt_init(app, mqtt):
   while getattr(threading.currentThread(), "do_run", True):
     time.sleep(1) # give some break to CPU
     try:
-      mqtt.init_app(app)
+      with app.app_context():
+        mqtt.init_app(app)
       break
     except Exception:
       logging.debug("Could not connect to mqtt broker: %s, retrying ..." % (app.config['MQTT_BROKER_URL']))
@@ -155,25 +177,8 @@ def index_page():
     obj_response.html("#livolo_ble_central_service_status",
       '<p class="text-success">OK</p>' if service_operation('livolo_ble', 'status') else '<p class="text-danger">FAILED</p>')
 
-  def read_config_file_settings():
-    with app.app_context():
-      app.iniconfig.read(args.config)
-      settings = {
-        'mqtt_broker_url': app.config['MQTT_BROKER_URL'],
-        'mqtt_broker_user': app.iniconfig.get('mqtt', 'user', fallback=''),
-        'mqtt_broker_password': app.iniconfig.get('mqtt', 'password', fallback=''),
-        'mqtt_broker_port': app.iniconfig.get('mqtt', 'port', fallback=''),
-        'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
-        'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
-        'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback='Unknown'),
-        'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback='Unknown'),
-        'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='Unknown'),
-        'mac_addresses': app.iniconfig.get('ble', 'mac_addresses', fallback='Unknown')
-      }
-    return settings
-
   def settings_page_update(obj_response):
-    obj_response.html("#settings_page_content", render_template('settings.html', settings=read_config_file_settings()))
+    obj_response.html("#settings_page_content", render_template('settings.html', settings=read_config_file_settings(args.config)))
 
   def settings_page_save(obj_response, data):
     with app.app_context():
@@ -245,15 +250,31 @@ def check_file_md5sum(file):
 def app_cfg_check():
   cfg_file_hash = check_file_md5sum(args.config)
   while getattr(threading.currentThread(), "do_run", True):
+    time.sleep(0.1)
     if check_file_md5sum(args.config) != cfg_file_hash:
-      logging.debug("Configuration file: %s changed, reloading application ..." % (args.config))
+      logging.debug(
+        "Configuration file: %s changed, restarting application: %s ..." % (args.config, __file__)
+      )
       # synchronize file config change checker thread with write operations on it
       # very important - unwanted things can happen otherwise
       with ini_file_write:
-        ini_file_write.wait()
+        ini_file_write.wait(3) # use a timeout also to not block here
         # stop main application cleanly
         stop_app_cleanly()
         os.execv(__file__, sys.argv)
+
+def load_flask_app_configs(settings):
+  with app.app_context():
+    app.config['MQTT_BROKER_URL'] = settings['mqtt_broker_url']
+    app.config['MQTT_BROKER_PORT'] = settings['mqtt_broker_port']
+    app.config['MQTT_USERNAME'] = settings['mqtt_broker_user']
+    app.config['MQTT_PASSWORD'] = settings['mqtt_broker_password']
+    app.config['MQTT_KEEPALIVE'] = settings['mqtt_broker_keepalive']
+    app.config['FLASK_HOST'] = settings['flask_host']
+    app.config['FLASK_PORT'] = settings['flask_port']
+    app.config['MYS_BLE_STATS_TOPIC'] = settings['ble_stats_topic_prefix']
+    app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
+    app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
 def setup():
   logging.basicConfig(
@@ -263,19 +284,7 @@ def setup():
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
 
-  with app.app_context():
-    app.iniconfig.read(args.config)
-    app.config['MQTT_BROKER_URL'] = app.iniconfig.get('mqtt', 'broker')
-    app.config['MQTT_BROKER_PORT'] = app.iniconfig.getint('mqtt', 'port', fallback=1883)
-    app.config['MQTT_USERNAME'] = app.iniconfig.get('mqtt', 'user', fallback='')
-    app.config['MQTT_PASSWORD'] = app.iniconfig.get('mqtt', 'password', fallback='')
-    app.config['MQTT_KEEPALIVE'] = app.iniconfig.getint('mqtt', 'keepalive', fallback=60)
-    app.config['FLASK_HOST'] = app.iniconfig.get('flask', 'host', fallback='localhost')
-    app.config['FLASK_PORT'] = app.iniconfig.getint('flask', 'port', fallback=5000)
-    app.config['MYS_BLE_STATS_TOPIC'] = app.iniconfig.get('mqtt', 'ble_stats_topic_prefix')
-    app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
-    app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
-
+  load_flask_app_configs(read_config_file_settings(args.config))
   flask_sijax.Sijax(app)
 
   global mqtt_init_t
