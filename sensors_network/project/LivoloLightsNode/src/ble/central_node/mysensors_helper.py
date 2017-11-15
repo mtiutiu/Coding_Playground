@@ -14,6 +14,7 @@ class MySensor():
     self.node_alias = node_alias
     self.node_childs_subtype = node_childs_subtype
     self.node_childs_alias = node_childs_alias
+    self.child_count = len(node_childs_subtype)
     self.mqtt = mqtt_instance
     self.mqtt_qos = qos
     self.mqtt_retain = retain

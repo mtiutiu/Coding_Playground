@@ -25,14 +25,48 @@ LIVOLO_BLE_SWITCH_ONE_UUID = '0000bbb0-0000-1000-8000-00805f9b34fb'
 LIVOLO_BLE_SWITCH_TWO_UUID = '0000bbb1-0000-1000-8000-00805f9b34fb'
 # map characteristic uuid's to channel number
 LIVOLO_CHANNEL_BY_UUID = {
-  LIVOLO_BLE_SWITCH_ONE_UUID:'1',
-  LIVOLO_BLE_SWITCH_TWO_UUID:'2'
+  LIVOLO_BLE_SWITCH_ONE_UUID:1,
+  LIVOLO_BLE_SWITCH_TWO_UUID:2
 }
 
 LIVOLO_UUID_BY_CHANNEL = {
   1:LIVOLO_BLE_SWITCH_ONE_UUID,
   2:LIVOLO_BLE_SWITCH_TWO_UUID
 }
+
+# -------------------------------- UTILS ---------------------------------------
+def stop_app_cleanly():
+  for mys_ble_device in mys_ble_devices:
+    mys_ble_device.stop()
+
+def exit_cleanly(message):
+  logging.debug(message)
+  stop_app_cleanly()
+  sys.exit(0)
+
+def sigint_handler(signal, frame):
+  exit_cleanly("SIGINT issued, exiting ...")
+
+def sigterm_handler(signal, frame):
+  exit_cleanly("SIGTERM issued, exiting ...")
+
+def check_file_md5sum(file):
+  hash = 0
+  m = hashlib.md5()
+  with open(file, "rb") as f:
+    while True:
+      buf = f.read(4096)
+      if not buf:
+        break
+      m.update(buf)
+      hash = m.hexdigest()
+  return hash
+
+def restart_app():
+  # stop main application cleanly
+  stop_app_cleanly()
+  os.execv(__file__, sys.argv)
+# --------------------------- END UTILS ----------------------------------------
 
 # --------------------------------- BLE GATT -----------------------------------
 class LivoloDeviceManager(gatt.DeviceManager):
@@ -66,11 +100,15 @@ class LivoloDevice(gatt.Device):
     self.manager = manager
     self.mys_livolo_node = mys_livolo_node
     self.mqtt_client = mqtt_client
+    # intialize a fixed length list holding light channels state
+    # we could read this from the characteristic but it triggers update events
+    self.lights_state = [0] * self.mys_livolo_node.child_count
     super().__init__(self.mac_address, self.manager)
 
   def connect_succeeded(self):
     super().connect_succeeded()
     logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
+
     if self.mqtt_client is not None:
       # send mysensors node presentation
       self.mys_livolo_node.send_presentation(present_node_name=True)
@@ -139,15 +177,15 @@ class LivoloDevice(gatt.Device):
   def characteristic_value_updated(self, characteristic, value):
     channel = LIVOLO_CHANNEL_BY_UUID[characteristic.uuid]
     channel_state = int.from_bytes(value, byteorder='little')
+    self.lights_state[channel-1] = channel_state
     logging.debug(
-      "[%s] Light_%s state: %s" %
-      (self.mac_address, channel, channel_state)
+      "[%s] Light_%s state: %s" % (self.mac_address, channel, channel_state)
     )
     if self.mqtt_client is not None:
       self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
 
   def read_rssi(self):
-    #return self._properties.Get('org.bluez.Device1', 'RSSI')
+    #return self._properties.Get('(ss)', 'org.bluez.Device1', 'RSSI')
     pass
 # ------------------------------ END BLE GATT ----------------------------------
 
@@ -162,6 +200,7 @@ class LivoloCentralBLE(threading.Thread):
     self.must_run = True
     self.ble_dev_conn_check_must_run = True
     self.mqtt_conn_check_must_run = True
+    self.mysensors_lights_state_reporting_must_run = True
     threading.Thread.__init__(self)
 
     logging.debug("Instantiating mqtt client ...")
@@ -179,6 +218,7 @@ class LivoloCentralBLE(threading.Thread):
       1,
       self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
     )
+    logging.debug("Starting MQTT connect thread ...")
     self.mqtt_connect_t = threading.Thread(target=self.connect_to_mqtt_broker)
     self.mqtt_connect_t.setDaemon(True)
     self.mqtt_connect_t.start()
@@ -221,9 +261,15 @@ class LivoloCentralBLE(threading.Thread):
     logging.debug("Starting BLE discovery ...")
     self.manager.start_discovery()
 
+    logging.debug("Starting BLE connection checking thread ...")
     self.ble_dev_conn_check_t = threading.Thread(target=self.check_ble_device_connection)
     self.ble_dev_conn_check_t.setDaemon(True)
     self.ble_dev_conn_check_t.start()
+
+    logging.debug("Starting MySensors lights state reporting thread ...")
+    self.mysensors_lights_state_reporting_t = threading.Thread(target=self.mysensors_lights_state_reporting)
+    self.mysensors_lights_state_reporting_t.setDaemon(True)
+    self.mysensors_lights_state_reporting_t.start()
 
   # The callback for when the client receives a CONNACK response from the server.
   def on_connect(self, client, userdata, flags, rc):
@@ -290,6 +336,7 @@ class LivoloCentralBLE(threading.Thread):
         logging.debug(
           "Received I_REBOOT internal command on topic: %s" % (msg.topic)
         )
+        restart_app()
       else:
         logging.debug(
           "Received data: %s on topic: %s" % (payload, msg.topic)
@@ -337,6 +384,17 @@ class LivoloCentralBLE(threading.Thread):
         logging.debug("[%s] BLE dev connection exception occured: " % (ex))
         continue
 
+  def mysensors_lights_state_reporting(self):
+    while self.mysensors_lights_state_reporting_must_run:
+      if self.livolo_device.is_connected():
+        for channel, channel_state in enumerate(self.livolo_device.lights_state):
+          channel = channel + 1 # channels start from index 1
+          logging.debug(
+            "[MySensors][%s] Reporting light channel: %s state: %s ..." % (self.mysensor_node_id, channel, channel_state)
+          )
+          self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
+      time.sleep(180) # 3 minutes reporting interval
+
   def connect_to_mqtt_broker(self):
     logging.debug(
       "Connecting to mqtt broker: %s ..." % (self.config.get('mqtt', 'broker'))
@@ -374,6 +432,7 @@ class LivoloCentralBLE(threading.Thread):
   def stop(self):
     self.mqtt_conn_check_must_run = False
     self.ble_dev_conn_check_must_run = False
+    self.mysensors_lights_state_reporting_must_run = False
     self.must_run = False
     try:
       self.manager.stop_discovery()
@@ -397,33 +456,6 @@ class LivoloCentralBLE(threading.Thread):
       if self.mqtt_client is not None:
         self.mqtt_client.loop_stop()
 # -------------------------------------END MAIN APP CLASS ----------------------
-
-def stop_app_cleanly():
-  for mys_ble_device in mys_ble_devices:
-    mys_ble_device.stop()
-
-def exit_cleanly(message):
-  logging.debug(message)
-  stop_app_cleanly()
-  sys.exit(0)
-
-def sigint_handler(signal, frame):
-  exit_cleanly("SIGINT issued, exiting ...")
-
-def sigterm_handler(signal, frame):
-  exit_cleanly("SIGTERM issued, exiting ...")
-
-def check_file_md5sum(file):
-  hash = 0
-  m = hashlib.md5()
-  with open(file, "rb") as f:
-    while True:
-      buf = f.read(4096)
-      if not buf:
-        break
-      m.update(buf)
-      hash = m.hexdigest()
-  return hash
 
 def setup():
   logging.basicConfig(
@@ -478,12 +510,8 @@ def main():
       ble_device.check_bluetooth_service()
       ble_device.check_bluetooth_power()
     if check_file_md5sum(args.config) != cfg_file_hash:
-      logging.debug("Configuration file: %s changed, reloading application ..." % (args.config))
-      # stop main application cleanly
-      stop_app_cleanly()
-      os.execv(__file__, sys.argv)
-      # there's no point in doing anything else here as the main process will be replaced
-      #cfg_file_hash = check_file_md5sum(args.config)
+      logging.debug("Configuration file: %s changed, restarting application ..." % (args.config))
+      restart_app()
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
