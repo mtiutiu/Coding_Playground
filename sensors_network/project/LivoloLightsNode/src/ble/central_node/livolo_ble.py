@@ -165,10 +165,10 @@ class LivoloCentralBLE(threading.Thread):
     threading.Thread.__init__(self)
 
     logging.debug("Instantiating mqtt client ...")
-    self.mqtt_client = mqtt.Client(
-      clean_session=True,
-      userdata=None,
-      protocol=mqtt.MQTTv311
+    self.mqtt_client = mqtt.Client()
+    self.mqtt_client.username_pw_set(
+      username=self.config.get('mqtt', 'user', fallback=''),
+      password=self.config.get('mqtt', 'password', fallback='')
     )
     self.mqtt_client.on_connect = self.on_connect
     self.mqtt_client.on_disconnect = self.on_disconnect
