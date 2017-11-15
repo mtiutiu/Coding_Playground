@@ -263,7 +263,7 @@ def app_cfg_check():
       # synchronize file config change checker thread with write operations on it
       # very important - unwanted things can happen otherwise
       with ini_file_write:
-        ini_file_write.wait(3) # use a timeout also to not block here
+        ini_file_write.wait(1) # use a timeout also to not block here
         # stop main application cleanly
         stop_app_cleanly()
         os.execv(__file__, sys.argv)
@@ -284,8 +284,9 @@ def load_flask_app_configs(settings):
 def setup():
   logging.basicConfig(
     level=logging.DEBUG,
-    format="[%(asctime)s][%(levelname)s] => %(message)s"
+    format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
   )
+
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
 

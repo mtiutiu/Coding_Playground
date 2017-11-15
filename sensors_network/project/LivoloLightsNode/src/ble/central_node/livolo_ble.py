@@ -177,7 +177,7 @@ class LivoloCentralBLE(threading.Thread):
       "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
       2,
       1,
-      True
+      self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
     )
     self.mqtt_connect_t = threading.Thread(target=self.connect_to_mqtt_broker)
     self.mqtt_connect_t.setDaemon(True)
@@ -428,7 +428,7 @@ def check_file_md5sum(file):
 def setup():
   logging.basicConfig(
     level=logging.DEBUG,
-    format="[%(asctime)s][%(levelname)s] => %(message)s"
+    format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
   )
 
   signal.signal(signal.SIGINT, sigint_handler)
