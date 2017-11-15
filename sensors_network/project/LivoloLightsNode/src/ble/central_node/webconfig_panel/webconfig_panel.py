@@ -47,6 +47,18 @@ def uptime_format(up):
 
   return ', '.join(parts)
 
+def get_ble_devices_list():
+  return ble_devices
+
+def get_mqtt_broker_list():
+  return [
+    {
+      'address': app.config['MQTT_BROKER_URL'],
+      'port': app.config['MQTT_BROKER_PORT'],
+      'connected': mqtt.connected
+    }
+  ]
+
 def system_stats_check():
   system_stats = {}
   system_stats['cpu_usage_percent'] = round(psutil.cpu_percent())
@@ -156,18 +168,12 @@ def index_page():
   def get_system_stats(obj_response):
     obj_response.html("#system_stats", render_template('system_stats.html', system_stats=system_stats_check()))
 
-  def ble_devices_list_update(obj_response):
-    obj_response.html("#ble_dev_list", render_template('ble_dev_list.html', ble_devices=ble_devices))
-
-  def mqtt_broker_list_update(obj_response):
-    mqtt_brokers = [
-      {
-        'address': app.config['MQTT_BROKER_URL'],
-        'port': app.config['MQTT_BROKER_PORT'],
-        'connected': mqtt.connected
-      }
-    ]
-    obj_response.html("#mqtt_broker_list", render_template('mqtt_broker_list.html', mqtt_brokers=mqtt_brokers))
+  def services_status(obj_response):
+    services_status = {
+      'ble_devices': get_ble_devices_list(),
+      'mqtt_brokers': get_mqtt_broker_list()
+    }
+    obj_response.html("#services_status_content", render_template('services_status.html', services_status=services_status))
 
   def livolo_ble_central_service_restart(obj_response):
     obj_response.html("#livolo_ble_central_service_status",
@@ -205,8 +211,7 @@ def index_page():
   if g.sijax.is_sijax_request:
     # Sijax request detected - let Sijax handle it
     g.sijax.register_callback('get_system_stats', get_system_stats)
-    g.sijax.register_callback('ble_devices_list_update', ble_devices_list_update)
-    g.sijax.register_callback('mqtt_broker_list_update', mqtt_broker_list_update)
+    g.sijax.register_callback('services_status', services_status)
     g.sijax.register_callback('livolo_ble_central_service_restart', livolo_ble_central_service_restart)
     g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
     g.sijax.register_callback('settings_page_update', settings_page_update)

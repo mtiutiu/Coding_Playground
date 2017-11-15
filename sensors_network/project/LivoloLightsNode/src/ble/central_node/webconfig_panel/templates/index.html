@@ -32,11 +32,9 @@
             <ul class="nav nav-tabs">
               <li class="active"><a href="#system" data-toggle="tab" aria-expanded="true">System</a>
               </li>
-              <li class=""><a href="#ble" data-toggle="tab" aria-expanded="false">BLE</a>
+              <li class=""><a href="#services_status" data-toggle="tab" aria-expanded="false">Services</a>
               </li>
-              <li class=""><a href="#mqtt" data-toggle="tab" aria-expanded="false">MQTT</a>
-              </li>
-              <li class=""><a href="#services" data-toggle="tab" aria-expanded="false">Services</a>
+              <li class=""><a href="#maintenance" data-toggle="tab" aria-expanded="false">Maintenance</a>
               </li>
               <li class=""><a href="#settings" data-toggle="tab" aria-expanded="false">Settings</a>
               </li>
@@ -46,97 +44,40 @@
               <div class="tab-pane active" id="system">
                 <div class="panel panel-default">
                   <div class="panel-heading">
-                    System Status
+                    System status
                   </div>
 
                   <div class="panel-body">
                     <div id="system_stats"></div>
                     <div class="row">
                       <div class="col-xs-8"></div>
-                      <button type="button" class="btn btn-success" id="system_stats_refresh">Refresh</button>
+                      <button type="button" class="btn btn-success" id="system_stats_refresh">Refresh <i class="fa fa-gear"></i></button>
                     </div>
                   </div>
                 </div>
               </div>
-               <div class="tab-pane" id="ble">
+               <div class="tab-pane" id="services_status">
                   <div class="panel panel-default">
                     <div class="panel-heading">
-                        BLE Devices
+                        Services status
                     </div>
                      <!-- /.panel-heading -->
                     <div class="panel-body">
-                        <div class="table-responsive">
-                           <table class="table table-striped table-bordered table-hover">
-                              <thead>
-                                 <tr>
-                                    <th>ID</th>
-                                    <th>MAC Address</th>
-                                    <th>Alias</th>
-                                    <th>Status</th>
-                                    <!--th>Last Seen</th-->
-                                 </tr>
-                              </thead>
-                              <tbody id="ble_dev_list">
-                                <tr>
-                                  <td>None</td>
-                                  <td>None</td>
-                                  <td>None</td>
-                                  <td>None</td>
-                                </tr>
-                              </tbody>
-                           </table>
+                        <div id="services_status_content">
                         </div>
                         <!-- /.table-responsive -->
                         <div class="row">
                           <div class="col-xs-8"></div>
-                          <button type="button" class="btn btn-success" id="ble_refresh">Refresh</button>
+                          <button type="button" class="btn btn-success" id="services_refresh">Refresh <i class="fa fa-gear"></i></button>
                         </div>
                     </div>
                      <!-- /.panel-body -->
                   </div>
                </div>
-               <div class="tab-pane" id="mqtt">
-                 <div class="panel panel-default">
-                    <div class="panel-heading">
-                       MQTT Brokers
-                    </div>
-                    <!-- /.panel-heading -->
-                    <div class="panel-body">
-                       <div class="table-responsive">
-                          <table class="table table-striped table-bordered table-hover">
-                             <thead>
-                                <tr>
-                                  <th>ID</th>
-                                  <th>Address</th>
-                                  <th>Port</th>
-                                  <th>Status</th>
-                                  <!--th>Last Seen</th-->
-                                </tr>
-                             </thead>
-                             <tbody id="mqtt_broker_list">
-                               <tr>
-                                 <td>None</td>
-                                 <td>None</td>
-                                 <td>None</td>
-                                 <td>None</td>
-                               </tr>
-                             </tbody>
-                          </table>
-                      </div>
-                      <!-- /.table-responsive -->
-                      <div class="row">
-                        <div class="col-xs-8">
-                        </div>
-                        <button type="button" class="btn btn-success" id="mqtt_refresh">Refresh</button>
-                      </div>
-                    </div>
-                    <!-- /.panel-body -->
-                </div>
-              </div>
-              <div class="tab-pane" id="services">
+              <div class="tab-pane" id="maintenance">
                 <div class="panel panel-default">
                    <div class="panel-heading">
-                      Services
+                      Services maintenance
                    </div>
                    <!-- /.panel-heading -->
                    <div class="panel-body">
@@ -182,7 +123,7 @@
                      <div class="row">
                        <div class="col-xs-8">
                        </div>
-                       <button type="button" class="btn btn-success" id="settings_save" name="button">Save</button>
+                       <button type="button" class="btn btn-success" id="settings_save" name="button">Save <i class="fa fa-gear"></i></button>
                      </div>
                    </div>
                    <!-- /.panel-body -->
@@ -208,11 +149,17 @@
       </script>
 
       <script>
+        function stop_btns_gear_animation() {
+          $('#settings_save').html('Save <i class="fa fa-gear"></i>');
+          $('#services_refresh').html('Refresh <i class="fa fa-gear"></i>');
+          $('#system_stats_refresh').html('Refresh <i class="fa fa-gear"></i>');
+        }
+
         function do_sijax(req, data = [], retries = 10) {
           Sijax.request(req, data,
             {
               complete: function() {
-
+                stop_btns_gear_animation();
               },
               error: function(jqXHR, textStatus, errorThrown) {
                 if(retries > 0 && textStatus == 'error') {
@@ -221,6 +168,7 @@
                   }, 500);
                 }
                 if(retries == 0) {
+                  stop_btns_gear_animation();
                   alert("Ajax call failed! Maybe your connection or the server is offline?");
                 }
               },
@@ -238,30 +186,24 @@
           });
 
           $('#system_stats_refresh').on('click', function (ev) {
+            $(this).html('Refresh <i class="fa fa-gear fa-spin"></i>');
             do_sijax('get_system_stats');
           });
           // ----------------------------------------------
 
-          // --------------- BLE -------------------------
-          $('.nav-tabs a[href="#ble"]').click(function(){
-            do_sijax('ble_devices_list_update');
+          // --------------- Services status---------------------
+          $('.nav-tabs a[href="#services_status"]').click(function(){
+            do_sijax('services_status');
           });
 
-          $('#ble_refresh').on('click', function (ev) {
-            do_sijax('ble_devices_list_update');
+          $('#services_refresh').on('click', function (ev) {
+            $(this).html('Refresh <i class="fa fa-gear fa-spin"></i>');
+            do_sijax('services_status');
           });
           // ----------------------------------------------
-          // -------------------- MQTT --------------------
-          $('.nav-tabs a[href="#mqtt"]').click(function(){
-            do_sijax('mqtt_broker_list_update');
-          });
 
-          $('#mqtt_refresh').on('click', function (ev) {
-            do_sijax('mqtt_broker_list_update');
-          });
-          // ----------------------------------------------
-          // --------------- Services ---------------------
-          $('.nav-tabs a[href="#services"]').click(function(){
+          // --------------- Maintenance ---------------------
+          $('.nav-tabs a[href="#maintenance"]').click(function(){
             $('#livolo_ble_central_service_status').html(
               '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
             )
@@ -275,6 +217,7 @@
             do_sijax('livolo_ble_central_service_restart');
           });
           // ----------------------------------------------
+
           // ------------------ Settings ------------------
           $('.nav-tabs a[href="#settings"]').click(function(){
             do_sijax('settings_page_update');
@@ -293,7 +236,7 @@
               'nodes_alias': $('#nodes_alias').val(),
               'mac_addresses': $('#mac_addresses').val()
             };
-            //$(this).html('Save <i class="fa fa-gear fa-spin">');
+            $(this).html('Save <i class="fa fa-gear fa-spin"></i>');
             do_sijax('settings_page_save', [settings_fields]);
           });
           // ----------------------------------------------
