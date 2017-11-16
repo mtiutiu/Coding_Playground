@@ -7,6 +7,7 @@ import time
 import sys
 import signal
 import logging
+import logging.handlers
 import os
 import subprocess
 import configparser
@@ -18,20 +19,20 @@ from gi.repository import GLib
 import threading
 import hashlib
 
-#BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
-#BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
+# BLE_LIVOLO_DEVICE_ADDRESS = 'c2:8a:74:27:11:7b'
+# BLE_LIVOLO_DEVICE_ADDRESS = 'de:62:20:8f:8e:91'
 LIVOLO_LIGHTS_SERVICE_UUID = 'ccc0'
 LIVOLO_BLE_SWITCH_ONE_UUID = '0000bbb0-0000-1000-8000-00805f9b34fb'
 LIVOLO_BLE_SWITCH_TWO_UUID = '0000bbb1-0000-1000-8000-00805f9b34fb'
 # map characteristic uuid's to channel number
 LIVOLO_CHANNEL_BY_UUID = {
-  LIVOLO_BLE_SWITCH_ONE_UUID:1,
-  LIVOLO_BLE_SWITCH_TWO_UUID:2
+  LIVOLO_BLE_SWITCH_ONE_UUID: 1,
+  LIVOLO_BLE_SWITCH_TWO_UUID: 2
 }
 
 LIVOLO_UUID_BY_CHANNEL = {
-  1:LIVOLO_BLE_SWITCH_ONE_UUID,
-  2:LIVOLO_BLE_SWITCH_TWO_UUID
+  1: LIVOLO_BLE_SWITCH_ONE_UUID,
+  2: LIVOLO_BLE_SWITCH_TWO_UUID
 }
 
 # -------------------------------- UTILS ---------------------------------------
@@ -458,10 +459,18 @@ class LivoloCentralBLE(threading.Thread):
 # -------------------------------------END MAIN APP CLASS ----------------------
 
 def setup():
-  logging.basicConfig(
-    level=logging.DEBUG,
-    format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
-  )
+  if not args.testing:
+    # log to syslog
+    logging.basicConfig(
+      level=logging.DEBUG,
+      format="[livolo_ble] %(message)s",
+      handlers=[logging.handlers.SysLogHandler(address='/dev/log')]
+    )
+  else:
+    logging.basicConfig(
+      level=logging.DEBUG,
+      format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
+    )
 
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
@@ -489,7 +498,7 @@ def setup():
   global mys_ble_devices
   mys_ble_devices = []
 
-  for index,mac_address in enumerate(mac_addresses):
+  for index, mac_address in enumerate(mac_addresses):
     mys_ble_devices.append(
       LivoloCentralBLE(
         config,
@@ -515,7 +524,18 @@ def main():
 
 if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
-  arg_parser.add_argument('config', help="Configuration file")
+  arg_parser.add_argument(
+    '--config',
+    help="Configuration file",
+    required=True
+  )
+  arg_parser.add_argument(
+    '--testing',
+    help="Testing mode",
+    dest='testing',
+    action='store_true',
+    required=False
+  )
   global args
   args = arg_parser.parse_args()
   setup()

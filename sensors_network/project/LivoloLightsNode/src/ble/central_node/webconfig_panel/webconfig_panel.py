@@ -282,10 +282,18 @@ def load_flask_app_configs(settings):
     app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
 def setup():
-  logging.basicConfig(
-    level=logging.DEBUG,
-    format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
-  )
+  if not args.testing:
+    # log to syslog
+    logging.basicConfig(
+      level=logging.DEBUG,
+      format="[ble_webconfig_panel] %(message)s",
+      handlers=[logging.handlers.SysLogHandler(address='/dev/log')]
+    )
+  else:
+    logging.basicConfig(
+      level=logging.DEBUG,
+      format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s"
+    )
 
   signal.signal(signal.SIGINT, sigint_handler)
   signal.signal(signal.SIGTERM, sigterm_handler)
@@ -314,10 +322,20 @@ def setup():
   ini_file_write = threading.Condition()
 
 if __name__ == "__main__":
-  arg_parser = ArgumentParser(description="BLE Stats Panel")
-  arg_parser.add_argument('config', help="Configuration file")
+  arg_parser = ArgumentParser(description="BLE Webconfig Panel")
+  arg_parser.add_argument(
+    '--config',
+    help="Configuration file",
+    required=True
+  )
+  arg_parser.add_argument(
+    '--testing',
+    help="Testing mode",
+    dest='testing',
+    action='store_true',
+    required=False
+  )
   global args
   args = arg_parser.parse_args()
-
   setup()
   app.run(host=app.config['FLASK_HOST'], port=app.config['FLASK_PORT'])
