@@ -171,17 +171,18 @@ def index_page():
   def services_status(obj_response):
     services_status = {
       'ble_devices': get_ble_devices_list(),
-      'mqtt_brokers': get_mqtt_broker_list()
+      'mqtt_brokers': get_mqtt_broker_list(),
+      'livolo_ble': service_operation('livolo_ble', 'status')
     }
     obj_response.html("#services_status_content", render_template('services_status.html', services_status=services_status))
 
-  def livolo_ble_central_service_restart(obj_response):
-    obj_response.html("#livolo_ble_central_service_status",
-      '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'restart') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
-
-  def livolo_ble_central_service_status(obj_response):
-    obj_response.html("#livolo_ble_central_service_status",
-      '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'status') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
+  # def livolo_ble_central_service_restart(obj_response):
+  #   obj_response.html("#livolo_ble_central_service_status",
+  #     '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'restart') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
+  #
+  # def livolo_ble_central_service_status(obj_response):
+  #   obj_response.html("#livolo_ble_central_service_status",
+  #     '<i class="fa fa-arrow-circle-up" aria-hidden="true"></i>' if service_operation('livolo_ble', 'status') else '<i class="fa fa-arrow-circle-down" aria-hidden="true"></i>')
 
   def settings_page_update(obj_response):
     obj_response.html("#settings_page_content", render_template('settings.html', settings=read_config_file_settings(args.config)))
@@ -212,8 +213,8 @@ def index_page():
     # Sijax request detected - let Sijax handle it
     g.sijax.register_callback('get_system_stats', get_system_stats)
     g.sijax.register_callback('services_status', services_status)
-    g.sijax.register_callback('livolo_ble_central_service_restart', livolo_ble_central_service_restart)
-    g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
+    # g.sijax.register_callback('livolo_ble_central_service_restart', livolo_ble_central_service_restart)
+    # g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
     g.sijax.register_callback('settings_page_update', settings_page_update)
     g.sijax.register_callback('settings_page_save', settings_page_save)
     return g.sijax.process_request()
