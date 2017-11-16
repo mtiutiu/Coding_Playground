@@ -68,6 +68,7 @@ def system_stats_check():
       system_stats['cpu_temp'] = round(int(temp.read())/1000, 2)
   except Exception:
     system_stats['cpu_temp'] = 0.0
+  system_stats['hostname'] = platform.node()
   system_stats['machine_arch'] = platform.machine()
   system_stats['system'] = platform.system()
   system_stats['release'] = platform.release()
