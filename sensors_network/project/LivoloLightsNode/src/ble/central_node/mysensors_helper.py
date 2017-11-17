@@ -68,13 +68,15 @@ class MySensor():
     data['payload'] = child_sensor_alias
     self._mys_mycontroller_out(data)
 
-  def send_presentation(self, present_node_name=False, present_node_version=False):
+  def send_presentation(self, present_node_name=False, present_node_version=False, ack=0):
+    # present this node as a MySensors node first
+    self._send_presentation(self.node_id, mtypes.S_ARDUINO_NODE, '', ack)
     if present_node_name:
       self.send_sketch_name()
     if present_node_version:
       self.send_sketch_version()
     for index,child_alias in enumerate(self.node_childs_alias, start=1):
-      self._send_presentation(index, self.node_childs_subtype[index-1], child_alias)
+      self._send_presentation(index, self.node_childs_subtype[index-1], child_alias, ack)
 
   def send_sketch_name(self, name=None, ack=0):
     data = {}
