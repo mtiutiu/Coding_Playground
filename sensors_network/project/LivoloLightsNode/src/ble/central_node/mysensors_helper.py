@@ -70,7 +70,7 @@ class MySensor():
 
   def send_presentation(self, present_node_name=False, present_node_version=False, ack=0):
     # present this node as a MySensors node first
-    self._send_presentation(self.node_id, mtypes.S_ARDUINO_NODE, '', ack)
+    self._send_presentation(255, mtypes.S_ARDUINO_NODE, '', ack)
     if present_node_name:
       self.send_sketch_name()
     if present_node_version:
