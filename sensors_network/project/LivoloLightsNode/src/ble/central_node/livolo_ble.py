@@ -389,11 +389,10 @@ class LivoloCentralBLE(threading.Thread):
     while self.mysensors_lights_state_reporting_must_run:
       if self.livolo_device.is_connected():
         for channel, channel_state in enumerate(self.livolo_device.lights_state):
-          channel = channel + 1 # channels start from index 1
           logging.debug(
-            "[MySensors][%s] Reporting light channel: %s state: %s ..." % (self.mysensor_node_id, channel, channel_state)
+            "[MySensors][%s] Reporting light channel: %s state: %s ..." % (self.mysensor_node_id, channel+1, channel_state)
           )
-          self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
+          self.mys_livolo_node.send(channel+1, mtypes.V_STATUS, channel_state)
       time.sleep(180) # 3 minutes reporting interval
 
   def connect_to_mqtt_broker(self):
