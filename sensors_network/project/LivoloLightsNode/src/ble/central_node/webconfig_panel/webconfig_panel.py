@@ -10,6 +10,7 @@ import threading
 import time
 import signal
 import logging
+import logging.handlers
 import sys
 import os
 import psutil
@@ -284,7 +285,7 @@ def load_flask_app_configs(settings):
     app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
 def setup():
-  if not args.testing:
+  if 'syslog' in args.log:
     # log to syslog
     logging.basicConfig(
       level=logging.DEBUG,
@@ -327,14 +328,13 @@ if __name__ == "__main__":
   arg_parser = ArgumentParser(description="BLE Webconfig Panel")
   arg_parser.add_argument(
     '--config',
-    help="Configuration file",
+    help="Configuration file path",
     required=True
   )
   arg_parser.add_argument(
-    '--testing',
-    help="Testing mode",
-    dest='testing',
-    action='store_true',
+    '--log',
+    help="Logging mode: syslog | stdout",
+    default='stdout',
     required=False
   )
   global args

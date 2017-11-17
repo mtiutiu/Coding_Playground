@@ -459,7 +459,7 @@ class LivoloCentralBLE(threading.Thread):
 # -------------------------------------END MAIN APP CLASS ----------------------
 
 def setup():
-  if not args.testing:
+  if 'syslog' in args.log:
     # log to syslog
     logging.basicConfig(
       level=logging.DEBUG,
@@ -526,14 +526,13 @@ if __name__ == '__main__':
   arg_parser = ArgumentParser(description="Livolo MySensors BLE Node")
   arg_parser.add_argument(
     '--config',
-    help="Configuration file",
+    help="Configuration file path",
     required=True
   )
   arg_parser.add_argument(
-    '--testing',
-    help="Testing mode",
-    dest='testing',
-    action='store_true',
+    '--log',
+    help="Logging mode: syslog | stdout",
+    default='stdout',
     required=False
   )
   global args
