@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Message Types
 M_PRESENTATION    = 0  # Sent by a node when they present attached sensors. This is usually done in setup() at startup.
 M_SET             = 1  # This message is sent from or to a sensor when a sensor value should be updated
