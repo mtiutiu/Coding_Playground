@@ -25,7 +25,7 @@
 2. Web panel for configuration:
 `./webconfig_panel/webconfig_panel.py --config ../configs/mys_ble.conf`
 
-#### Configuring application
+### Configuring application
 
 After webpanel started succesfully you can browse to http://<server_ip>:5000 and in the settings tab you need to:
 
