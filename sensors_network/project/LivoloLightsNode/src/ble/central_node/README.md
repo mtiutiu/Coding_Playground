@@ -75,6 +75,8 @@
 * For each BLE device it creates a thread which takes care of:
   * BLE connection and auto reconnect in case of failure
   * MQTT client initialization and connection with auto reconnect in case of failure
+  * MySensors internal messages are processed
+  * MySensors user messages are processed
   * MySensors threads to publish lights state and battery state(this is not really required as this is not a battery powered device) at regular intervals(3 minutes and 5 minutes)
   * Configuration file changes are monitored in the main thread and application is automatically restarted in case it detects changes - for now it's monitoring the whole file and not by logical sections inside it - this means that whenever the config file changes both services are restarted: livolo_ble and webpanel 
   * On service termination all the threads are finished in a clean way and the BLE/MQTT connections too
