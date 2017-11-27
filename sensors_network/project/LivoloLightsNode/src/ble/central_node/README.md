@@ -34,8 +34,6 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
  - Configure MQTT broker details: **ip**, **user/pass** (if none are needed then leave those fields empty), **in/out** subscribe/publish mqtt topics(must be the same **prefix** as defined in **MyController** where you defined the MySensors MQTT gateway)
  
  **MySensors Section**
- 
- - Configure MySensors nodes details:
 
   a. Unique node ID for each ble device that you want to connect to separated by commas
   
