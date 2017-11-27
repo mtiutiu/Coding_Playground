@@ -12,7 +12,8 @@
 
 #### Bluez
 
- Install bluez stack from sources as described here: https://github.com/getsenic/gatt-python#installing-bluez-from-sources
+ 1. Install bluez stack from sources as described here: https://github.com/getsenic/gatt-python#installing-bluez-from-sources
+ 2. After installation make sure that the bluetooth service is enabled for automatic start on system reboot using this(for systemd): `sudo systemctl enable bluetooth`
 
 #### Install python3 required packages
 
