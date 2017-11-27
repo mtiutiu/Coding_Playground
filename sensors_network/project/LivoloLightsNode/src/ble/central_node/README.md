@@ -31,7 +31,7 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
 
 **MQTT Section**
 
- - Configure MQTT broker details: ip, user/pass(if any), in/out subscribe/publish mqtt topics(must be the same prefix as defined in MyController where you defined the MySensors MQTT gateway)
+ - Configure MQTT broker details: **ip**, **user/pass** (if none are needed then leave those fields empty), **in/out** subscribe/publish mqtt topics(must be the same **prefix** as defined in **MyController** where you defined the MySensors MQTT gateway)
  
  **MySensors Section**
  
