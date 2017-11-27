@@ -19,16 +19,16 @@
 
   sudo pip3 install -r requirements.txt (requirements.txt from this project location)
 
-### Starting services
+## Starting application services
 
-There's a systemd script in the configs/systemd path that you can adjust accordingly to your environment so that services will be started automatically at boot.
+There's a systemd script in the configs/systemd path from this project that you can adjust accordingly to your environment so that services will be started automatically at boot.
 
 1. Livolo BLE main service(from main project directory):
 `sudo ./livolo_ble.py --config ./configs/mys_ble.conf`
 2. Web panel for configuration:
 `./webconfig_panel/webconfig_panel.py --config ../configs/mys_ble.conf`
 
-### Configuring application
+## Configuring application
 
 After webpanel started succesfully you can browse to http://<server_ip>:5000 and in the settings tab you need to:
 
