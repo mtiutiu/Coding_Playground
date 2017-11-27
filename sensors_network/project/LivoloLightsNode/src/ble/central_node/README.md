@@ -66,3 +66,15 @@
   For each BLE node there's a 1 to 1 mapping with the MySensors section - in other words if you have 2 Livolo BLE switches you need to define 2 MySensors nodes using 2 nodes ID's, 2 groups of aliases and so on. The MAC address is unique for each BLE device and it can be fetched using a BLE scanner application.
   
   **The web panel application doesn't perform validation on the above fields so you need to set them correctly otherwise it may crash or unpredictible results may appear**
+
+
+## How the livolo_ble application works:
+
+* Sets up a logger
+* Reads/parses the configuration file provided through CLI option: --config
+* For each BLE device it creates a thread which takes care of:
+  * BLE connection and auto reconnect in case of failure
+  * MQTT client initialization and connection with auto reconnect in case of failure
+  * MySensors threads to publish lights state and battery state(this is not really required as this is not a battery powered device) at regular intervals(3 minutes and 5 minutes)
+  * Configuration file changes are monitored in the main thread and application is automatically restarted in case it detects changes - for now it's monitoring the whole file and not by logical sections inside it - this means that whenever the config file changes both services are restarted: livolo_ble and webpanel 
+  * On service termination all the threads are finished in a clean way and the BLE/MQTT connections too
