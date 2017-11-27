@@ -1,4 +1,4 @@
-### Project requirements
+## Project requirements
 
 #### Prerequisites
 
@@ -19,7 +19,9 @@
 
   sudo pip3 install -r requirements.txt (requirements.txt from this project location)
 
-#### Starting services
+### Starting services
+
+There's a systemd script in the configs/systemd path that you can adjust accordingly to your environment so that services will be started automatically at boot.
 
 1. Livolo BLE main service(from main project directory):
 `sudo ./livolo_ble.py --config ./configs/mys_ble.conf`
