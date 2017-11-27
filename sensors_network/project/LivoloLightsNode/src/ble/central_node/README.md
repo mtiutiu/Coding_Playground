@@ -35,11 +35,9 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
  
  **MySensors Section**
 
-  a. Unique node ID for each ble device that you want to connect to separated by commas
-  
-  b. Child aliases(name) for each sensor that the MySensors node has separated by commas AND by semicolon for each group of child aliases that corresponds to each node ID
-  
-  c. Node id alias/name for each ID defined at point a. separated by commas
+ - Unique node ID for each ble device that you want to connect to separated by commas
+ - Child aliases(name) for each sensor that the MySensors node has separated by commas AND by semicolon for each group of child aliases that corresponds to each node ID
+ - Node id alias/name for each ID defined at point a. separated by commas
  
  **BLE Section**
   - Add each BLE device(Livolo switch) MAC address separated by commas
