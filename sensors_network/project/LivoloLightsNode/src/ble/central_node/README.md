@@ -48,7 +48,7 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
  
  **Childs alias: LivingLight1,LivingLight2;BathroomLight1,BathroomLight2**
  
- **Nodes alias: LivingLights,BathroomLights)**
+ **Nodes alias: LivingLights,BathroomLights**
  
  **BLE Section**
   - Add each BLE device(Livolo switch) MAC address separated by commas(e.g. c2:8a:74:27:11:7b,de:62:20:8f:8e:91)
