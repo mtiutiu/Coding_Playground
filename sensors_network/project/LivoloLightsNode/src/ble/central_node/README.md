@@ -17,7 +17,10 @@
 
 #### Install python3 required packages
 
-  sudo pip3 install -r requirements.txt (requirements.txt from this project location)
+ 1. sudo pip3 install -r requirements.txt (requirements.txt from this project location)
+ 2. apply the python gi patch from the project location gatt_gi_patch subfolder:
+  
+  `sudo cp ./gatt_gi_patch/gatt_linux.py /usr/local/lib/python3.5/dist-packages/gatt/gatt_linux.py`
 
 ## Starting application services
 
