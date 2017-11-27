@@ -21,16 +21,21 @@
 
 ## Starting application services
 
-There's a systemd script in the configs/systemd path from this project that you can adjust accordingly to your environment so that services will be started automatically at boot.
+ There's a systemd script in the configs/systemd path from this project that you can adjust accordingly to your environment so that services will be started automatically at boot.
 
-1. Livolo BLE main service(from main project directory):
+ Each application uses the `mys_ble.conf` configuration file from which it reads and updates required values - some are not exported to the web interface because it's internal stuff that users shouldn't change or mess with.
+
+ Everytime you hit the save settings button from the web interface the mys_ble.conf file gets updated with the new values **AND** the services will restart automatically as they **listen** for this file changes.
+ 
+**Manually starting services for testing (from main project directory):**
+1. Livolo BLE main service:
 `sudo ./livolo_ble.py --config ./configs/mys_ble.conf`
 2. Web panel for configuration:
 `./webconfig_panel/webconfig_panel.py --config ../configs/mys_ble.conf`
 
 ## Configuring application
 
-After webpanel started succesfully you can browse to http://<server_ip>:5000 and in the settings tab you need to:
+ After webpanel started succesfully you can browse to http://<server_ip>:5000 and in the settings tab you need to:
 
 **MQTT Section**
 
