@@ -35,13 +35,26 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
  
  **MySensors Section**
 
- - Unique node ID for each ble device that you want to connect to separated by commas
- - Child aliases(name) for each sensor that the MySensors node has separated by commas AND by semicolon for each group of child aliases that corresponds to each node ID
- - Node id alias/name for each ID defined at point a. separated by commas
+ - Unique node ID for each ble device that you want to connect to separated by commas(e.g.: 100,101)
+ - Child aliases(name) for each sensor that the MySensors node has separated by commas AND by semicolon for each group of child aliases that corresponds to each node ID(e.g. Light1,Light2;Light1,Light2)
+ - Node id alias/name for each ID defined at point a. separated by commas(e.g. LivingLights,BathroomLights)
+ 
+ Practical example:
+ 
+ Say you have 2 Livolo Switches one for Living room and one for bathroom and each has 2 channels(2 lights attached). Then you need to configure it like so:
+ 
+ **Nodes id: 100,101**
+ 
+ **Childs alias: LivingLight1,LivingLight2;BathroomLight1,BathroomLight2**
+ 
+ **Nodes alias: LivingLights,BathroomLights)**
  
  **BLE Section**
-  - Add each BLE device(Livolo switch) MAC address separated by commas
-  
+  - Add each BLE device(Livolo switch) MAC address separated by commas(e.g. c2:8a:74:27:11:7b,de:62:20:8f:8e:91)
+ 
+ 
  **Important**
+ 
+  For each BLE node there's a 1 to 1 mapping with the MySensors section - in other words if you have 2 Livolo BLE switches you need to define 2 MySensors nodes using 2 nodes ID's, 2 groups of aliases and so on. The MAC address is unique for each BLE device and it can be fetched using a BLE scanner application.
   
-  The web panel application doesn't perform validation on the above fields so you need to set them correctly otherwise it may crash or unpredictible results may appear
+  **The web panel application doesn't perform validation on the above fields so you need to set them correctly otherwise it may crash or unpredictible results may appear**
