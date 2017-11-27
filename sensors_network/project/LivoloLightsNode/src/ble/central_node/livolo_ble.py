@@ -403,7 +403,7 @@ class LivoloCentralBLE(threading.Thread):
           "[MySensors][%s] Reporting battery level: %s ..." % (self.mysensor_node_id, 100)
         )
         self.mys_livolo_node.send_battery_level(100)
-      time.sleep(180) # 3 minutes reporting interval
+      time.sleep(300) # 5 minutes reporting interval
 
   def connect_to_mqtt_broker(self):
     logging.debug(
