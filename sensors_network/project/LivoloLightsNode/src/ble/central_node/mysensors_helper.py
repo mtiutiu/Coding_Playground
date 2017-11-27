@@ -105,6 +105,15 @@ class MySensor():
     data['payload'] = self._millis()
     self._mys_mycontroller_out(data)
 
+  def send_battery_level(self, value, ack=0):
+    data = {}
+    data['child_sensor_id'] = self.NODE_SENSOR_ID
+    data['msg_type'] = mtypes.M_INTERNAL
+    data['ack'] = ack
+    data['sub_type'] = mtypes.I_BATTERY_LEVEL
+    data['payload'] = value
+    self._mys_mycontroller_out(data)
+
   def send_discovery_response(self, parent_node_id=0, ack=0):
     data = {}
     data['child_sensor_id'] = self.NODE_SENSOR_ID

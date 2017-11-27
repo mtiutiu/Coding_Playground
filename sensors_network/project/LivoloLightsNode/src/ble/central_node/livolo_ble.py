@@ -198,10 +198,6 @@ class LivoloCentralBLE(threading.Thread):
     self.mysensor_node_id = mysensor_node_id
     self.mysensor_node_alias = mysensor_node_alias
     self.mysensor_child_aliases = mysensor_child_aliases
-    self.must_run = True
-    self.ble_dev_conn_check_must_run = True
-    self.mqtt_conn_check_must_run = True
-    self.mysensors_lights_state_reporting_must_run = True
     threading.Thread.__init__(self)
 
     logging.debug("Instantiating mqtt client ...")
@@ -271,6 +267,11 @@ class LivoloCentralBLE(threading.Thread):
     self.mysensors_lights_state_reporting_t = threading.Thread(target=self.mysensors_lights_state_reporting)
     self.mysensors_lights_state_reporting_t.setDaemon(True)
     self.mysensors_lights_state_reporting_t.start()
+
+    logging.debug("Starting MySensors battery level reporting thread ...")
+    self.mysensors_batt_lvl_reporting_t = threading.Thread(target=self.mysensors_battery_lvl_reporting)
+    self.mysensors_batt_lvl_reporting_t.setDaemon(True)
+    self.mysensors_batt_lvl_reporting_t.start()
 
   # The callback for when the client receives a CONNACK response from the server.
   def on_connect(self, client, userdata, flags, rc):
@@ -367,7 +368,7 @@ class LivoloCentralBLE(threading.Thread):
       time.sleep(1)
 
   def check_ble_device_connection(self):
-    while self.ble_dev_conn_check_must_run:
+    while getattr(threading.currentThread(), "do_run", True):
       try:
         time.sleep(1)
         if not self.manager.livolo_device_discovered:
@@ -386,7 +387,7 @@ class LivoloCentralBLE(threading.Thread):
         continue
 
   def mysensors_lights_state_reporting(self):
-    while self.mysensors_lights_state_reporting_must_run:
+    while getattr(threading.currentThread(), "do_run", True):
       if self.livolo_device.is_connected():
         for channel, channel_state in enumerate(self.livolo_device.lights_state):
           logging.debug(
@@ -395,12 +396,21 @@ class LivoloCentralBLE(threading.Thread):
           self.mys_livolo_node.send(channel+1, mtypes.V_STATUS, channel_state)
       time.sleep(180) # 3 minutes reporting interval
 
+  def mysensors_battery_lvl_reporting(self):
+    while getattr(threading.currentThread(), "do_run", True):
+      if self.livolo_device.is_connected():
+        logging.debug(
+          "[MySensors][%s] Reporting battery level: %s ..." % (self.mysensor_node_id, 100)
+        )
+        self.mys_livolo_node.send_battery_level(100)
+      time.sleep(180) # 3 minutes reporting interval
+
   def connect_to_mqtt_broker(self):
     logging.debug(
       "Connecting to mqtt broker: %s ..." % (self.config.get('mqtt', 'broker'))
     )
     self.is_mqtt_connected = False
-    while self.mqtt_conn_check_must_run and not self.is_mqtt_connected:
+    while getattr(threading.currentThread(), "do_run", True) and not self.is_mqtt_connected:
       time.sleep(1)
       try:
         self.is_mqtt_connected = (self.mqtt_client.connect(
@@ -420,7 +430,7 @@ class LivoloCentralBLE(threading.Thread):
 
   def run(self):
     logging.debug("Entering main loop ...")
-    while self.must_run:
+    while getattr(threading.currentThread(), "do_run", True):
       time.sleep(1)
       try:
         self.manager.run()
@@ -430,10 +440,16 @@ class LivoloCentralBLE(threading.Thread):
         continue
 
   def stop(self):
-    self.mqtt_conn_check_must_run = False
-    self.ble_dev_conn_check_must_run = False
-    self.mysensors_lights_state_reporting_must_run = False
-    self.must_run = False
+    # stop all threads that were created with this app first
+    if self.mqtt_connect_t is not None:
+      self.mqtt_connect_t.do_run = False
+    if self.ble_dev_conn_check_t is not None:
+      self.ble_dev_conn_check_t.do_run = False
+    if self.mysensors_lights_state_reporting_t is not None:
+      self.mysensors_lights_state_reporting_t.do_run = False
+    if self.mysensors_batt_lvl_reporting_t is not None:
+      self.mysensors_batt_lvl_reporting_t.do_run = False
+    self.do_run = False
     try:
       self.manager.stop_discovery()
       self.manager.stop()
