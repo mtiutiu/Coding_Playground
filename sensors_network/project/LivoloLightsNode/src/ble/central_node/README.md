@@ -40,7 +40,7 @@ After webpanel started succesfully you can browse to http://<server_ip>:5000 and
  - Child aliases(name) for each sensor that the MySensors node has separated by commas AND by semicolon for each group of child aliases that corresponds to each node ID(e.g. Light1,Light2;Light1,Light2)
  - Node id alias/name for each ID defined at point a. separated by commas(e.g. LivingLights,BathroomLights)
  
- Practical example:
+ **Practical example:**
  
  Say you have 2 Livolo Switches one for Living room and one for bathroom and each has 2 channels(2 lights attached). Then you need to configure it like so:
  
