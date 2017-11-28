@@ -109,47 +109,16 @@ class LivoloDevice(gatt.Device):
   def connect_succeeded(self):
     super().connect_succeeded()
     logging.debug("[%s] Connected to: %s ..." % (self.mac_address, self.alias()))
-
-    if self.mqtt_client is not None:
-      # send mysensors node presentation
-      self.mys_livolo_node.send_presentation(present_node_name=True)
-      # publish device new state
-      self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-        1,
-        1,
-        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-      )
-      self.mqtt_client.publish(
-        "%s/%s/alias" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-        self.alias(),
-        1,
-        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-      )
+    # send mysensors node presentation
+    self.mys_livolo_node.send_presentation(present_node_name=True)
 
   def connect_failed(self, error):
     super().connect_failed(error)
     logging.debug("[%s] Connection failed: %s" % (self.mac_address, str(error)))
-    if self.mqtt_client is not None:
-      # publish device new state
-      self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-        0,
-        1,
-        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-      )
 
   def disconnect_succeeded(self):
     super().disconnect_succeeded()
     logging.debug("[%s] Disconnected" % (self.mac_address))
-    if self.mqtt_client is not None:
-      # publish device new state
-      self.mqtt_client.publish(
-        "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-        0,
-        1,
-        self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-      )
 
   def characteristic_enable_notification_succeeded(self):
     logging.debug(
@@ -209,12 +178,7 @@ class LivoloCentralBLE(threading.Thread):
     self.mqtt_client.on_connect = self.on_connect
     self.mqtt_client.on_disconnect = self.on_disconnect
     self.mqtt_client.on_message = self.on_message
-    self.mqtt_client.will_set(
-      "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-      2,
-      1,
-      self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-    )
+
     logging.debug("Starting MQTT connect thread ...")
     self.mqtt_connect_t = threading.Thread(target=self.connect_to_mqtt_broker)
     self.mqtt_connect_t.setDaemon(True)
@@ -458,13 +422,6 @@ class LivoloCentralBLE(threading.Thread):
           "[%s] Disconnecting from Livolo device ..." % (self.mac_address)
         )
         self.livolo_device.disconnect()
-      if self.mqtt_client is not None:
-        self.mqtt_client.publish(
-          "%s/%s/state" % (self.config.get('mqtt', 'ble_stats_topic_prefix'), self.mac_address),
-          2,
-          1,
-          self.config.getboolean('mqtt', 'mysensors_mqtt_retain_msg')
-        )
         self.mqtt_client.disconnect()
     except Exception:
       pass

@@ -2,10 +2,8 @@
 
 from flask import Flask,g
 from flask import render_template
-from flask_mqtt import Mqtt
 from flask_ini import FlaskIni
 import flask_sijax
-import paho.mqtt.client as mqtt
 import threading
 import time
 import signal
@@ -19,14 +17,11 @@ from uptime import uptime
 from argparse import ArgumentParser
 import subprocess
 import hashlib
+import socket
+from pydbus import SystemBus
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
-
-mqtt = Mqtt()
-is_mqtt_subscribed = False
-
-ble_devices = []
 
 def uptime_format(up):
   parts = []
@@ -48,7 +43,41 @@ def uptime_format(up):
 
   return ', '.join(parts)
 
+def check_mqtt_connection(host="localhost", port=1883, timeout=3):
+  try:
+    socket.setdefaulttimeout(timeout)
+    socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+    return True
+  except Exception as ex:
+    return False
+
+def get_ble_device_dbus_property(adapter, mac_address, property):
+  dev_path = '/org/bluez/%s/dev_%s' % (adapter, mac_address.replace(':', '_').upper())
+  try:
+    bus = SystemBus()
+    dev = bus.get('org.bluez', dev_path, timeout=0.1)
+    return getattr(dev, property)
+  except Exception as ex:
+    logging.debug(ex)
+    return -1
+
+def get_ble_device_connection_status(adapter, mac_address):
+  return int(get_ble_device_dbus_property(adapter, mac_address, 'Connected'))
+
+def get_ble_device_alias(adapter, mac_address):
+  return str(get_ble_device_dbus_property(adapter, mac_address, 'Alias'))
+
 def get_ble_devices_list():
+  ble_devices = []
+  with app.app_context():
+    for mac_address in app.config['BLE_MAC_ADDRESSES'].split(','):
+      ble_devices.append(
+        {
+          'mac_address': mac_address,
+          'state': get_ble_device_connection_status(app.config['HCI_DEVICE'], mac_address),
+          'alias': get_ble_device_alias(app.config['HCI_DEVICE'], mac_address)
+        }
+      )
   return ble_devices
 
 def get_mqtt_broker_list():
@@ -56,7 +85,10 @@ def get_mqtt_broker_list():
     {
       'address': app.config['MQTT_BROKER_URL'],
       'port': app.config['MQTT_BROKER_PORT'],
-      'connected': mqtt.connected
+      'connected': check_mqtt_connection(
+        app.config['MQTT_BROKER_URL'],
+        app.config['MQTT_BROKER_PORT']
+      )
     }
   ]
 
@@ -90,11 +122,11 @@ def read_config_file_settings(cfg_file):
       'flask_port': app.iniconfig.getint('flask', 'port', fallback=5000),
       'mysensors_mqtt_in_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_in_topic_prefix', fallback='mys-in'),
       'mysensors_mqtt_out_topic_prefix': app.iniconfig.get('mqtt', 'mysensors_out_topic_prefix', fallback='mys-out'),
-      'ble_stats_topic_prefix': app.iniconfig.get('mqtt', 'ble_stats_topic_prefix', fallback='mys/stats/devices/ble'),
       'nodes_id': app.iniconfig.get('mysensors', 'nodes_id', fallback='Unknown'),
       'node_childs_alias': app.iniconfig.get('mysensors', 'node_childs_alias', fallback='Unknown'),
       'nodes_alias': app.iniconfig.get('mysensors', 'nodes_alias', fallback='Unknown'),
-      'mac_addresses': app.iniconfig.get('ble', 'mac_addresses', fallback='Unknown')
+      'mac_addresses': app.iniconfig.get('ble', 'mac_addresses', fallback='Unknown'),
+      'hci_device': app.iniconfig.get('ble', 'hci_device', fallback='Unknown')
     }
   return settings
 
@@ -105,65 +137,6 @@ def service_operation(name, operation):
       stdout=hide_output,
       stderr=hide_output
     ).wait() == 0
-
-def mqtt_check(mqtt):
-  while getattr(threading.currentThread(), "do_run", True):
-    time.sleep(1) # give some break to CPU
-    if not mqtt.connected:
-      logging.debug("Not connected to mqtt broker: %s ..." % (app.config['MQTT_BROKER_URL']))
-    else:
-      # mqtt ble devices topics
-      if not is_mqtt_subscribed:
-        logging.debug("Subscribing to MQTT topic(s): %s/#" % (app.config['MYS_BLE_STATS_TOPIC']))
-        mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
-
-def mqtt_init(app, mqtt):
-  while getattr(threading.currentThread(), "do_run", True):
-    time.sleep(1) # give some break to CPU
-    try:
-      with app.app_context():
-        mqtt.init_app(app)
-      break
-    except Exception:
-      logging.debug("Could not connect to mqtt broker: %s, retrying ..." % (app.config['MQTT_BROKER_URL']))
-      continue
-    # mqtt ble devices topics
-    if not is_mqtt_subscribed:
-      logging.debug("Subscribing to MQTT topic(s): %s/#" % (app.config['MYS_BLE_STATS_TOPIC']))
-      mqtt.subscribe("%s/#" % app.config['MYS_BLE_STATS_TOPIC'])
-
-@mqtt.on_subscribe()
-def handle_subscribe(client, userdata, mid, granted_qos):
-  logging.debug("MQTT subscribing succedeed with qos %s ..." % (granted_qos))
-  global is_mqtt_subscribed
-  is_mqtt_subscribed = True
-
-@mqtt.on_unsubscribe()
-def handle_unsubscribe(client, userdata, mid):
-  logging.debug("Unsubscribed from topic id: %s" % (mid))
-  global is_mqtt_subscribed
-  is_mqtt_subscribed = False
-
-@mqtt.on_message()
-def handle_mqtt_message(client, userdata, message):
-  if app.iniconfig.get('mqtt', 'ble_stats_topic_prefix') in message.topic:
-    mac_address = message.topic.split('/')[-2]
-    data = message.payload.decode('ascii')
-    if 'state' in message.topic:
-      logging.debug("Got BLE device with mac address: %s and state: %s" % (mac_address, data))
-    # check if device already added to list and return
-    for ble_device in ble_devices:
-      if ble_device['mac_address'] == mac_address:
-        # if new data is different from previous then do an update
-        if 'state' in message.topic:
-          if data != ble_device['state']:
-            ble_device['state'] = data
-        if 'alias' in message.topic:
-          if data != ble_device['alias']:
-            ble_device['alias'] = data
-        return
-    # if device not known then add it
-    ble_devices.append({'mac_address': mac_address, 'state': data, 'alias': data})
 
 @flask_sijax.route(app, '/')
 def index_page():
@@ -223,14 +196,8 @@ def index_page():
   return render_template('index.html')
 
 def stop_app_cleanly():
-  if mqtt_init_t is not None:
-    mqtt_init_t.do_run = False
-  if mqtt_check_t is not None:
-    mqtt_check_t.do_run = False
   if app_cfg_check_t is not None:
     app_cfg_check_t.do_run = False
-  if mqtt is not None and mqtt.connected:
-    mqtt.client.disconnect()
 
 def exit_cleanly(message):
   logging.debug(message)
@@ -278,9 +245,10 @@ def load_flask_app_configs(settings):
     app.config['MQTT_USERNAME'] = settings['mqtt_broker_user']
     app.config['MQTT_PASSWORD'] = settings['mqtt_broker_password']
     app.config['MQTT_KEEPALIVE'] = settings['mqtt_broker_keepalive']
+    app.config['BLE_MAC_ADDRESSES'] = settings['mac_addresses']
+    app.config['HCI_DEVICE'] = settings['hci_device']
     app.config['FLASK_HOST'] = settings['flask_host']
     app.config['FLASK_PORT'] = settings['flask_port']
-    app.config['MYS_BLE_STATS_TOPIC'] = settings['ble_stats_topic_prefix']
     app.config['SIJAX_STATIC_PATH'] = os.path.join('.', os.path.dirname(__file__), 'static/js/sijax/')
     app.config['SIJAX_JSON_URI'] = '/static/js/sijax/json2.js'
 
@@ -303,16 +271,6 @@ def setup():
 
   load_flask_app_configs(read_config_file_settings(args.config))
   flask_sijax.Sijax(app)
-
-  global mqtt_init_t
-  mqtt_init_t = threading.Thread(target=mqtt_init, args=(app,mqtt,))
-  mqtt_init_t.setDaemon(True)
-  mqtt_init_t.start()
-
-  global mqtt_check_t
-  mqtt_check_t = threading.Thread(target=mqtt_check, args=(mqtt,))
-  mqtt_check_t.setDaemon(True)
-  mqtt_check_t.start()
 
   global app_cfg_check_t
   app_cfg_check_t = threading.Thread(target=app_cfg_check)

@@ -15,10 +15,10 @@
        <tr>
          <td>{{ loop.index }}</td>
          <td>{{ ble_device['mac_address'] }}</td>
-         <td>{{ ble_device['alias'] }}</td>
-         {% if '0' in ble_device['state'] %}
+         <td>{{ 'Unknown' if '-1' in ble_device['alias'] else ble_device['alias'] }}</td>
+         {% if ble_device['state'] == 0 %}
            <td class="text-center"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></td>
-         {% elif '1' in ble_device['state'] %}
+         {% elif ble_device['state'] == 1 %}
            <td class="text-center"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></td>
          {% else %}
            <td class="text-center"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></td>
