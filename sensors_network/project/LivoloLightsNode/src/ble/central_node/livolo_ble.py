@@ -95,12 +95,11 @@ class LivoloDeviceManager(gatt.DeviceManager):
     super().stop_discovery()
 
 class LivoloDevice(gatt.Device):
-  def __init__(self, config, manager, mac_address, mys_livolo_node, mqtt_client=None):
+  def __init__(self, config, manager, mac_address, mys_livolo_node):
     self.config = config
     self.mac_address = mac_address
     self.manager = manager
     self.mys_livolo_node = mys_livolo_node
-    self.mqtt_client = mqtt_client
     # intialize a fixed length list holding light channels state
     # we could read this from the characteristic but it triggers update events
     self.lights_state = [0] * self.mys_livolo_node.child_count
@@ -151,8 +150,7 @@ class LivoloDevice(gatt.Device):
     logging.debug(
       "[%s] Light_%s state: %s" % (self.mac_address, channel, channel_state)
     )
-    if self.mqtt_client is not None:
-      self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
+    self.mys_livolo_node.send(channel, mtypes.V_STATUS, channel_state)
 
   def read_rssi(self):
     #return self._properties.Get('(ss)', 'org.bluez.Device1', 'RSSI')
@@ -208,9 +206,10 @@ class LivoloCentralBLE(threading.Thread):
       self.config,
       self.manager,
       self.mac_address,
-      self.mys_livolo_node,
-      self.mqtt_client
+      self.mys_livolo_node
     )
+
+    # if somehow the ble device is still connected try to disconnect it first
     try:
       self.livolo_device.disconnect()
     except Exception:
@@ -352,21 +351,27 @@ class LivoloCentralBLE(threading.Thread):
 
   def mysensors_lights_state_reporting(self):
     while getattr(threading.currentThread(), "do_run", True):
-      if self.livolo_device.is_connected():
-        for channel, channel_state in enumerate(self.livolo_device.lights_state):
-          logging.debug(
-            "[MySensors][%s] Reporting light channel: %s state: %s ..." % (self.mysensor_node_id, channel+1, channel_state)
-          )
-          self.mys_livolo_node.send(channel+1, mtypes.V_STATUS, channel_state)
+      try:
+        if self.livolo_device.is_connected():
+          for channel, channel_state in enumerate(self.livolo_device.lights_state):
+            logging.debug(
+              "[MySensors][%s] Reporting light channel: %s state: %s ..." % (self.mysensor_node_id, channel+1, channel_state)
+            )
+            self.mys_livolo_node.send(channel+1, mtypes.V_STATUS, channel_state)
+      except Exception as ex:
+        logging.debug(ex)
       time.sleep(180) # 3 minutes reporting interval
 
   def mysensors_battery_lvl_reporting(self):
     while getattr(threading.currentThread(), "do_run", True):
-      if self.livolo_device.is_connected():
-        logging.debug(
-          "[MySensors][%s] Reporting battery level: %s ..." % (self.mysensor_node_id, 100)
-        )
-        self.mys_livolo_node.send_battery_level(100)
+      try:
+        if self.livolo_device.is_connected():
+          logging.debug(
+            "[MySensors][%s] Reporting battery level: %s ..." % (self.mysensor_node_id, 100)
+          )
+          self.mys_livolo_node.send_battery_level(100)
+      except Exception as ex:
+        logging.debug(ex)
       time.sleep(300) # 5 minutes reporting interval
 
   def connect_to_mqtt_broker(self):

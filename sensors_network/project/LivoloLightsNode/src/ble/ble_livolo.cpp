@@ -35,13 +35,20 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define TOUCHED   1
 
 const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 200;
-
-const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
-const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
 const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 88; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8};
+const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 29;
+const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 27;
+#elif defined (LIVOLO_TWO_CHANNEL)
+const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
+const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
+#else
+#error "Unknown Livolo switch type!"
+#endif
+
+#if defined (LIVOLO_ONE_CHANNEL)
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {28};
 #elif defined (LIVOLO_TWO_CHANNEL)
 const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8, 9};
 #else
@@ -70,7 +77,7 @@ const uint8_t LED_COUNT = 2;
 
 const uint8_t RELAY_CH_PINS[][2] = {
 #if defined (LIVOLO_ONE_CHANNEL)
-  {26, 27} // channel 1 relay control pins(bistable relay - 2 coils)
+  {17, 19} // channel 1 relay control pins(bistable relay - 2 coils)
 #elif defined (LIVOLO_TWO_CHANNEL)
   {28, 29}, // channel 1 relay control pins(bistable relay - 2 coils)
   {26, 27} // channel 2 relay control pins(bistable relay - 2 coils)
@@ -83,7 +90,7 @@ const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 #if defined (LIVOLO_ONE_CHANNEL)
 uint8_t channelState[RELAY_COUNT] = {OFF};
-const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18};
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {8};
 #elif defined (LIVOLO_TWO_CHANNEL)
 uint8_t channelState[RELAY_COUNT] = {OFF, OFF};
 const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
@@ -257,7 +264,7 @@ void setup() {
 
   // set bistable relays initial state
   for (uint8_t i = 0; i < RELAY_COUNT; i++) {
-    for (uint8_t j = 0; j < RELAY_COUNT; j++) {
+    for (uint8_t j = 0; j < 2; j++) {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
       // make sure touch switch relays start in OFF state
       digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
