@@ -20,6 +20,28 @@
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
       <![endif]-->
+      <style>
+        .loader {
+          border: 5px solid #f3f3f3;
+          -webkit-animation: spin 1s linear infinite;
+          animation: spin 1s linear infinite;
+          border-top: 5px solid #555;
+          border-radius: 50%;
+          width: 30px;
+          height: 30px;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+          0% { -webkit-transform: rotate(0deg); }
+          100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
    </head>
    <body>
       <div class="panel panel-green">
@@ -48,7 +70,9 @@
                   </div>
 
                   <div class="panel-body">
-                    <div id="system_stats"></div>
+                    <div id="system_stats">
+                      <div class="loader"></div>
+                    </div>
                     <div class="row">
                       <div class="col-xs-8"></div>
                       <button type="button" class="btn btn-success" id="system_stats_refresh">Refresh <i class="fa fa-gear"></i></button>
@@ -64,6 +88,7 @@
                      <!-- /.panel-heading -->
                     <div class="panel-body">
                         <div id="services_status_content">
+                          <div class="loader"></div>
                         </div>
                         <!-- /.table-responsive -->
                         <div class="row">
@@ -119,7 +144,9 @@
                    </div>
                    <!-- /.panel-heading -->
                    <div class="panel-body">
-                     <div id="settings_page_content"></div>
+                     <div id="settings_page_content">
+                       <div class="loader"></div>
+                     </div>
                      <div class="row">
                        <div class="col-xs-8">
                        </div>
@@ -182,6 +209,7 @@
 
           // --------------- System stats ------------------
           $('.nav-tabs a[href="#system"]').click(function(){
+            $('#system_stats').html("<div class='loader'></div>");
             do_sijax('get_system_stats');
           });
 
@@ -193,6 +221,7 @@
 
           // --------------- Services status---------------------
           $('.nav-tabs a[href="#services_status"]').click(function(){
+            $('#services_status_content').html("<div class='loader'></div>");
             do_sijax('services_status');
           });
 
@@ -203,23 +232,24 @@
           // ----------------------------------------------
 
           // --------------- Maintenance ---------------------
-          $('.nav-tabs a[href="#maintenance"]').click(function(){
-            $('#livolo_ble_central_service_status').html(
-              '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
-            )
-            do_sijax('livolo_ble_central_service_status');
-          });
-
-          $('#livolo_ble_central_service_restart').on('click', function (ev) {
-            $('#livolo_ble_central_service_status').html(
-              '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
-            )
-            do_sijax('livolo_ble_central_service_restart');
-          });
+          // $('.nav-tabs a[href="#maintenance"]').click(function(){
+          //   $('#livolo_ble_central_service_status').html(
+          //     '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
+          //   )
+          //   do_sijax('livolo_ble_central_service_status');
+          // });
+          //
+          // $('#livolo_ble_central_service_restart').on('click', function (ev) {
+          //   $('#livolo_ble_central_service_status').html(
+          //     '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
+          //   )
+          //   do_sijax('livolo_ble_central_service_restart');
+          // });
           // ----------------------------------------------
 
           // ------------------ Settings ------------------
-          $('.nav-tabs a[href="#settings"]').click(function(){
+          $('.nav-tabs a[href="#settings"]').click(function(){;
+            $('#settings_page_content').html("<div class='loader'></div>");
             do_sijax('settings_page_update');
           });
 
