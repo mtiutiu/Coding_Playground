@@ -97,7 +97,7 @@ def system_stats_check():
   system_stats['cpu_usage_percent'] = round(psutil.cpu_percent())
   system_stats['memory_usage_percent'] = round(psutil.virtual_memory().percent)
   try:
-    with open('/etc/armbianmonitor/datasources/soctemp', 'r') as temp:
+    with open('/sys/class/thermal/thermal_zone0/temp', 'r') as temp:
       system_stats['cpu_temp'] = round(int(temp.read())/1000, 2)
   except Exception:
     system_stats['cpu_temp'] = 0.0
