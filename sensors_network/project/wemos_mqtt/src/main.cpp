@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 
+// enable reading of Vcc
 ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
@@ -18,8 +19,6 @@ ADC_MODE(ADC_VCC);
 #define CONFIG_FILE "/config.json"
 
 typedef struct {
-  char wifi_ssid[40];
-  char wifi_passwd[40];
   char mqtt_server[40];
   char mqtt_user[40];
   char mqtt_passwd[40];
