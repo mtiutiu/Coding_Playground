@@ -2,5 +2,10 @@
 	"mqtt_server":"192.168.1.101",
 	"mqtt_user":"",
 	"mqtt_passwd":"",
-	"mqtt_port":"1883"
+	"mqtt_port":"1883",
+  "mqtt_in_topic":"mys-in",
+  "mqtt_out_topic":"mys-out",
+  "mys_node_id":"100",
+  "mys_node_alias":"WaterValveController",
+  "mys_node_child_alias":"Valve"
 }

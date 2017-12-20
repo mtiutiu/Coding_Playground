@@ -18,11 +18,26 @@ ADC_MODE(ADC_VCC);
 #define AP_PASSWD "test1234"
 #define CONFIG_FILE "/config.json"
 
+#define MQTT_SERVER_FIELD_MAX_LEN 40
+#define MQTT_USER_FIELD_MAX_LEN 40
+#define MQTT_PASS_FIELD_MAX_LEN 40
+#define MQTT_PORT_FIELD_MAX_LEN 6
+#define MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN 40
+#define MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN 40
+#define MYS_NODE_ID_FIELD_MAX_LEN 4
+#define MYS_NODE_ALIAS_FIELD_MAX_LEN 40
+#define MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN 40
+
 typedef struct {
-  char mqtt_server[40];
-  char mqtt_user[40];
-  char mqtt_passwd[40];
-  char mqtt_port[5];
+  char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
+  char mqtt_user[MQTT_USER_FIELD_MAX_LEN];
+  char mqtt_passwd[MQTT_PASS_FIELD_MAX_LEN];
+  char mqtt_port[MQTT_PORT_FIELD_MAX_LEN];
+  char mqtt_in_topic_prefix[MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN];
+  char mqtt_out_topic_prefix[MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN];
+  char mys_node_id[MYS_NODE_ID_FIELD_MAX_LEN];
+  char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
+  char mys_node_child_alias[MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN];
 } CfgData;
 
 CfgData cfgData;
@@ -32,12 +47,6 @@ CfgData cfgData;
 #include <PubSubClient.h>
 
 #define MQTT_CLIENT_ID_PREFIX  "WaterValveController"
-#define MQTT_SERVER_FIELD_MAX_LEN 40
-#define MQTT_USER_FIELD_MAX_LEN 40
-#define MQTT_PASS_FIELD_MAX_LEN 40
-#define MQTT_PORT_FIELD_MAX_LEN 5
-const char* MQTT_IN_TOPIC_PREFIX = "mys-in";
-const char* MQTT_OUT_TOPIC_PREFIX = "mys-out";
 const uint32_t MQTT_RECONNECT_INTERVAL_MS = 3000; // 3s
 
 WiFiClient espClient;
@@ -49,22 +58,13 @@ PubSubClient mqtt(espClient);
 #include <MySensor.h>
 
 const uint8_t BROADCAST_NODE_ID = 255;  // special node id used for internal messages
-const uint8_t NODE_ID = 100;
-const char* NODE_ALIAS = "WaterValveActuator";
-const uint8_t CHILD_TYPES[] = { S_BINARY };
-const char* CHILD_ALIASES[] = { "Valve" };
+
+const uint8_t SENSOR_COUNT = 1;
 
 const uint16_t VDD_VOLTAGE_MV = 3000;
 const uint32_t BATTER_LVL_REPORT_INTERVAL_MS = 300000;  // 5 mins
 
-MySensor mysNode(NODE_ID,
-                NODE_ALIAS,
-                CHILD_TYPES,
-                CHILD_ALIASES,
-                1,
-                mqtt,
-                MQTT_IN_TOPIC_PREFIX,
-                MQTT_OUT_TOPIC_PREFIX);
+MySensor mysNode(mqtt);
 // ------------------------ END MySensors---------------------------------------
 
 // flag for saving data
@@ -101,6 +101,11 @@ void loadConfig(const char* cfgFilePath, CfgData& data) {
         strncpy(data.mqtt_user, json["mqtt_user"], MQTT_USER_FIELD_MAX_LEN);
         strncpy(data.mqtt_passwd, json["mqtt_passwd"], MQTT_PASS_FIELD_MAX_LEN);
         strncpy(data.mqtt_port, json["mqtt_port"], MQTT_PORT_FIELD_MAX_LEN);
+        strncpy(data.mqtt_in_topic_prefix, json["mqtt_in_topic_prefix"], MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN);
+        strncpy(data.mqtt_out_topic_prefix, json["mqtt_out_topic_prefix"], MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
+        strncpy(data.mys_node_id, json["mys_node_id"], MYS_NODE_ID_FIELD_MAX_LEN);
+        strncpy(data.mys_node_alias, json["mys_node_alias"], MYS_NODE_ALIAS_FIELD_MAX_LEN);
+        strncpy(data.mys_node_child_alias, json["mys_node_child_alias"], MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
       } else {
         // config file couldn't be opened
@@ -141,6 +146,11 @@ void saveConfig(const char* cfgFilePath, CfgData& data) {
         json["mqtt_user"] = data.mqtt_user;
         json["mqtt_passwd"] = data.mqtt_passwd;
         json["mqtt_port"] = data.mqtt_port;
+        json["mqtt_in_topic_prefix"] = data.mqtt_in_topic_prefix;
+        json["mqtt_out_topic_prefix"] = data.mqtt_out_topic_prefix;
+        json["mys_node_id"] = data.mys_node_id;
+        json["mys_node_alias"] = data.mys_node_alias;
+        json["mys_node_child_alias"] = data.mys_node_child_alias;
 
         json.printTo(configFile);
         configFile.close();
@@ -173,6 +183,13 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   WiFiManagerParameter custom_mqtt_server_user("user", "mqtt user", cfgData.mqtt_user, MQTT_USER_FIELD_MAX_LEN);
   WiFiManagerParameter custom_mqtt_server_passwd("passwd", "mqtt passwd", cfgData.mqtt_passwd, MQTT_PASS_FIELD_MAX_LEN);
   WiFiManagerParameter custom_mqtt_port("port", "mqtt port", cfgData.mqtt_port, MQTT_PORT_FIELD_MAX_LEN);
+  WiFiManagerParameter custom_mqtt_in_topic_prefix("in_topic_prefix", "mqtt in topic prefix", cfgData.mqtt_in_topic_prefix, MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN);
+  WiFiManagerParameter custom_mqtt_out_topic_prefix("out_topic_prefix", "mqtt out topic prefix", cfgData.mqtt_out_topic_prefix, MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
+
+  WiFiManagerParameter mys_header_text("<br/><b>MySensors</b>");
+  WiFiManagerParameter custom_mys_node_id("node_id", "mys node id", cfgData.mys_node_id, MYS_NODE_ID_FIELD_MAX_LEN);
+  WiFiManagerParameter custom_mys_node_alias("node_alias", "mys node alias", cfgData.mys_node_alias, MYS_NODE_ALIAS_FIELD_MAX_LEN);
+  WiFiManagerParameter custom_mys_node_child_alias("node_child_alias", "mys node child alias", cfgData.mys_node_child_alias, MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -182,6 +199,11 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   wifiManager.addParameter(&custom_mqtt_server_user);
   wifiManager.addParameter(&custom_mqtt_server_passwd);
   wifiManager.addParameter(&custom_mqtt_port);
+
+  wifiManager.addParameter(&mys_header_text);
+  wifiManager.addParameter(&custom_mys_node_id);
+  wifiManager.addParameter(&custom_mys_node_alias);
+  wifiManager.addParameter(&custom_mys_node_child_alias);
 
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
     // fail to connect
@@ -199,6 +221,11 @@ void startWiFiAutoConfig(CfgData& cfgData) {
     strncpy(cfgData.mqtt_user, custom_mqtt_server_user.getValue(), MQTT_USER_FIELD_MAX_LEN);
     strncpy(cfgData.mqtt_passwd, custom_mqtt_server_passwd.getValue(), MQTT_PASS_FIELD_MAX_LEN);
     strncpy(cfgData.mqtt_port, custom_mqtt_port.getValue(), MQTT_PORT_FIELD_MAX_LEN);
+    strncpy(cfgData.mqtt_in_topic_prefix, custom_mqtt_in_topic_prefix.getValue(), MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN);
+    strncpy(cfgData.mqtt_out_topic_prefix, custom_mqtt_out_topic_prefix.getValue(), MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
+    strncpy(cfgData.mys_node_id, custom_mys_node_id.getValue(), MYS_NODE_ID_FIELD_MAX_LEN);
+    strncpy(cfgData.mys_node_alias, custom_mys_node_alias.getValue(), MYS_NODE_ALIAS_FIELD_MAX_LEN);
+    strncpy(cfgData.mys_node_child_alias, custom_mys_node_child_alias.getValue(), MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
     saveConfig(CONFIG_FILE, cfgData);
 
@@ -255,6 +282,16 @@ void setup() {
 
   mqtt.setServer(cfgData.mqtt_server, atoi(cfgData.mqtt_port));
   mqtt.setCallback(mqtt_callback);
+
+  const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
+  const char* CHILD_ALIASES[SENSOR_COUNT] = { cfgData.mys_node_child_alias };
+  mysNode.set_params(atoi(cfgData.mys_node_id),
+                    cfgData.mys_node_alias,
+                    CHILD_TYPES,
+                    CHILD_ALIASES,
+                    SENSOR_COUNT,
+                    cfgData.mqtt_in_topic_prefix,
+                    cfgData.mqtt_out_topic_prefix);
 }
 
 void loop() {
@@ -287,10 +324,10 @@ void loop() {
 
     if(needToSubscribeMqtt) {
       char mqtt_topic[40];
-      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", MQTT_IN_TOPIC_PREFIX, NODE_ID);
+      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", cfgData.mqtt_in_topic_prefix, cfgData.mys_node_id);
       mqtt.subscribe(mqtt_topic);
 
-      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", MQTT_IN_TOPIC_PREFIX, BROADCAST_NODE_ID);
+      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", cfgData.mqtt_in_topic_prefix, BROADCAST_NODE_ID);
       mqtt.subscribe(mqtt_topic);
 
       needToSubscribeMqtt = false;

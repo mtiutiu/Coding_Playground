@@ -19,123 +19,124 @@ typedef struct {
 
 class MySensor {
   public:
-  MySensor( const uint8_t node_id,
-            const char* node_alias,
-            const uint8_t* node_childs_subtype,
-            const char** node_childs_alias,
-            const uint8_t child_count,
-            PubSubClient& mqtt_instance,
-            const char* mqtt_in_topic_prefix,
-            const char* mqtt_out_topic_prefix
-            ):mqtt(mqtt_instance),
-              node_id(node_id),
-              node_alias(node_alias),
-              node_childs_subtype(node_childs_subtype),
-              node_childs_alias(node_childs_alias),
-              child_count(child_count),
-              mqtt_in_topic_prefix(mqtt_in_topic_prefix),
-              mqtt_out_topic_prefix(mqtt_out_topic_prefix){}
+    MySensor(PubSubClient& mqtt_instance):mqtt(mqtt_instance){}
 
-  void send_presentation(bool present_node_name = true, bool present_node_version = true, uint8_t ack = 0) {
-    // present this node as a MySensors node first
-    _send_presentation(NODE_SENSOR_ID, S_ARDUINO_NODE, "", ack);
-    if(present_node_name) {
-      send_sketch_name(node_alias);
+    void set_params(const uint8_t node_id,
+                    const char* node_alias,
+                    const uint8_t* node_childs_subtype,
+                    const char** node_childs_alias,
+                    const uint8_t child_count,
+                    const char* mqtt_in_topic_prefix,
+                    const char* mqtt_out_topic_prefix) {
+      this->node_id = node_id;
+      this->node_alias = node_alias;
+      this->node_childs_subtype = node_childs_subtype;
+      this->node_childs_alias = node_childs_alias;
+      this->child_count = child_count;
+      this->mqtt_in_topic_prefix = mqtt_in_topic_prefix;
+      this->mqtt_out_topic_prefix = mqtt_out_topic_prefix;
     }
-    if(present_node_version) {
-      send_sketch_version();
+
+    void send_presentation(bool present_node_name = true, bool present_node_version = true, uint8_t ack = 0) {
+      // present this node as a MySensors node first
+      _send_presentation(NODE_SENSOR_ID, S_ARDUINO_NODE, "", ack);
+      if(present_node_name) {
+        send_sketch_name(node_alias);
+      }
+      if(present_node_version) {
+        send_sketch_version();
+      }
+      for (uint8_t i = 0; i < child_count; i++) {
+        _send_presentation(i + 1, node_childs_subtype[i], node_childs_alias[i], ack);
+      }
     }
-    for (uint8_t i = 0; i < child_count; i++) {
-      _send_presentation(i + 1, node_childs_subtype[i], node_childs_alias[i], ack);
+
+    void send_sketch_name(const char* name, uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = NODE_SENSOR_ID;
+      data.cmd_type = M_INTERNAL;
+      data.ack = ack;
+      data.sub_type = I_SKETCH_NAME; // e.g. S_BINARY
+      strncpy(data.payload, name, MQTT_MAX_PAYLOAD_LENGTH);
+
+      _mys_mycontroller_out(data);
     }
-  }
 
-  void send_sketch_name(const char* name, uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = NODE_SENSOR_ID;
-    data.cmd_type = M_INTERNAL;
-    data.ack = ack;
-    data.sub_type = I_SKETCH_NAME; // e.g. S_BINARY
-    strncpy(data.payload, name, MQTT_MAX_PAYLOAD_LENGTH);
+    void send_sketch_version(const char* version = "2.0", uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = NODE_SENSOR_ID;
+      data.cmd_type = M_INTERNAL;
+      data.ack = ack;
+      data.sub_type = I_SKETCH_VERSION; // e.g. S_BINARY
+      strncpy(data.payload, version, MQTT_MAX_PAYLOAD_LENGTH);
 
-    _mys_mycontroller_out(data);
-  }
+      _mys_mycontroller_out(data);
+    }
 
-  void send_sketch_version(const char* version = "2.0", uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = NODE_SENSOR_ID;
-    data.cmd_type = M_INTERNAL;
-    data.ack = ack;
-    data.sub_type = I_SKETCH_VERSION; // e.g. S_BINARY
-    strncpy(data.payload, version, MQTT_MAX_PAYLOAD_LENGTH);
+    void send_heartbeat(uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = NODE_SENSOR_ID;
+      data.cmd_type = M_INTERNAL;
+      data.ack = ack;
+      data.sub_type = I_HEARTBEAT_RESPONSE; // e.g. S_BINARY
+      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%lu", millis());
 
-    _mys_mycontroller_out(data);
-  }
+      _mys_mycontroller_out(data);
+    }
 
-  void send_heartbeat(uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = NODE_SENSOR_ID;
-    data.cmd_type = M_INTERNAL;
-    data.ack = ack;
-    data.sub_type = I_HEARTBEAT_RESPONSE; // e.g. S_BINARY
-    snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%lu", millis());
+    void send_battery_level(uint8_t value, uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = NODE_SENSOR_ID;
+      data.cmd_type = M_INTERNAL;
+      data.ack = ack;
+      data.sub_type = I_BATTERY_LEVEL; // e.g. S_BINARY
+      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
 
-    _mys_mycontroller_out(data);
-  }
+      _mys_mycontroller_out(data);
+    }
 
-  void send_battery_level(uint8_t value, uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = NODE_SENSOR_ID;
-    data.cmd_type = M_INTERNAL;
-    data.ack = ack;
-    data.sub_type = I_BATTERY_LEVEL; // e.g. S_BINARY
-    snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
+    void send_discovery_response(uint8_t parent_node_id = 0, uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = NODE_SENSOR_ID;
+      data.cmd_type = M_INTERNAL;
+      data.ack = ack;
+      data.sub_type = I_DISCOVER_RESPONSE; // e.g. S_BINARY
+      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
 
-    _mys_mycontroller_out(data);
-  }
+      _mys_mycontroller_out(data);
+    }
 
-  void send_discovery_response(uint8_t parent_node_id = 0, uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = NODE_SENSOR_ID;
-    data.cmd_type = M_INTERNAL;
-    data.ack = ack;
-    data.sub_type = I_DISCOVER_RESPONSE; // e.g. S_BINARY
-    snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
+    void send(uint8_t child_sensor_id, uint8_t variable_type, char* payload, uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = child_sensor_id;
+      data.cmd_type = M_SET;
+      data.ack = ack;
+      data.sub_type = variable_type; // e.g. V_STATUS
+      strncpy(data.payload, payload, MQTT_MAX_PAYLOAD_LENGTH);;
 
-    _mys_mycontroller_out(data);
-  }
+      _mys_mycontroller_out(data);
+    }
 
-  void send(uint8_t child_sensor_id, uint8_t variable_type, char* payload, uint8_t ack = 0) {
-    MySensorMsg data;
-    data.node_id = node_id;
-    data.child_id = child_sensor_id;
-    data.cmd_type = M_SET;
-    data.ack = ack;
-    data.sub_type = variable_type; // e.g. V_STATUS
-    strncpy(data.payload, payload, MQTT_MAX_PAYLOAD_LENGTH);;
-
-    _mys_mycontroller_out(data);
-  }
-
-  MySensorMsg& read(char* topic, MySensorMsg& mysMsg) {
-    return _mys_mycontroller_in(topic, mysMsg);
-  }
+    MySensorMsg& read(char* topic, MySensorMsg& mysMsg) {
+      return _mys_mycontroller_in(topic, mysMsg);
+    }
 
   private:
-    const uint8_t node_id;
+    uint8_t node_id;
     const char* node_alias;
     const uint8_t* node_childs_subtype;
     const char** node_childs_alias;
-    const uint8_t child_count;
+    uint8_t child_count;
     PubSubClient& mqtt;
     const char* mqtt_in_topic_prefix;
     const char* mqtt_out_topic_prefix;
-    const uint8_t NODE_SENSOR_ID = 255;     // special child id used for internal messages
+    uint8_t NODE_SENSOR_ID = 255;     // special child id used for internal messages
     char* mqtt_split_buff[MAX_MQTT_SPLIT_COUNT];
 
     uint8_t _split_message(char* str, const char* delim) {
