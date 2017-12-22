@@ -1,5 +1,8 @@
-#define DEBUG
+//#define DEBUG
+
+#ifdef DEBUG
 #define SERIAL_DEBUG_BAUDRATE 115200
+#endif
 
 #include <Arduino.h>
 
@@ -26,7 +29,6 @@ ADC_MODE(ADC_VCC);
 #define MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN 40
 #define MYS_NODE_ID_FIELD_MAX_LEN 4
 #define MYS_NODE_ALIAS_FIELD_MAX_LEN 40
-#define MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN 40
 
 typedef struct {
   char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
@@ -37,34 +39,23 @@ typedef struct {
   char mqtt_out_topic_prefix[MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN];
   char mys_node_id[MYS_NODE_ID_FIELD_MAX_LEN];
   char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
-  char mys_node_child_alias[MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN];
 } CfgData;
 
 CfgData cfgData;
 // ------------------------ END Module CONFIG ----------------------------------
 
-// ------------------------ MQTT -----------------------------------------------
-#include <PubSubClient.h>
-
-#define MQTT_CLIENT_ID_PREFIX  "WaterValveController"
-const uint32_t MQTT_RECONNECT_INTERVAL_MS = 3000; // 3s
-
-WiFiClient espClient;
-PubSubClient mqtt(espClient);
-// ------------------------ END MQTT -------------------------------------------
-
 // ------------------------ MySensors-------------------------------------------
 #include <MTypes.h>
 #include <MySensor.h>
 
-const uint8_t BROADCAST_NODE_ID = 255;  // special node id used for internal messages
-
 const uint8_t SENSOR_COUNT = 1;
+const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
+const char* CHILD_ALIASES[SENSOR_COUNT] = { "Valve" };
 
 const uint16_t VDD_VOLTAGE_MV = 3000;
 const uint32_t BATTER_LVL_REPORT_INTERVAL_MS = 300000;  // 5 mins
 
-MySensor mysNode(mqtt);
+MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // flag for saving data
@@ -82,7 +73,7 @@ void loadConfig(const char* cfgFilePath, CfgData& data) {
       if (configFile) {
         // read config file
         #ifdef DEBUG
-        Serial.println("Config file found!");
+        DEBUG_OUTPUT.println("Config file found!");
         #endif
 
         size_t size = configFile.size();
@@ -105,18 +96,17 @@ void loadConfig(const char* cfgFilePath, CfgData& data) {
         strncpy(data.mqtt_out_topic_prefix, json["mqtt_out_topic_prefix"], MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
         strncpy(data.mys_node_id, json["mys_node_id"], MYS_NODE_ID_FIELD_MAX_LEN);
         strncpy(data.mys_node_alias, json["mys_node_alias"], MYS_NODE_ALIAS_FIELD_MAX_LEN);
-        strncpy(data.mys_node_child_alias, json["mys_node_child_alias"], MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
       } else {
         // config file couldn't be opened
         #ifdef DEBUG
-        Serial.println("Config file couldn't be opened!");
+        DEBUG_OUTPUT.println("Config file couldn't be opened!");
         #endif
       }
     } else {
       // config file not found start portal
       #ifdef DEBUG
-      Serial.println("Config file wasn't found!");
+      DEBUG_OUTPUT.println("Config file wasn't found!");
       #endif
       //startCustomCaptivePortal();
     }
@@ -124,7 +114,7 @@ void loadConfig(const char* cfgFilePath, CfgData& data) {
   } else {
     // fail to mount spiffs
     #ifdef DEBUG
-    Serial.println("SPIFFS mount failed!");
+    DEBUG_OUTPUT.println("SPIFFS mount failed!");
     #endif
   }
 }
@@ -136,7 +126,7 @@ void saveConfig(const char* cfgFilePath, CfgData& data) {
       if (configFile) {
         // read config file
         #ifdef DEBUG
-        Serial.println("Config file found!");
+        DEBUG_OUTPUT.println("Config file found!");
         #endif
 
         StaticJsonBuffer<512> jsonBuffer;
@@ -150,20 +140,19 @@ void saveConfig(const char* cfgFilePath, CfgData& data) {
         json["mqtt_out_topic_prefix"] = data.mqtt_out_topic_prefix;
         json["mys_node_id"] = data.mys_node_id;
         json["mys_node_alias"] = data.mys_node_alias;
-        json["mys_node_child_alias"] = data.mys_node_child_alias;
 
         json.printTo(configFile);
         configFile.close();
       } else {
         // config file couldn't be opened
         #ifdef DEBUG
-        Serial.println("Config file couldn't be opened!");
+        DEBUG_OUTPUT.println("Config file couldn't be opened!");
         #endif
       }
     } else {
       // config file not found start portal
       #ifdef DEBUG
-      Serial.println("Config file wasn't found!");
+      DEBUG_OUTPUT.println("Config file wasn't found!");
       #endif
       //startCustomCaptivePortal();
     }
@@ -171,7 +160,7 @@ void saveConfig(const char* cfgFilePath, CfgData& data) {
   } else {
     // fail to mount spiffs
     #ifdef DEBUG
-    Serial.println("SPIFFS mount failed!");
+    DEBUG_OUTPUT.println("SPIFFS mount failed!");
     #endif
   }
 }
@@ -189,7 +178,6 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   WiFiManagerParameter mys_header_text("<br/><b>MySensors</b>");
   WiFiManagerParameter custom_mys_node_id("node_id", "mys node id", cfgData.mys_node_id, MYS_NODE_ID_FIELD_MAX_LEN);
   WiFiManagerParameter custom_mys_node_alias("node_alias", "mys node alias", cfgData.mys_node_alias, MYS_NODE_ALIAS_FIELD_MAX_LEN);
-  WiFiManagerParameter custom_mys_node_child_alias("node_child_alias", "mys node child alias", cfgData.mys_node_child_alias, MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -199,11 +187,12 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   wifiManager.addParameter(&custom_mqtt_server_user);
   wifiManager.addParameter(&custom_mqtt_server_passwd);
   wifiManager.addParameter(&custom_mqtt_port);
+  wifiManager.addParameter(&custom_mqtt_in_topic_prefix);
+  wifiManager.addParameter(&custom_mqtt_out_topic_prefix);
 
   wifiManager.addParameter(&mys_header_text);
   wifiManager.addParameter(&custom_mys_node_id);
   wifiManager.addParameter(&custom_mys_node_alias);
-  wifiManager.addParameter(&custom_mys_node_child_alias);
 
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
     // fail to connect
@@ -214,7 +203,7 @@ void startWiFiAutoConfig(CfgData& cfgData) {
 
   if(needToSaveConfig) {
     #ifdef DEBUG
-    Serial.println("Configuration changed need to save it!");
+    DEBUG_OUTPUT.println("Configuration changed need to save it!");
     #endif
 
     strncpy(cfgData.mqtt_server, custom_mqtt_server.getValue(), MQTT_SERVER_FIELD_MAX_LEN);
@@ -225,7 +214,6 @@ void startWiFiAutoConfig(CfgData& cfgData) {
     strncpy(cfgData.mqtt_out_topic_prefix, custom_mqtt_out_topic_prefix.getValue(), MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
     strncpy(cfgData.mys_node_id, custom_mys_node_id.getValue(), MYS_NODE_ID_FIELD_MAX_LEN);
     strncpy(cfgData.mys_node_alias, custom_mys_node_alias.getValue(), MYS_NODE_ALIAS_FIELD_MAX_LEN);
-    strncpy(cfgData.mys_node_child_alias, custom_mys_node_child_alias.getValue(), MYS_NODE_CHILD_ALIAS_FIELD_MAX_LEN);
 
     saveConfig(CONFIG_FILE, cfgData);
 
@@ -233,116 +221,72 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   }
 }
 
-void mqtt_callback(char* topic, byte* payload, uint16_t length) {
-  MySensorMsg data;
-  mysNode.read(topic, data);
-
-  // #ifdef DEBUG
-  // Serial.printf("Received mqtt data: %s of length: %d, on topic: %s\r\n", payload, length, topic);
-  // Serial.printf("Command type: %d\r\n", data.cmd_type);
-  // #endif
-
-  if(data.cmd_type == M_SET) {
-    #ifdef DEBUG
-    Serial.printf("Received M_SET command with value: %d on topic: %s\r\n", (payload[0] - 48), topic);
-    #endif
+void onMessage(uint8_t msgType, byte* payload, uint16_t length) {
+  if(msgType == M_SET) {
+    if(length > 0) {
+      uint8_t newState = payload[0] - '0'; // convert to number
+      #ifdef DEBUG
+      DEBUG_OUTPUT.printf("Received M_SET command with value: %d\r\n", newState);
+      #endif
+    }
   }
 
-  if(data.cmd_type == M_REQ) {
+  /*if(msgType == M_REQ) {
     #ifdef DEBUG
-    Serial.printf("Received M_REQ command on topic: %s\r\n", topic);
+    DEBUG_OUTPUT.printf("Received M_REQ command\r\n");
     #endif
-  }
+  }*/
 }
 
 void setup() {
 #ifdef DEBUG
-  Serial.begin(SERIAL_DEBUG_BAUDRATE);
+  DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
 #endif
 
   loadConfig(CONFIG_FILE, cfgData);
 
 #ifdef DEBUG
-  Serial.println();
-  Serial.println("=== CONFIG FILE DATA ===");
-  Serial.print("MQTT SERVER: ");
-  Serial.println(cfgData.mqtt_server);
-  Serial.print("MQTT USER: ");
-  Serial.println(cfgData.mqtt_user);
-  Serial.print("MQTT PASSWORD: ");
-  Serial.println(cfgData.mqtt_passwd);
-  Serial.print("MQTT PORT: ");
-  Serial.println(cfgData.mqtt_port);
+  DEBUG_OUTPUT.println();
+  DEBUG_OUTPUT.println("=== CONFIG FILE DATA ===");
+  DEBUG_OUTPUT.print("MQTT SERVER: ");
+  DEBUG_OUTPUT.println(cfgData.mqtt_server);
+  DEBUG_OUTPUT.print("MQTT USER: ");
+  DEBUG_OUTPUT.println(cfgData.mqtt_user);
+  DEBUG_OUTPUT.print("MQTT PASSWORD: ");
+  DEBUG_OUTPUT.println(cfgData.mqtt_passwd);
+  DEBUG_OUTPUT.print("MQTT PORT: ");
+  DEBUG_OUTPUT.println(cfgData.mqtt_port);
 #endif
 
 #ifdef DEBUG
-  Serial.println("=== Starting WiFi autoconfig ===");
+  DEBUG_OUTPUT.println("=== Starting WiFi autoconfig ===");
 #endif
   startWiFiAutoConfig(cfgData);
 
-  mqtt.setServer(cfgData.mqtt_server, atoi(cfgData.mqtt_port));
-  mqtt.setCallback(mqtt_callback);
-
-  const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
-  const char* CHILD_ALIASES[SENSOR_COUNT] = { cfgData.mys_node_child_alias };
-  mysNode.set_params(atoi(cfgData.mys_node_id),
-                    cfgData.mys_node_alias,
-                    CHILD_TYPES,
-                    CHILD_ALIASES,
-                    SENSOR_COUNT,
-                    cfgData.mqtt_in_topic_prefix,
-                    cfgData.mqtt_out_topic_prefix);
+  mysNode.begin(atoi(cfgData.mys_node_id),
+                cfgData.mys_node_alias,
+                CHILD_TYPES,
+                CHILD_ALIASES,
+                SENSOR_COUNT,
+                cfgData.mqtt_server,
+                cfgData.mqtt_user,
+                cfgData.mqtt_passwd,
+                atoi(cfgData.mqtt_port),
+                cfgData.mqtt_in_topic_prefix,
+                cfgData.mqtt_out_topic_prefix);
+  mysNode.on_message(onMessage);
 }
 
 void loop() {
-  static bool needToSendPresentation = false;
-  static bool needToSubscribeMqtt = false;
-
-  if (!mqtt.connected()) {
-    // reconnect to mqtt
-    static uint32_t lastMqttBrokerConnectTimestamp = millis();
-    if(millis() - lastMqttBrokerConnectTimestamp >= MQTT_RECONNECT_INTERVAL_MS) {
-      char mqttClientId[40];
-      snprintf(mqttClientId, sizeof(mqttClientId), "%s-%d", MQTT_CLIENT_ID_PREFIX, random(0xFFFF));
-      mqtt.connect(mqttClientId, cfgData.mqtt_user, cfgData.mqtt_passwd);
-
-      #ifdef DEBUG
-      Serial.println("Not connected to mqtt broker, retrying ...");
-      #endif
-      lastMqttBrokerConnectTimestamp = millis();
-    }
-
-    needToSendPresentation = true;
-    needToSubscribeMqtt = true;
-  }
-
-  if(mqtt.connected()) {
-    if(needToSendPresentation) {
-      mysNode.send_presentation();
-      needToSendPresentation = false;
-    }
-
-    if(needToSubscribeMqtt) {
-      char mqtt_topic[40];
-      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", cfgData.mqtt_in_topic_prefix, cfgData.mys_node_id);
-      mqtt.subscribe(mqtt_topic);
-
-      snprintf(mqtt_topic, sizeof(mqtt_topic), "%s/%d/#", cfgData.mqtt_in_topic_prefix, BROADCAST_NODE_ID);
-      mqtt.subscribe(mqtt_topic);
-
-      needToSubscribeMqtt = false;
-    }
-
-    static uint32_t lastVccReportTimestamp = millis();
-    if(millis() - lastVccReportTimestamp >= BATTER_LVL_REPORT_INTERVAL_MS) {
-      uint8_t vccPercent = (ESP.getVcc() * 100) / VDD_VOLTAGE_MV;
-      #ifdef DEBUG
-      Serial.printf("System voltage level: %d%%\r\n", vccPercent);
-      #endif
-      mysNode.send_battery_level(vccPercent);
-      lastVccReportTimestamp = millis();
-    }
-
-    mqtt.loop();
+  mysNode.loop();
+  
+  static uint32_t lastVccReportTimestamp = millis();
+  if(millis() - lastVccReportTimestamp >= BATTER_LVL_REPORT_INTERVAL_MS) {
+    uint8_t vccPercent = (ESP.getVcc() * 100) / VDD_VOLTAGE_MV;
+    #ifdef DEBUG
+    DEBUG_OUTPUT.printf("System voltage level: %d%%\r\n", vccPercent);
+    #endif
+    mysNode.send_battery_level(vccPercent);
+    lastVccReportTimestamp = millis();
   }
 }
