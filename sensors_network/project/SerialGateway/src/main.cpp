@@ -42,7 +42,9 @@
 
 // Enable and select radio type attached
 //#define MY_RADIO_NRF24
+#define MY_RFM69_NEW_DRIVER
 #define MY_RADIO_RFM69
+#define MY_RFM69_FREQUENCY RFM69_868MHZ
 
 // Set LOW transmit power level as default, if you have an amplified NRF-module and
 // power your radio separately with a good regulator you can turn up PA level.
@@ -89,8 +91,8 @@
 #include <avr/wdt.h>
 
 void before() {
-    wdt_disable();
-    wdt_enable(WDTO_8S);
+  wdt_disable();
+  wdt_enable(WDTO_8S);
 }
 
 void setup() {
@@ -102,6 +104,6 @@ void presentation() {
 }
 
 void loop() {
-    wdt_reset();
+  wdt_reset();
 // Send locally attached sensor data here
 }

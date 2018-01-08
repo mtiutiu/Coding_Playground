@@ -1,0 +1,276 @@
+<html lang="en">
+   <head>
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="">
+      <meta name="author" content="">
+      <title>BLE Control Panel</title>
+      <!-- Bootstrap Core CSS -->
+      <link href="/static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+      <!-- MetisMenu CSS -->
+      <link href="/static/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+      <!-- Custom CSS -->
+      <link href="/static/dist/css/sb-admin-2.css" rel="stylesheet">
+      <!-- Custom Fonts -->
+      <link href="/static/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+      <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+      <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+      <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+      <![endif]-->
+      <style>
+        .loader {
+          border: 5px solid #f3f3f3;
+          -webkit-animation: spin 1s linear infinite;
+          animation: spin 1s linear infinite;
+          border-top: 5px solid #555;
+          border-radius: 50%;
+          width: 30px;
+          height: 30px;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+          0% { -webkit-transform: rotate(0deg); }
+          100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+   </head>
+   <body>
+      <div class="panel panel-green">
+        <div class="panel-heading">
+            Livolo BLE Node
+        </div>
+        <!-- /.panel-heading -->
+        <div class="panel-body">
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs">
+              <li class="active"><a href="#system" data-toggle="tab" aria-expanded="true">System</a>
+              </li>
+              <li class=""><a href="#services_status" data-toggle="tab" aria-expanded="false">Services</a>
+              </li>
+              <!-- <li class=""><a href="#maintenance" data-toggle="tab" aria-expanded="false">Maintenance</a>
+              </li> -->
+              <li class=""><a href="#settings" data-toggle="tab" aria-expanded="false">Settings</a>
+              </li>
+            </ul>
+            <!-- Tab panes -->
+            <div class="tab-content">
+              <div class="tab-pane active" id="system">
+                <div class="panel panel-default">
+                  <div class="panel-heading">
+                    System status
+                  </div>
+
+                  <div class="panel-body">
+                    <div id="system_stats">
+                      <div class="loader"></div>
+                    </div>
+                    <div class="row">
+                      <div class="col-xs-8"></div>
+                      <button type="button" class="btn btn-success" id="system_stats_refresh">Refresh <i class="fa fa-gear"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+               <div class="tab-pane" id="services_status">
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                        Services status
+                    </div>
+                     <!-- /.panel-heading -->
+                    <div class="panel-body">
+                        <div id="services_status_content">
+                          <div class="loader"></div>
+                        </div>
+                        <!-- /.table-responsive -->
+                        <div class="row">
+                          <div class="col-xs-8"></div>
+                          <button type="button" class="btn btn-success" id="services_refresh">Refresh <i class="fa fa-gear"></i></button>
+                        </div>
+                    </div>
+                     <!-- /.panel-body -->
+                  </div>
+               </div>
+              <!-- <div class="tab-pane" id="maintenance"> -->
+                <!-- <div class="panel panel-default"> -->
+                   <!-- <div class="panel-heading">
+                      Services maintenance
+                   </div> -->
+                   <!-- /.panel-heading -->
+                   <!-- div class="panel-body" -->
+                      <!-- <div class="table-responsive">
+                         <table class="table table-striped table-bordered table-hover">
+                            <thead>
+                               <tr>
+                                 <th>Name</th>
+                                 <th>Status</th>
+                                 <th>Action</th>
+                               </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>Livolo BLE</td>
+                                <td class="text-center">
+                                  <strong>
+                                    <div id="livolo_ble_central_service_status">
+                                      <i class="fa fa-gear fa-spin" style="font-size:24px"></i>
+                                    </div>
+                                  </strong>
+                                </td>
+                                <td class="text-center">
+                                  <button type="button" class="btn btn-success" id="livolo_ble_central_service_restart">Restart</button>
+                                </td>
+                              </tr>
+                            </tbody>
+                         </table>
+                     </div> -->
+                     <!-- /.table-responsive -->
+                   <!-- </div> -->
+                   <!-- /.panel-body -->
+               <!-- </div> -->
+              <!-- </div>  -->
+              <div class="tab-pane" id="settings">
+                <div class="panel panel-default">
+                   <div class="panel-heading">
+                      Application settings
+                   </div>
+                   <!-- /.panel-heading -->
+                   <div class="panel-body">
+                     <div id="settings_page_content">
+                       <div class="loader"></div>
+                     </div>
+                     <div class="row">
+                       <div class="col-xs-8">
+                       </div>
+                       <button type="button" class="btn btn-success" id="settings_save" name="button">Save <i class="fa fa-gear"></i></button>
+                     </div>
+                   </div>
+                   <!-- /.panel-body -->
+               </div>
+              </div>
+            </div>
+        </div>
+         <!-- /.panel-body -->
+      </div>
+      <!-- /#wrapper -->
+      <!-- jQuery -->
+      <script src="/static/vendor/jquery/jquery.min.js"></script>
+      <!-- Bootstrap Core JavaScript -->
+      <script src="/static/vendor/bootstrap/js/bootstrap.min.js"></script>
+      <!-- Metis Menu Plugin JavaScript -->
+      <script src="/static/vendor/metisMenu/metisMenu.min.js"></script>
+      <!-- Custom Theme JavaScript -->
+      <script src="/static/dist/js/sb-admin-2.js"></script>
+      <!-- Sijax -->
+      <script type="text/javascript" src="/static/js/sijax/sijax.js"></script>
+      <script type="text/javascript">
+        {{ g.sijax.get_js()|safe }}
+      </script>
+
+      <script>
+        function stop_btns_gear_animation() {
+          $('#settings_save').html('Save <i class="fa fa-gear"></i>');
+          $('#services_refresh').html('Refresh <i class="fa fa-gear"></i>');
+          $('#system_stats_refresh').html('Refresh <i class="fa fa-gear"></i>');
+        }
+
+        function do_sijax(req, data = [], retries = 10) {
+          Sijax.request(req, data,
+            {
+              complete: function() {
+                stop_btns_gear_animation();
+              },
+              error: function(jqXHR, textStatus, errorThrown) {
+                if(retries > 0 && textStatus == 'error') {
+                  setTimeout(function() {
+                    do_sijax(req, data, retries-1);
+                  }, 500);
+                }
+                if(retries == 0) {
+                  stop_btns_gear_animation();
+                  alert("Ajax call failed! Maybe your connection or the server is offline?");
+                }
+              },
+              timeout: 5000
+            });
+        }
+
+        $(document).ready(function(){
+          // load data for the active tab
+          do_sijax('get_system_stats');
+
+          // --------------- System stats ------------------
+          $('.nav-tabs a[href="#system"]').click(function(){
+            $('#system_stats').html("<div class='loader'></div>");
+            do_sijax('get_system_stats');
+          });
+
+          $('#system_stats_refresh').on('click', function (ev) {
+            $(this).html('Refresh <i class="fa fa-gear fa-spin"></i>');
+            do_sijax('get_system_stats');
+          });
+          // ----------------------------------------------
+
+          // --------------- Services status---------------------
+          $('.nav-tabs a[href="#services_status"]').click(function(){
+            $('#services_status_content').html("<div class='loader'></div>");
+            do_sijax('services_status');
+          });
+
+          $('#services_refresh').on('click', function (ev) {
+            $(this).html('Refresh <i class="fa fa-gear fa-spin"></i>');
+            do_sijax('services_status');
+          });
+          // ----------------------------------------------
+
+          // --------------- Maintenance ---------------------
+          // $('.nav-tabs a[href="#maintenance"]').click(function(){
+          //   $('#livolo_ble_central_service_status').html(
+          //     '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
+          //   )
+          //   do_sijax('livolo_ble_central_service_status');
+          // });
+          //
+          // $('#livolo_ble_central_service_restart').on('click', function (ev) {
+          //   $('#livolo_ble_central_service_status').html(
+          //     '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>'
+          //   )
+          //   do_sijax('livolo_ble_central_service_restart');
+          // });
+          // ----------------------------------------------
+
+          // ------------------ Settings ------------------
+          $('.nav-tabs a[href="#settings"]').click(function(){;
+            $('#settings_page_content').html("<div class='loader'></div>");
+            do_sijax('settings_page_update');
+          });
+
+          $('#settings_save').on('click', function (ev) {
+            var settings_fields = {
+              'mqtt_broker': $('#mqtt_broker').val(),
+              'mqtt_broker_port': $('#mqtt_broker_port').val(),
+              'mqtt_broker_user': $('#mqtt_broker_user').val(),
+              'mqtt_broker_password': $('#mqtt_broker_password').val(),
+              'mysensors_mqtt_in_topic_prefix': $('#mysensors_mqtt_in_topic_prefix').val(),
+              'mysensors_mqtt_out_topic_prefix': $('#mysensors_mqtt_out_topic_prefix').val(),
+              'nodes_id': $('#nodes_id').val(),
+              'node_childs_alias': $('#node_childs_alias').val(),
+              'nodes_alias': $('#nodes_alias').val(),
+              'mac_addresses': $('#mac_addresses').val()
+            };
+            $(this).html('Save <i class="fa fa-gear fa-spin"></i>');
+            do_sijax('settings_page_save', [settings_fields]);
+          });
+          // ----------------------------------------------
+        });
+      </script>
+   </body>
+</html>
