@@ -50,12 +50,12 @@ class MySensor {
       this->mqtt_port = mqtt_port;
       this->mqtt_in_topic_prefix = mqtt_in_topic_prefix;
       this->mqtt_out_topic_prefix = mqtt_out_topic_prefix;
-      
+
       // dirty hack to allow callbacks to member functions using a global pointer variable
       // http://www.newty.de/fpt/callback.html#static
       mqtt_cb_obj = (void*) this;
       mqtt.setCallback(MySensor::_mqtt_callback_wrapper);
-      
+
       mqtt.setServer(mqtt_server, mqtt_port);
     }
 
@@ -78,70 +78,45 @@ class MySensor {
     }
 
     void send_sketch_name(const char* name, uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = NODE_SENSOR_ID;
-      data.cmd_type = M_INTERNAL;
-      data.ack = ack;
-      data.sub_type = I_SKETCH_NAME; // e.g. S_BINARY
-      strncpy(data.payload, name, MQTT_MAX_PAYLOAD_LENGTH);
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      strncpy(payload, name, MQTT_MAX_PAYLOAD_LENGTH);
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_NAME, payload, ack);
     }
 
     void send_sketch_version(const char* version = "2.0", uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = NODE_SENSOR_ID;
-      data.cmd_type = M_INTERNAL;
-      data.ack = ack;
-      data.sub_type = I_SKETCH_VERSION; // e.g. S_BINARY
-      strncpy(data.payload, version, MQTT_MAX_PAYLOAD_LENGTH);
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      strncpy(payload, version, MQTT_MAX_PAYLOAD_LENGTH);
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_VERSION, payload, ack);
     }
 
     void send_heartbeat(uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = NODE_SENSOR_ID;
-      data.cmd_type = M_INTERNAL;
-      data.ack = ack;
-      data.sub_type = I_HEARTBEAT_RESPONSE; // e.g. S_BINARY
-      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%lu", millis());
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%lu", millis());
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_HEARTBEAT_RESPONSE, payload, ack);
     }
 
     void send_battery_level(uint8_t value, uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = NODE_SENSOR_ID;
-      data.cmd_type = M_INTERNAL;
-      data.ack = ack;
-      data.sub_type = I_BATTERY_LEVEL; // e.g. S_BINARY
-      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_BATTERY_LEVEL, payload, ack);
     }
 
     void send_discovery_response(uint8_t parent_node_id = 0, uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = NODE_SENSOR_ID;
-      data.cmd_type = M_INTERNAL;
-      data.ack = ack;
-      data.sub_type = I_DISCOVER_RESPONSE; // e.g. S_BINARY
-      snprintf(data.payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_DISCOVER_RESPONSE, payload, ack);
     }
 
-    void send(uint8_t child_sensor_id, uint8_t variable_type, char* payload, uint8_t ack = 0) {
+    void send(uint8_t node_id, uint8_t child_sensor_id, uint8_t cmd_type, uint8_t variable_type, char* payload, uint8_t ack = 0) {
       MySensorMsg data;
       data.node_id = node_id;
       data.child_id = child_sensor_id;
-      data.cmd_type = M_SET;
+      data.cmd_type = cmd_type;
       data.ack = ack;
       data.sub_type = variable_type; // e.g. V_STATUS
       strncpy(data.payload, payload, MQTT_MAX_PAYLOAD_LENGTH);;
@@ -267,7 +242,7 @@ class MySensor {
       // #ifdef DEBUG
       // DEBUG_OUTPUT.printf("Received mqtt data: %s of length: %d, on topic: %s\r\n", payload, length, topic);
       // #endif
-      
+
       on_msg_cb(cmd_type, payload, length);
     }
 
@@ -292,15 +267,10 @@ class MySensor {
     }
 
     void _send_presentation(const uint8_t child_sensor_id, const uint8_t child_sub_type, const char* child_sensor_alias, uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = child_sensor_id;
-      data.cmd_type = M_PRESENTATION;
-      data.ack = ack;
-      data.sub_type = child_sub_type; // e.g. S_BINARY
-      strncpy(data.payload, child_sensor_alias, MQTT_MAX_PAYLOAD_LENGTH);
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      strncpy(payload, child_sensor_alias, MQTT_MAX_PAYLOAD_LENGTH);
 
-      _mys_mycontroller_out(data);
+      send(this->node_id, child_sensor_id, M_PRESENTATION, child_sub_type, payload, ack);
     }
 };
 #endif

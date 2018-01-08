@@ -175,7 +175,7 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   WiFiManagerParameter custom_mqtt_in_topic_prefix("in_topic_prefix", "mqtt in topic prefix", cfgData.mqtt_in_topic_prefix, MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN);
   WiFiManagerParameter custom_mqtt_out_topic_prefix("out_topic_prefix", "mqtt out topic prefix", cfgData.mqtt_out_topic_prefix, MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
 
-  WiFiManagerParameter mys_header_text("<br/><b>MySensors</b>");
+  WiFiManagerParameter mys_header_text("<br/><br/><b>MySensors</b>");
   WiFiManagerParameter custom_mys_node_id("node_id", "mys node id", cfgData.mys_node_id, MYS_NODE_ID_FIELD_MAX_LEN);
   WiFiManagerParameter custom_mys_node_alias("node_alias", "mys node alias", cfgData.mys_node_alias, MYS_NODE_ALIAS_FIELD_MAX_LEN);
 
@@ -279,7 +279,7 @@ void setup() {
 
 void loop() {
   mysNode.loop();
-  
+
   static uint32_t lastVccReportTimestamp = millis();
   if(millis() - lastVccReportTimestamp >= BATTER_LVL_REPORT_INTERVAL_MS) {
     uint8_t vccPercent = (ESP.getVcc() * 100) / VDD_VOLTAGE_MV;
