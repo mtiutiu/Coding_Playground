@@ -210,34 +210,38 @@ class MySensor {
 
       // treat internal stuff here
       if(cmd_type == M_INTERNAL) {
-        if(sub_type == I_PRESENTATION) {
-          #ifdef DEBUG
-          DEBUG_OUTPUT.printf("Received I_PRESENTATION internal command on topic: %s\r\n", topic);
-          #endif
-          send_presentation();
-        } else if(sub_type == I_DISCOVER_REQUEST) {
-          #ifdef DEBUG
-          DEBUG_OUTPUT.printf("Received I_DISCOVER_REQUEST internal command on topic: %s\r\n", topic);
-          #endif
-          send_discovery_response();
-        } else if(sub_type == I_HEARTBEAT_REQUEST) {
-          #ifdef DEBUG
-          DEBUG_OUTPUT.printf("Received I_HEARTBEAT_REQUEST internal command on topic: %s\r\n", topic);
-          #endif
-          send_heartbeat();
-        } else if(sub_type == I_REBOOT) {
-          #ifdef DEBUG
-          DEBUG_OUTPUT.printf("Received I_REBOOT internal command on topic: %s\r\n", topic);
-          #endif
-          ESP.reset();
+        switch (sub_type) {
+          case I_PRESENTATION:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Received I_PRESENTATION internal command on topic: %s\r\n", topic);
+            #endif
+            send_presentation();
+            break;
+          case I_DISCOVER_REQUEST:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Received I_DISCOVER_REQUEST internal command on topic: %s\r\n", topic);
+            #endif
+            send_discovery_response();
+            break;
+          case I_HEARTBEAT_REQUEST:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Received I_HEARTBEAT_REQUEST internal command on topic: %s\r\n", topic);
+            #endif
+            send_heartbeat();
+            break;
+          case I_REBOOT:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Received I_REBOOT internal command on topic: %s\r\n", topic);
+            #endif
+            ESP.reset();
+            break;
+          default:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Unrecognized internal command on topic: %s\r\n", topic);
+            #endif
+            ;
         }
       }
-
-      // #ifdef DEBUG
-      // DEBUG_OUTPUT.printf("Received mqtt data: %s of length: %d, on topic: %s\r\n", payload, length, topic);
-      // #endif
-
-
 
       MySensorMsg msg_data;
       msg_data.node_id = node_id;
