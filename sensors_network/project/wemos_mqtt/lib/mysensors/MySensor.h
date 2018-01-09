@@ -22,7 +22,7 @@ typedef struct {
   char payload[MQTT_MAX_PAYLOAD_LENGTH];
 } MySensorMsg;
 
-typedef void (*mys_msg_cb)(uint8_t cmd_type, byte* data, uint16_t length);
+typedef void (*mys_msg_cb)(MySensorMsg msg);
 
 class MySensor {
   public:
@@ -67,13 +67,13 @@ class MySensor {
       // present this node as a MySensors node first
       _send_presentation(NODE_SENSOR_ID, S_ARDUINO_NODE, "", ack);
       if(present_node_name) {
-        send_sketch_name(node_alias);
+        send_sketch_name(this->node_alias);
       }
       if(present_node_version) {
         send_sketch_version();
       }
-      for (uint8_t i = 0; i < child_count; i++) {
-        _send_presentation(i + 1, node_childs_subtype[i], node_childs_alias[i], ack);
+      for (uint8_t i = 0; i < this->child_count; i++) {
+        _send_presentation(i + 1, this->node_childs_subtype[i], this->node_childs_alias[i], ack);
       }
     }
 
@@ -81,47 +81,41 @@ class MySensor {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       strncpy(payload, name, MQTT_MAX_PAYLOAD_LENGTH);
 
-      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_NAME, payload, ack);
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_NAME, payload, ack);
     }
 
     void send_sketch_version(const char* version = "2.0", uint8_t ack = 0) {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       strncpy(payload, version, MQTT_MAX_PAYLOAD_LENGTH);
 
-      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_VERSION, payload, ack);
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SKETCH_VERSION, payload, ack);
     }
 
     void send_heartbeat(uint8_t ack = 0) {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%lu", millis());
 
-      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_HEARTBEAT_RESPONSE, payload, ack);
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_HEARTBEAT_RESPONSE, payload, ack);
     }
 
     void send_battery_level(uint8_t value, uint8_t ack = 0) {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
 
-      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_BATTERY_LEVEL, payload, ack);
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_BATTERY_LEVEL, payload, ack);
     }
 
     void send_discovery_response(uint8_t parent_node_id = 0, uint8_t ack = 0) {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
 
-      send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_DISCOVER_RESPONSE, payload, ack);
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_DISCOVER_RESPONSE, payload, ack);
     }
 
-    void send(uint8_t node_id, uint8_t child_sensor_id, uint8_t cmd_type, uint8_t variable_type, char* payload, uint8_t ack = 0) {
-      MySensorMsg data;
-      data.node_id = node_id;
-      data.child_id = child_sensor_id;
-      data.cmd_type = cmd_type;
-      data.ack = ack;
-      data.sub_type = variable_type; // e.g. V_STATUS
-      strncpy(data.payload, payload, MQTT_MAX_PAYLOAD_LENGTH);;
-
-      _mys_mycontroller_out(data);
+    void send(uint8_t child_sensor_id, uint8_t sub_type, const char* payload, uint8_t ack = 0) {
+      if(child_sensor_id <= this->child_count) {
+        _send(this->node_id, child_sensor_id, M_SET, sub_type, payload, ack);
+      }
     }
 
     void loop() {
@@ -243,7 +237,17 @@ class MySensor {
       // DEBUG_OUTPUT.printf("Received mqtt data: %s of length: %d, on topic: %s\r\n", payload, length, topic);
       // #endif
 
-      on_msg_cb(cmd_type, payload, length);
+
+
+      MySensorMsg msg_data;
+      msg_data.node_id = node_id;
+      msg_data.child_id = child_id;
+      msg_data.cmd_type = cmd_type;
+      msg_data.ack = ack;
+      msg_data.sub_type = sub_type;
+      memset(msg_data.payload, '\0', MQTT_MAX_PAYLOAD_LENGTH);
+      strncpy(msg_data.payload, (char*)payload, length);
+      on_msg_cb(msg_data);
     }
 
     void _mys_mycontroller_out(MySensorMsg& data) {
@@ -258,10 +262,10 @@ class MySensor {
               data.ack,
               data.sub_type);
 
-      #ifdef DEBUG
-      DEBUG_OUTPUT.printf("Publishing: %s on topic: %s\r\n", data.payload, mqtt_topic);
-      #endif
       if(mqtt.connected()) {
+        #ifdef DEBUG
+        DEBUG_OUTPUT.printf("Publishing: %s on topic: %s\r\n", data.payload, mqtt_topic);
+        #endif
         mqtt.publish(mqtt_topic, data.payload);
       }
     }
@@ -270,7 +274,19 @@ class MySensor {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       strncpy(payload, child_sensor_alias, MQTT_MAX_PAYLOAD_LENGTH);
 
-      send(this->node_id, child_sensor_id, M_PRESENTATION, child_sub_type, payload, ack);
+      _send(this->node_id, child_sensor_id, M_PRESENTATION, child_sub_type, payload, ack);
+    }
+
+    void _send(uint8_t node_id, uint8_t child_sensor_id, uint8_t cmd_type, uint8_t variable_type, const char* payload, uint8_t ack = 0) {
+      MySensorMsg data;
+      data.node_id = node_id;
+      data.child_id = child_sensor_id;
+      data.cmd_type = cmd_type;
+      data.ack = ack;
+      data.sub_type = variable_type; // e.g. V_STATUS
+      strncpy(data.payload, payload, MQTT_MAX_PAYLOAD_LENGTH);;
+
+      _mys_mycontroller_out(data);
     }
 };
 #endif

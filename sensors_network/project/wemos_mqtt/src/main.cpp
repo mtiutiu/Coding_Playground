@@ -221,13 +221,18 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   }
 }
 
-void onMessage(uint8_t msgType, byte* payload, uint16_t length) {
-  if(msgType == M_SET) {
-    if(length > 0) {
-      uint8_t newState = payload[0] - '0'; // convert to number
+void onMessage(MySensorMsg msg) {
+  if(msg.cmd_type == M_SET) {
+    if(strlen(msg.payload) > 0) {
+      uint8_t newState = atoi(msg.payload); // convert to number
       #ifdef DEBUG
       DEBUG_OUTPUT.printf("Received M_SET command with value: %d\r\n", newState);
       #endif
+
+      // testing reply
+      char reply[64];
+      snprintf(reply, 64, "%d", newState);
+      mysNode.send(1, V_STATUS, reply);
     }
   }
 
