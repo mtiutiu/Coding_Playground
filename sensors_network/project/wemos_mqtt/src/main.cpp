@@ -19,6 +19,7 @@ ADC_MODE(ADC_VCC);
 
 #define AP_SSID "WaterValveController"
 #define AP_PASSWD "test1234"
+#define CFG_PORTAL_TIMEOUT_S  30UL
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -52,7 +53,7 @@ const uint8_t SENSOR_COUNT = 1;
 const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const char* CHILD_ALIASES[SENSOR_COUNT] = { "Valve" };
 
-const uint16_t VDD_VOLTAGE_MV = 3000;
+const float VDD_VOLTAGE_MV = 3000.0;
 const uint32_t BATTER_LVL_REPORT_INTERVAL_MS = 300000;  // 5 mins
 
 MySensor mysNode;
@@ -181,6 +182,7 @@ void startWiFiAutoConfig(CfgData& cfgData) {
 
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.setTimeout(CFG_PORTAL_TIMEOUT_S);
 
   wifiManager.addParameter(&mqtt_header_text);
   wifiManager.addParameter(&custom_mqtt_server);
@@ -195,8 +197,11 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   wifiManager.addParameter(&custom_mys_node_alias);
 
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
+    #ifdef DEBUG
+    DEBUG_OUTPUT.println("Failed to connect and configuration portal timeout was reached, rebooting ...");
+    #endif
     // fail to connect
-    delay(3000);
+    delay(1000);
     // reset and try again, or maybe put it to deep sleep
     ESP.reset();
   }
@@ -287,7 +292,7 @@ void loop() {
 
   static uint32_t lastVccReportTimestamp = millis();
   if(millis() - lastVccReportTimestamp >= BATTER_LVL_REPORT_INTERVAL_MS) {
-    uint8_t vccPercent = (ESP.getVcc() * 100) / VDD_VOLTAGE_MV;
+    uint8_t vccPercent = round((ESP.getVcc() * 100) / VDD_VOLTAGE_MV);
     #ifdef DEBUG
     DEBUG_OUTPUT.printf("System voltage level: %d%%\r\n", vccPercent);
     #endif
