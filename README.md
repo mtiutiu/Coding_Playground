@@ -1,3 +1,3 @@
-# AVR_Playground
+# Coding_Playground
 
-Various AVR projects and tests.
+Various coding projects and tests.
