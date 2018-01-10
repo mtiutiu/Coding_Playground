@@ -226,7 +226,7 @@ void startWiFiAutoConfig(CfgData& cfgData) {
   }
 }
 
-void onMessage(MySensorMsg msg) {
+void onMessage(MySensorMsg& msg) {
   if(msg.cmd_type == M_SET) {
     if(strlen(msg.payload) > 0) {
       uint8_t newState = atoi(msg.payload); // convert to number

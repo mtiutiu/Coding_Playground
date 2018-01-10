@@ -22,7 +22,7 @@ typedef struct {
   char payload[MQTT_MAX_PAYLOAD_LENGTH];
 } MySensorMsg;
 
-typedef void (*mys_msg_cb)(MySensorMsg msg);
+typedef void (*mys_msg_cb)(MySensorMsg& msg);
 
 class MySensor {
   public:
