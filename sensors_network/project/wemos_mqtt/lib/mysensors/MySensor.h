@@ -118,6 +118,10 @@ class MySensor {
       }
     }
 
+    bool connected() {
+      return mqtt.connected();
+    }
+
     void loop() {
       static bool needToSendPresentation = false;
       static bool needToSubscribeMqtt = false;
