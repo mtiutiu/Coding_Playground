@@ -73,7 +73,7 @@ Ticker batteryLevelReportTicker;
 // -----------------------------------------------------------------------------
 
 // ------------------------- ACTUATOR STATE REPORTING --------------------------
-const float ACTUATOR_STATE_REPORT_INTERVAL_S = 300.0;  // 5 mins
+const float ACTUATOR_STATE_REPORT_INTERVAL_S = 180.0;  // 3 mins
 
 Ticker actuatorStateReportTicker;
 // -----------------------------------------------------------------------------
@@ -81,7 +81,7 @@ Ticker actuatorStateReportTicker;
 // ------------------------ LED SIGNALING --------------------------------------
 #define INVERSE_LED_LOGIC
 const uint8_t LED_SIGNAL_PIN = BUILTIN_LED;
-const float NOT_CONNECTED_SIGNALING_INTERVAL_S = 0.2;
+const float NOT_CONNECTED_SIGNALING_INTERVAL_S = 0.3; // 300 ms
 
 Ticker noTransportConnectedLedTicker;
 // -----------------------------------------------------------------------------
