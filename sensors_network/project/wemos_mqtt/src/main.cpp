@@ -324,6 +324,10 @@ void sendActuatorState() {
 }
 
 void setup() {
+#ifdef DEBUG
+  DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
+#endif
+
   for(uint8_t i = 0; i < SENSOR_COUNT; i++) {
     pinMode(RELAY_PINS[i], OUTPUT);
   #ifdef INVERSE_LOGIC
@@ -340,9 +344,10 @@ void setup() {
   digitalWrite(LED_SIGNAL_PIN, LOW);
 #endif
 
-#ifdef DEBUG
-  DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
-#endif
+  // transport connection signaling
+  // enabling this before WiFiManager in order to have visual feedback ASAP
+  noTransportConnectedLedTicker.attach(NOT_CONNECTED_SIGNALING_INTERVAL_S,
+    checkTransportConnection);
 
   loadConfig(CONFIG_FILE, cfgData);
 
@@ -377,8 +382,6 @@ void setup() {
                 cfgData.mqtt_out_topic_prefix);
   mysNode.on_message(onMessage);
 
-  noTransportConnectedLedTicker.attach(NOT_CONNECTED_SIGNALING_INTERVAL_S,
-    checkTransportConnection);
   batteryLevelReportTicker.attach(BATTER_LVL_REPORT_INTERVAL_S,
     sendBatteryLevel);
   actuatorStateReportTicker.attach(ACTUATOR_STATE_REPORT_INTERVAL_S,
