@@ -98,7 +98,7 @@ class MySensor {
       _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_HEARTBEAT_RESPONSE, payload, ack);
     }
 
-    void send_battery_level(uint8_t value, uint8_t ack = 0) {
+    void send_battery_level(const uint8_t value, uint8_t ack = 0) {
       char payload[MQTT_MAX_PAYLOAD_LENGTH];
       snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
 
@@ -110,6 +110,13 @@ class MySensor {
       snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", parent_node_id);
 
       _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_DISCOVER_RESPONSE, payload, ack);
+    }
+
+    void send_signal_strength(const uint8_t value, uint8_t ack = 0) {
+      char payload[MQTT_MAX_PAYLOAD_LENGTH];
+      snprintf(payload, MQTT_MAX_PAYLOAD_LENGTH, "%d", value);
+
+      _send(this->node_id, NODE_SENSOR_ID, M_INTERNAL, I_SIGNAL_REPORT_RESPONSE, payload, ack);
     }
 
     void send(uint8_t child_sensor_id, uint8_t sub_type, const char* payload, uint8_t ack = 0) {
@@ -135,7 +142,8 @@ class MySensor {
           mqtt.connect(mqttClientId, mqtt_user, mqtt_passwd);
 
           #ifdef DEBUG
-          DEBUG_OUTPUT.println("Not connected to mqtt broker, retrying ...");
+          DEBUG_OUTPUT.printf("Not connected to mqtt broker: %s:%d, retrying ...\r\n",
+            this->mqtt_server, this->mqtt_port);
           #endif
           lastMqttBrokerConnectTimestamp = millis();
         }
@@ -238,6 +246,12 @@ class MySensor {
             DEBUG_OUTPUT.printf("Received I_REBOOT internal command on topic: %s\r\n", topic);
             #endif
             ESP.reset();
+            break;
+          case I_SIGNAL_REPORT_REQUEST:
+            #ifdef DEBUG
+            DEBUG_OUTPUT.printf("Received I_SIGNAL_REPORT_REQUEST internal command on topic: %s\r\n", topic);
+            #endif
+            send_signal_strength(WiFi.RSSI());
             break;
           default:
             #ifdef DEBUG
