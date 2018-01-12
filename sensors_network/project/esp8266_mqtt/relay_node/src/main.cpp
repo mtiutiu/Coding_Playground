@@ -18,8 +18,8 @@ ADC_MODE(ADC_VCC);
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
 
-#define AP_SSID "<SSID>"
-#define AP_PASSWD "<PASSWORD>"
+#define AP_SSID "WaterValveController"
+#define AP_PASSWD "test1234"
 #define CFG_PORTAL_TIMEOUT_S  60UL
 #define CONFIG_FILE "/config.json"
 
@@ -55,7 +55,7 @@ bool needToSaveConfig = false;
 const uint8_t SENSOR_COUNT = 1;
 const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
-const char* CHILD_ALIASES[SENSOR_COUNT] = { "<Alias>" };
+const char* CHILD_ALIASES[SENSOR_COUNT] = { "Valve" };
 
 MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
@@ -190,6 +190,7 @@ void saveConfig(const char* cfgFilePath, CfgData& data) {
     #ifdef DEBUG
       DEBUG_OUTPUT.println("Config file wasn't found!");
     #endif
+      //startCustomCaptivePortal();
     }
     SPIFFS.end();
   } else {
@@ -274,10 +275,25 @@ void startWiFiConfig(CfgData& cfgData, bool onDemand = false) {
 void onMessage(MySensorMsg& msg) {
   if(msg.cmd_type == M_SET) {
     if(strlen(msg.payload) > 0) {
-      uint8_t newState = atoi(msg.payload); // convert to number
+      uint16_t newState = (uint16_t)atoi(msg.payload); // convert to number
     #ifdef DEBUG
       DEBUG_OUTPUT.printf("Received M_SET command with value: %s\r\n", msg.payload);
     #endif
+
+    #ifdef INVERSE_SENSOR_LOGIC
+      digitalWrite(RELAY_PINS[msg.child_id - 1], !newState);
+    #else
+      digitalWrite(RELAY_PINS[msg.child_id - 1], newState);
+    #endif
+
+      // send reply with new state
+      char reply[MQTT_MAX_PAYLOAD_LENGTH];
+    #ifdef INVERSE_SENSOR_LOGIC
+      snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", !digitalRead(RELAY_PINS[msg.child_id - 1]));
+    #else
+      snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", digitalRead(RELAY_PINS[msg.child_id - 1]));
+    #endif
+      mysNode.send(msg.child_id, CHILD_SUBTYPES[msg.child_id - 1], reply);
     }
   }
 
@@ -324,7 +340,19 @@ void sendRSSILevel() {
 }
 
 void sendSensorState() {
+  char reply[MQTT_MAX_PAYLOAD_LENGTH];
 
+  for(uint8_t i = 0; i < SENSOR_COUNT; i++) {
+  #ifdef DEBUG
+    DEBUG_OUTPUT.printf("Sending sensor %d state ...\r\n", (i + 1));
+  #endif
+  #ifdef INVERSE_SENSOR_LOGIC
+    snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", !digitalRead(RELAY_PINS[i]));
+  #else
+    snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", digitalRead(RELAY_PINS[i]));
+  #endif
+    mysNode.send(i + 1, CHILD_SUBTYPES[i], reply);
+  }
 }
 
 void sendReports() {
@@ -334,7 +362,31 @@ void sendReports() {
 }
 
 void portsConfig() {
+  pinMode(LED_SIGNAL_PIN, OUTPUT);
+  pinMode(ERASE_CONFIG_BTN_PIN,
+  #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
+    INPUT
+  #else
+    INPUT_PULLUP
+  #endif
+  );
 
+  digitalWrite(LED_SIGNAL_PIN,
+  #ifdef INVERSE_LED_LOGIC
+    HIGH
+  #else
+    LOW
+  #endif
+  );
+
+  for(uint8_t i = 0; i < SENSOR_COUNT; i++) {
+    pinMode(RELAY_PINS[i], OUTPUT);
+  #ifdef INVERSE_SENSOR_LOGIC
+    digitalWrite(RELAY_PINS[i], HIGH);
+  #else
+    digitalWrite(RELAY_PINS[i], LOW);
+  #endif
+  }
 }
 
 void nodeConfig() {

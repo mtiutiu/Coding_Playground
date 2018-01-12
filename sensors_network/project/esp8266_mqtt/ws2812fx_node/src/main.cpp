@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <Ticker.h>
+#include <MySensorsEEPROM.h>
 
 // enable reading of Vcc
 ADC_MODE(ADC_VCC);
@@ -18,8 +19,8 @@ ADC_MODE(ADC_VCC);
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
 
-#define AP_SSID "<SSID>"
-#define AP_PASSWD "<PASSWORD>"
+#define AP_SSID "WS2812FXController"
+#define AP_PASSWD "test1234"
 #define CFG_PORTAL_TIMEOUT_S  60UL
 #define CONFIG_FILE "/config.json"
 
@@ -52,17 +53,56 @@ bool needToSaveConfig = false;
 #include <MTypes.h>
 #include <MySensor.h>
 
+const uint8_t RGB_SENSOR_ID = 1;
 const uint8_t SENSOR_COUNT = 1;
-const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
-const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
-const char* CHILD_ALIASES[SENSOR_COUNT] = { "<Alias>" };
+const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_RGB_LIGHT };
+const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_RGB };
+const char* CHILD_ALIASES[SENSOR_COUNT] = { "RGB" };
 
 MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
+#include <WS2812FX.h>
+
 //#define INVERSE_SENSOR_LOGIC
-const uint8_t RELAY_PINS[SENSOR_COUNT] = { D1 };
+#define LED_COUNT  300
+const uint8_t LED_STRIP_DATA_PIN = D1;
+const uint16_t LED_PXL_BUFF_SIZE = LED_COUNT * 3;
+const uint8_t DATA_PIN = 3;
+uint8_t pix_buff[LED_PXL_BUFF_SIZE];
+
+const bool OFF = false;
+const bool ON = true;
+
+const uint8_t BRIGHTNESS_MIN_VALUE = 0;
+const uint8_t BRIGHTNESS_MAX_VALUE = 255;
+const uint8_t BRIGHTNESS_DEFAULT_VALUE = 100;
+const uint8_t SPEED_MIN_VALUE = 0;
+const uint8_t SPEED_MAX_VALUE = 255;
+const uint8_t SPEED_DEFAULT_VALUE = 100;
+const uint8_t MODE_MIN_VALUE = 0;
+const uint8_t MODE_DEFAULT_VALUE = 0;
+const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
+const uint8_t G_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t G_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t G_COLOR_FIELD_DEFAULT_VALUE = 100;
+const uint8_t B_COLOR_FIELD_MIN_VALUE = 0;
+const uint8_t B_COLOR_FIELD_MAX_VALUE = 255;
+const uint8_t B_COLOR_FIELD_DEFAULT_VALUE = 100;
+
+const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
+const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
+const uint8_t RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID = 3;
+const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
+const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
+const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
+
+WS2812FX ws2812fx = WS2812FX( LED_COUNT,
+                              LED_STRIP_DATA_PIN, NEO_GRB + NEO_KHZ800,
+                              pix_buff);
 // -----------------------------------------------------------------------------
 
 // -------------------------- BATTERY LEVEL REPORTING --------------------------
@@ -96,6 +136,91 @@ Ticker noTransportLedTicker;
 //#define ERASE_CFG_BTN_INVERSE_LOGIC
 const uint8_t ERASE_CONFIG_BTN_PIN = D2;
 // -----------------------------------------------------------------------------
+
+uint8_t loadState(uint8_t index) {
+  return MySensorsEEPROM::hwReadConfig(index);
+}
+
+void saveState(uint8_t index, uint8_t value) {
+  MySensorsEEPROM::hwWriteConfig(index, value);
+}
+
+void saveRGBLedStripCurrentSettings(uint8_t brightness, uint8_t speed,
+                                      uint8_t mode, uint32_t color) {
+
+  saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID, brightness);
+  saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID, speed);
+  saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID, mode);
+  saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
+              (color & 0x00FF0000) >> 16);
+  saveState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID,
+              (color & 0x0000FF00) >> 8);
+  saveState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID,
+              (color & 0x000000FF) >> 0);
+}
+
+void loadRGBLedStripSavedSettings() {
+  uint8_t brightnessSetting = loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID);
+  ws2812fx.setBrightness(
+    ((brightnessSetting >= BRIGHTNESS_MIN_VALUE) && (brightnessSetting <= BRIGHTNESS_MAX_VALUE)) ?
+    brightnessSetting : BRIGHTNESS_DEFAULT_VALUE
+  );
+
+  uint8_t speedSetting = loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID);
+  ws2812fx.setSpeed(
+    ((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE)) ?
+    speedSetting : SPEED_DEFAULT_VALUE
+  );
+
+  uint8_t modeSetting = loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID);
+  ws2812fx.setMode(
+    ((modeSetting >= MODE_MIN_VALUE) && (modeSetting <= ws2812fx.getModeCount())) ?
+    modeSetting : MODE_DEFAULT_VALUE
+  );
+
+  uint8_t R_FieldColorSetting = loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID);
+  uint8_t G_FieldColorSetting = loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID);
+  uint8_t B_FieldColorSetting = loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID);
+  ws2812fx.setColor(
+    ((R_FieldColorSetting >= R_COLOR_FIELD_MIN_VALUE) && (R_FieldColorSetting <= R_COLOR_FIELD_MAX_VALUE)) ?
+    R_FieldColorSetting : R_COLOR_FIELD_DEFAULT_VALUE,
+    ((G_FieldColorSetting >= G_COLOR_FIELD_MIN_VALUE) && (G_FieldColorSetting <= G_COLOR_FIELD_MAX_VALUE)) ?
+    G_FieldColorSetting : G_COLOR_FIELD_DEFAULT_VALUE,
+    ((B_FieldColorSetting >= B_COLOR_FIELD_MIN_VALUE) && (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE)) ?
+    B_FieldColorSetting : B_COLOR_FIELD_DEFAULT_VALUE
+  );
+  ws2812fx.trigger();
+}
+
+void sendLedStripState() {
+  char reply[MQTT_MAX_PAYLOAD_LENGTH];
+
+  snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%02x%02x%02x",
+    (uint8_t)((ws2812fx.getColor() & 0x00FF0000) >> 16),
+    (uint8_t)((ws2812fx.getColor() & 0x0000FF00) >> 8),
+    (uint8_t)((ws2812fx.getColor() & 0x000000FF) >> 0));
+  mysNode.send(RGB_SENSOR_ID, V_RGB, reply);
+  //wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+
+  uint8_t currentLedStripBrightness = round((float)(ws2812fx.getBrightness() * 100) / BRIGHTNESS_MAX_VALUE);
+  snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripBrightness);
+  mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
+  //wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+
+  uint8_t currentLedStripSpeed = round((float)(ws2812fx.getSpeed() * 100) / SPEED_MAX_VALUE);
+  snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripSpeed);
+  mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
+  //wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+
+  uint8_t currentLedStripMode = ws2812fx.getMode();
+  snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripMode);
+  mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
+  //wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
+
+  uint8_t currentLedStripState = ws2812fx.isRunning();
+  snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripState);
+  mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
+}
 
 // callback notifying us of the need to save config
 void saveConfigCallback() {
@@ -271,13 +396,82 @@ void startWiFiConfig(CfgData& cfgData, bool onDemand = false) {
   }
 }
 
-void onMessage(MySensorMsg& msg) {
-  if(msg.cmd_type == M_SET) {
-    if(strlen(msg.payload) > 0) {
-      uint8_t newState = atoi(msg.payload); // convert to number
+void onMessage(MySensorMsg& message) {
+  char reply[MQTT_MAX_PAYLOAD_LENGTH];
+
+  if(message.cmd_type == M_SET) {
+    if(strlen(message.payload) > 0) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.printf("Received M_SET command with value: %s\r\n", msg.payload);
+      DEBUG_OUTPUT.printf("Received M_SET command with value: %s\r\n", message.payload);
     #endif
+      if(message.sub_type == V_RGB) {
+        if(!ws2812fx.isRunning()) {
+          return;
+        }
+
+        ws2812fx.setColor(strtoul(message.payload, NULL, 16));
+        ws2812fx.trigger();
+        mysNode.send(RGB_SENSOR_ID, V_RGB, message.payload);
+      } else if(message.sub_type == V_LIGHT_LEVEL) {
+          if(!ws2812fx.isRunning()) {
+            return;
+          }
+
+          uint16_t brightnessPercentage = (uint16_t)atoi(message.payload);
+          if((brightnessPercentage >= 0) && (brightnessPercentage <= 100)) {
+            ws2812fx.setBrightness(round((float)(brightnessPercentage * BRIGHTNESS_MAX_VALUE) / 100));
+            ws2812fx.trigger();
+            snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", brightnessPercentage);
+            mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
+          }
+      } else if(message.sub_type == V_PERCENTAGE) {
+          if(!ws2812fx.isRunning()) {
+            return;
+          }
+
+          uint16_t speedPercentage = (uint16_t)atoi(message.payload);
+          if((speedPercentage >= 0) && (speedPercentage <= 100)) {
+            ws2812fx.setSpeed(round((float)(speedPercentage * SPEED_MAX_VALUE) / 100));
+            ws2812fx.trigger();
+            snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", speedPercentage);
+            mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
+          }
+      } else if(message.sub_type == V_CUSTOM) {
+          if(!ws2812fx.isRunning()) {
+            return;
+          }
+
+          uint16_t modeSetting = (uint16_t)atoi(message.payload);
+          if((modeSetting >= MODE_MIN_VALUE) && (modeSetting < ws2812fx.getModeCount())) {
+            ws2812fx.setMode(modeSetting);
+            ws2812fx.trigger();
+            snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", modeSetting);
+            mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
+          }
+      } else if(message.sub_type == V_STATUS) {
+          uint16_t newLedStripState = (uint16_t)atoi(message.payload);
+          if((newLedStripState == OFF) && (ws2812fx.isRunning())) {
+            // get current brightness/color settings for saving them later
+            uint8_t previousLedStripBrightness = ws2812fx.getBrightness();
+            uint32_t previousLedStripColor = ws2812fx.getColor();
+
+            // turn OFF rgb led strip
+            ws2812fx.stop();
+            digitalWrite(LED_STRIP_DATA_PIN, LOW);
+
+            saveRGBLedStripCurrentSettings(previousLedStripBrightness,
+              ws2812fx.getSpeed(), ws2812fx.getMode(), previousLedStripColor);
+            }
+
+            if((newLedStripState == ON) && (!ws2812fx.isRunning())) {
+              // load rgb led strip saved settings
+              loadRGBLedStripSavedSettings();
+              sendLedStripState();
+              ws2812fx.start();
+            }
+            snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", newLedStripState);
+            mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
+      }
     }
   }
 
@@ -324,7 +518,7 @@ void sendRSSILevel() {
 }
 
 void sendSensorState() {
-
+  sendLedStripState();
 }
 
 void sendReports() {
@@ -334,7 +528,25 @@ void sendReports() {
 }
 
 void portsConfig() {
+  pinMode(LED_SIGNAL_PIN, OUTPUT);
+  pinMode(ERASE_CONFIG_BTN_PIN,
+  #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
+    INPUT
+  #else
+    INPUT_PULLUP
+  #endif
+  );
 
+  digitalWrite(LED_SIGNAL_PIN,
+  #ifdef INVERSE_LED_LOGIC
+    HIGH
+  #else
+    LOW
+  #endif
+  );
+
+  pinMode(LED_STRIP_DATA_PIN, OUTPUT);
+  digitalWrite(LED_STRIP_DATA_PIN, LOW);
 }
 
 void nodeConfig() {
@@ -369,6 +581,12 @@ void nodeConfig() {
     !digitalRead(ERASE_CONFIG_BTN_PIN)
   #endif
   );
+
+  // led strip init
+  ws2812fx.init();
+  // load rgb led strip saved settings
+  loadRGBLedStripSavedSettings();
+  ws2812fx.start();
 }
 
 void mySensorsInit() {
@@ -400,6 +618,8 @@ void setup() {
   DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
 #endif
 
+  MySensorsEEPROM::hwInit();
+
   portsConfig();
   nodeConfig();
   mySensorsInit();
@@ -413,6 +633,10 @@ void setup() {
 
 void loop() {
   mysNode.loop();
+
+  if(ws2812fx.isRunning()) {
+    ws2812fx.service();
+  }
 
   static bool needToSendReports = false;
   if(!mysNode.connected()) {
