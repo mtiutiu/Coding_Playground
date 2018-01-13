@@ -100,6 +100,10 @@ const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
 const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
 const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
 
+const float LED_STRIP_UPDATE_INTERVAL_S = 0.05; // 50ms
+
+Ticker ledStripUpdateTicker;
+
 WS2812FX ws2812fx = WS2812FX( LED_COUNT,
                               LED_STRIP_DATA_PIN, NEO_GRB + NEO_KHZ800,
                               pix_buff);
@@ -527,6 +531,12 @@ void sendReports() {
   sendRSSILevel();
 }
 
+void ledStripUpdate() {
+  if(ws2812fx.isRunning()) {
+    ws2812fx.service();
+  }
+}
+
 void portsConfig() {
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
@@ -547,6 +557,15 @@ void portsConfig() {
 
   pinMode(LED_STRIP_DATA_PIN, OUTPUT);
   digitalWrite(LED_STRIP_DATA_PIN, LOW);
+}
+
+void ledStripInit() {
+  // led strip init
+  ws2812fx.init();
+  // load rgb led strip saved settings
+  loadRGBLedStripSavedSettings();
+  ws2812fx.start();
+  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
 }
 
 void nodeConfig() {
@@ -581,12 +600,6 @@ void nodeConfig() {
     !digitalRead(ERASE_CONFIG_BTN_PIN)
   #endif
   );
-
-  // led strip init
-  ws2812fx.init();
-  // load rgb led strip saved settings
-  loadRGBLedStripSavedSettings();
-  ws2812fx.start();
 }
 
 void mySensorsInit() {
@@ -621,6 +634,7 @@ void setup() {
   MySensorsEEPROM::hwInit();
 
   portsConfig();
+  ledStripInit();
   nodeConfig();
   mySensorsInit();
   reportersInit();
@@ -633,10 +647,6 @@ void setup() {
 
 void loop() {
   mysNode.loop();
-
-  if(ws2812fx.isRunning()) {
-    ws2812fx.service();
-  }
 
   static bool needToSendReports = false;
   if(!mysNode.connected()) {
