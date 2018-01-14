@@ -470,11 +470,9 @@ void onMessage(MySensorMsg& message) {
             if((newLedStripState == ON) && (!ws2812fx.isRunning())) {
               // load rgb led strip saved settings
               loadRGBLedStripSavedSettings();
-              sendLedStripState();
               ws2812fx.start();
+              sendLedStripState();
             }
-            snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", newLedStripState);
-            mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
       }
     }
   }
@@ -562,9 +560,10 @@ void portsConfig() {
 void ledStripInit() {
   // led strip init
   ws2812fx.init();
-  // load rgb led strip saved settings
-  loadRGBLedStripSavedSettings();
-  ws2812fx.start();
+  
+  // start led strip in OFF state
+  ws2812fx.stop();
+  digitalWrite(LED_STRIP_DATA_PIN, LOW);
   ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
 }
 
