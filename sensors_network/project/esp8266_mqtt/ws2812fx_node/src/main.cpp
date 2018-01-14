@@ -558,12 +558,22 @@ void portsConfig() {
 }
 
 void ledStripInit() {
+  loadRGBLedStripSavedSettings();
   // led strip init
   ws2812fx.init();
   
-  // start led strip in OFF state
-  ws2812fx.stop();
-  digitalWrite(LED_STRIP_DATA_PIN, LOW);
+  uint32_t resetReason = ESP.getResetInfoPtr()->reason;
+  
+  if(resetReason == REASON_SOFT_RESTART || 
+      resetReason == REASON_SOFT_WDT_RST) {
+    // load rgb led strip saved settings
+    ws2812fx.start();
+  } else {
+    // start led strip in OFF state
+    ws2812fx.stop();
+    digitalWrite(LED_STRIP_DATA_PIN, LOW);
+  }
+  
   ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
 }
 
