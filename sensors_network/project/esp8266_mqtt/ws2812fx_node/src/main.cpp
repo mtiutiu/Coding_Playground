@@ -558,6 +558,7 @@ void portsConfig() {
 }
 
 void ledStripInit() {
+  // load rgb led strip saved settings first
   loadRGBLedStripSavedSettings();
   // led strip init
   ws2812fx.init();
@@ -565,8 +566,8 @@ void ledStripInit() {
   uint32_t resetReason = ESP.getResetInfoPtr()->reason;
   
   if(resetReason == REASON_SOFT_RESTART || 
-      resetReason == REASON_SOFT_WDT_RST) {
-    // load rgb led strip saved settings
+      resetReason == REASON_SOFT_WDT_RST ||
+      resetReason == REASON_WDT_RST) {
     ws2812fx.start();
   } else {
     // start led strip in OFF state
