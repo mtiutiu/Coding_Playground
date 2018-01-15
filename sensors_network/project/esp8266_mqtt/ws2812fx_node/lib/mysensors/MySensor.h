@@ -245,7 +245,7 @@ class MySensor {
             #ifdef DEBUG
             DEBUG_OUTPUT.printf("Received I_REBOOT internal command on topic: %s\r\n", topic);
             #endif
-            ESP.reset();
+            ESP.restart();
             break;
           case I_SIGNAL_REPORT_REQUEST:
             #ifdef DEBUG
