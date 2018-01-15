@@ -20,7 +20,7 @@
 ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
-#define AP_SSID "ESP_SSID"
+#define AP_SSID "ESP_NODE"
 #define AP_PASSWD "test1234"
 #define CFG_PORTAL_TIMEOUT_S 60UL
 #define CONFIG_FILE "/config.json"
@@ -45,9 +45,10 @@ typedef struct {
   char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
 } CfgData;
 
-CfgData cfgData;
+typedef void (*cb)(CfgData& cfgData);
+
 // flag for saving data
-bool needToSaveConfig = false;
+bool configurationUpdated = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
 // ------------------------ MySensors-------------------------------------------
@@ -99,10 +100,22 @@ Ticker noTransportLedTicker;
 const uint8_t ERASE_CONFIG_BTN_PIN = D2;
 // -----------------------------------------------------------------------------
 
-// callback notifying us of the need to save config
-void saveConfigCallback() { needToSaveConfig = true; }
+uint8_t loadState(uint8_t index) {
+  return MySensorsEEPROM::hwReadConfig(index);
+}
 
-void loadConfig(const char *cfgFilePath, CfgData &data) {
+void saveState(uint8_t index, uint8_t value) {
+  MySensorsEEPROM::hwWriteConfig(index, value);
+}
+
+// callback notifying us of the need to save config
+void saveConfigCallback() {
+  configurationUpdated = true;
+}
+
+CfgData& loadConfig(const char *cfgFilePath) {
+  static CfgData data;
+
   if (SPIFFS.begin()) {
     if (SPIFFS.exists(cfgFilePath)) {
       File configFile = SPIFFS.open(cfgFilePath, "r");
@@ -122,6 +135,7 @@ void loadConfig(const char *cfgFilePath, CfgData &data) {
         JsonObject &json = jsonBuffer.parseObject(buf.get());
 #ifdef DEBUG
         json.printTo(Serial);
+        Serial.println();
 #endif
 
         strncpy(data.mqtt_server, json["mqtt_server"],
@@ -157,6 +171,8 @@ void loadConfig(const char *cfgFilePath, CfgData &data) {
     DEBUG_OUTPUT.println("SPIFFS mount failed!");
 #endif
   }
+
+  return data;
 }
 
 void saveConfig(const char *cfgFilePath, CfgData &data) {
@@ -204,7 +220,12 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
   }
 }
 
-void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
+void onWiFiConfigPostHook(CfgData& cfgData) {
+  // perform post wifi config actions
+}
+
+void startWiFiConfig(CfgData &cfgData, bool onDemand = false,
+                      cb wifiPostConfigCallback = NULL) {
   // custom parameters
   WiFiManagerParameter mqtt_header_text("<br/><b>MQTT</b>");
   WiFiManagerParameter custom_mqtt_server(
@@ -272,7 +293,7 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
     }
   }
 
-  if (needToSaveConfig) {
+  if (configurationUpdated) {
 #ifdef DEBUG
     DEBUG_OUTPUT.println("Configuration changed need to save it!");
 #endif
@@ -296,9 +317,14 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
     strncpy(cfgData.mys_node_alias, custom_mys_node_alias.getValue(),
             MYS_NODE_ALIAS_FIELD_MAX_LEN);
 
+    // save new cfg data
     saveConfig(CONFIG_FILE, cfgData);
 
-    needToSaveConfig = false;
+    if(wifiPostConfigCallback) {
+      wifiPostConfigCallback(cfgData);
+    }
+
+    configurationUpdated = false;
   }
 }
 
@@ -357,6 +383,7 @@ void sendRSSILevel() {
 }
 
 void sendSensorState() {
+
 }
 
 void sendReports() {
@@ -384,7 +411,7 @@ void portsConfig() {
                );
 }
 
-void nodeConfig() {
+void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
   // enabling this before WiFiManager in order to have visual feedback ASAP
   noTransportLedTicker.attach(NOT_CONNECTED_SIGNALING_INTERVAL_S,
@@ -409,14 +436,14 @@ void nodeConfig() {
   bool isExternalReset = (ESP.getResetInfoPtr()->reason == REASON_EXT_SYS_RST);
   startWiFiConfig(cfgData, isExternalReset &&
 #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
-                               digitalRead(ERASE_CONFIG_BTN_PIN)
+                               digitalRead(ERASE_CONFIG_BTN_PIN),
 #else
-                               !digitalRead(ERASE_CONFIG_BTN_PIN)
+                               !digitalRead(ERASE_CONFIG_BTN_PIN),
 #endif
-                      );
+                  onWiFiConfigPostHook);
 }
 
-void mySensorsInit() {
+void mySensorsInit(CfgData& cfgData) {
   mysNode.begin(atoi(cfgData.mys_node_id),
                 cfgData.mys_node_alias,
                 CHILD_TYPES,
@@ -439,20 +466,18 @@ void reportersInit() {
                                  sendSensorState);
 }
 
-void preInit() {
-  MySensorsEEPROM::hwInit();
-  loadConfig(CONFIG_FILE, cfgData);
-}
-
 void setup() {
 #ifdef DEBUG
   DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
 #endif
 
-  preInit();
+  // pre inits
+  MySensorsEEPROM::hwInit();
+  CfgData& cfgData = loadConfig(CONFIG_FILE);
+
   portsConfig();
-  nodeConfig();
-  mySensorsInit();
+  nodeConfig(cfgData);
+  mySensorsInit(cfgData);
   reportersInit();
 
   // send initial reports on node startup

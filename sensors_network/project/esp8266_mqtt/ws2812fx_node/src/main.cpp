@@ -47,9 +47,10 @@ typedef struct {
   char mys_node_led_count[MYS_NODE_LED_COUNT_FIELD_MAX_LEN];
 } CfgData;
 
-CfgData cfgData;
+typedef void (*cb)(CfgData& cfgData);
+
 // flag for saving data
-bool needToSaveConfig = false;
+bool configurationUpdated = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
 // ------------------------ MySensors-------------------------------------------
@@ -242,9 +243,13 @@ void sendLedStripState() {
 }
 
 // callback notifying us of the need to save config
-void saveConfigCallback() { needToSaveConfig = true; }
+void saveConfigCallback() {
+  configurationUpdated = true;
+}
 
-void loadConfig(const char *cfgFilePath, CfgData &data) {
+CfgData& loadConfig(const char *cfgFilePath) {
+  static CfgData data;
+
   if (SPIFFS.begin()) {
     if (SPIFFS.exists(cfgFilePath)) {
       File configFile = SPIFFS.open(cfgFilePath, "r");
@@ -303,6 +308,8 @@ void loadConfig(const char *cfgFilePath, CfgData &data) {
     DEBUG_OUTPUT.println("SPIFFS mount failed!");
 #endif
   }
+
+  return data;
 }
 
 void saveConfig(const char *cfgFilePath, CfgData &data) {
@@ -351,7 +358,20 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
   }
 }
 
-void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
+void onWiFiConfigPostHook(CfgData& cfgData) {
+  // update led strip data after wifi config finished
+  // led strip init
+  // very important - set led count and pixel buffer first
+  uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
+#ifdef DEBUG
+  Serial.printf("We have %d leds ...\r\n", ledCount);
+#endif
+  ws2812fx.setPixels(ws2812fx.setLedCount(ledCount), pix_buff);
+  ws2812fx.init();
+}
+
+void startWiFiConfig(CfgData &cfgData, bool onDemand = false,
+                      cb wifiPostConfigCallback = NULL) {
   // custom parameters
   WiFiManagerParameter mqtt_header_text("<br/><b>MQTT</b>");
   WiFiManagerParameter custom_mqtt_server(
@@ -423,7 +443,7 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
     }
   }
 
-  if (needToSaveConfig) {
+  if (configurationUpdated) {
 #ifdef DEBUG
     DEBUG_OUTPUT.println("Configuration changed need to save it!");
 #endif
@@ -449,9 +469,14 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false) {
     strncpy(cfgData.mys_node_led_count, custom_mys_node_led_count.getValue(),
             MYS_NODE_LED_COUNT_FIELD_MAX_LEN);
 
+    // save new cfg data
     saveConfig(CONFIG_FILE, cfgData);
 
-    needToSaveConfig = false;
+    if(wifiPostConfigCallback) {
+      wifiPostConfigCallback(cfgData);
+    }
+
+    configurationUpdated = false;
   }
 }
 
@@ -579,7 +604,9 @@ void sendRSSILevel() {
   mysNode.send(1, V_VAR5, reply);
 }
 
-void sendSensorState() { sendLedStripState(); }
+void sendSensorState() {
+  sendLedStripState();
+}
 
 void sendReports() {
   sendSensorState();
@@ -612,7 +639,7 @@ void portsConfig() {
                );
 }
 
-void ledStripInit() {
+void ledStripInit(CfgData& cfgData) {
   // led strip init
   // very important - set led count and pixel buffer first
   uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
@@ -639,7 +666,7 @@ void ledStripInit() {
   ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
 }
 
-void nodeConfig() {
+void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
   // enabling this before WiFiManager in order to have visual feedback ASAP
   noTransportLedTicker.attach(NOT_CONNECTED_SIGNALING_INTERVAL_S,
@@ -664,14 +691,14 @@ void nodeConfig() {
   bool isExternalReset = (ESP.getResetInfoPtr()->reason == REASON_EXT_SYS_RST);
   startWiFiConfig(cfgData, isExternalReset &&
 #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
-                               digitalRead(ERASE_CONFIG_BTN_PIN)
+                               digitalRead(ERASE_CONFIG_BTN_PIN),
 #else
-                               !digitalRead(ERASE_CONFIG_BTN_PIN)
+                               !digitalRead(ERASE_CONFIG_BTN_PIN),
 #endif
-                      );
+                  onWiFiConfigPostHook);
 }
 
-void mySensorsInit() {
+void mySensorsInit(CfgData& cfgData) {
   mysNode.begin(atoi(cfgData.mys_node_id),
                 cfgData.mys_node_alias,
                 CHILD_TYPES,
@@ -694,21 +721,19 @@ void reportersInit() {
                                  sendSensorState);
 }
 
-void preInit() {
-  MySensorsEEPROM::hwInit();
-  loadConfig(CONFIG_FILE, cfgData);
-  ledStripInit();
-}
-
 void setup() {
 #ifdef DEBUG
   DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
 #endif
 
-  preInit();
+  // pre inits
+  MySensorsEEPROM::hwInit();
+  CfgData& cfgData = loadConfig(CONFIG_FILE);
+
   portsConfig();
-  nodeConfig();
-  mySensorsInit();
+  ledStripInit(cfgData);
+  nodeConfig(cfgData);
+  mySensorsInit(cfgData);
   reportersInit();
 
   // send initial reports on node startup
