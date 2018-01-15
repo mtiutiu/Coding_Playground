@@ -204,6 +204,8 @@ class WS2812FX : public Adafruit_NeoPixel {
       decreaseBrightness(uint8_t s),
       trigger(void);
 
+    uint16_t setLedCount(uint16_t n);
+
     boolean
       isRunning(void);
 

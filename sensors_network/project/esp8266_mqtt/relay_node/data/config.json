@@ -6,5 +6,5 @@
   "mqtt_in_topic_prefix":"mys-in",
   "mqtt_out_topic_prefix":"mys-out",
   "mys_node_id":"100",
-  "mys_node_alias":"WaterValveController"
+  "mys_node_alias":"RelayActuator"
 }

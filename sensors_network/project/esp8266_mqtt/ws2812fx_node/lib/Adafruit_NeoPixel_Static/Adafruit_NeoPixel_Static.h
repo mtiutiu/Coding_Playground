@@ -124,7 +124,7 @@ class Adafruit_NeoPixel {
   ~Adafruit_NeoPixel();
 
   void
-    //begin(void),
+    begin(void),
     show(void),
     //setPin(uint8_t p),
     setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b),
@@ -139,6 +139,7 @@ class Adafruit_NeoPixel {
     getBrightness(void) const;
   uint16_t
     numPixels(void) const;
+  void setPixels(const uint16_t n, uint8_t *pxl);
   static uint32_t
     Color(uint8_t r, uint8_t g, uint8_t b),
     Color(uint8_t r, uint8_t g, uint8_t b, uint8_t w);

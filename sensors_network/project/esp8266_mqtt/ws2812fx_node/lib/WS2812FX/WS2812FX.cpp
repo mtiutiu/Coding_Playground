@@ -56,9 +56,15 @@
 #define CALL_MODE(n) (this->*_mode[n])();
 
 void WS2812FX::init() {
-  //Adafruit_NeoPixel::begin();
+  Adafruit_NeoPixel::begin();
   WS2812FX::setBrightness(_brightness);
   Adafruit_NeoPixel::show();
+}
+
+uint16_t WS2812FX::setLedCount(uint16_t n) {
+  _led_count = n;
+
+  return _led_count;
 }
 
 void WS2812FX::service() {

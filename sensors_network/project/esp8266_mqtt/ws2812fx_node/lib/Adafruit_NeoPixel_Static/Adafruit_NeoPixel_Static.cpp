@@ -73,13 +73,13 @@ Adafruit_NeoPixel::~Adafruit_NeoPixel() {
   //if(pin >= 0) pinMode(pin, INPUT);
 }
 
-//void Adafruit_NeoPixel::begin(void) {
-  //if(pin >= 0) {
-    //pinMode(pin, OUTPUT);
-    //digitalWrite(pin, LOW);
-  //}
+void Adafruit_NeoPixel::begin(void) {
+  if(pin >= 0) {
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, LOW);
+  }
   //begun = true;
-//}
+}
 
 //void Adafruit_NeoPixel::updateLength(uint16_t n) {
   //if(pixels) free(pixels); // Free existing data (if any)
@@ -1257,6 +1257,12 @@ uint8_t *Adafruit_NeoPixel::getPixels(void) const {
 
 uint16_t Adafruit_NeoPixel::numPixels(void) const {
   return numLEDs;
+}
+
+void Adafruit_NeoPixel::setPixels(const uint16_t n, uint8_t *pxl) {
+  this->numBytes = n * ((this->wOffset == this->rOffset) ? 3 : 4);
+  this->numLEDs=n;
+  this->pixels = pxl;
 }
 
 // Adjust output brightness; 0=darkest (off), 255=brightest.  This does
