@@ -289,7 +289,7 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false,
       // fail to connect
       delay(1000);
       // reset and try again, or maybe put it to deep sleep
-      ESP.reset();
+      ESP.restart();
     }
   }
 

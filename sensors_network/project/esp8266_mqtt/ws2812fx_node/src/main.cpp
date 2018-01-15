@@ -439,7 +439,7 @@ void startWiFiConfig(CfgData &cfgData, bool onDemand = false,
       // fail to connect
       delay(1000);
       // reset and try again, or maybe put it to deep sleep
-      ESP.reset();
+      ESP.restart();
     }
   }
 
@@ -652,16 +652,9 @@ void ledStripInit(CfgData& cfgData) {
   // load rgb led strip saved settings
   loadRGBLedStripSavedSettings();
 
-  uint32_t resetReason = ESP.getResetInfoPtr()->reason;
-
-  if (resetReason == REASON_SOFT_RESTART ||
-      resetReason == REASON_SOFT_WDT_RST || resetReason == REASON_WDT_RST) {
-    ws2812fx.start();
-  } else {
-    // start led strip in OFF state
-    ws2812fx.stop();
-    digitalWrite(LED_STRIP_DATA_PIN, LOW);
-  }
+  // start led strip in OFF state
+  ws2812fx.stop();
+  digitalWrite(LED_STRIP_DATA_PIN, LOW);
 
   ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
 }
