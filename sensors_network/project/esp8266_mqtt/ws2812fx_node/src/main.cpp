@@ -147,6 +147,14 @@ Ticker noTransportLedTicker;
 const uint8_t ERASE_CONFIG_BTN_PIN = D14;
 // -----------------------------------------------------------------------------
 
+// --------------------- LED STRIP CTRL BUTTON -----------------------------------
+//#define LED_STRIP_CTRL_BTN_INVERSE_LOGIC
+const uint8_t LED_STRIP_CTRL_BTN = ERASE_CONFIG_BTN_PIN;
+const float LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S = 0.25; // 250 ms
+
+Ticker ledStripCtrlBtn;
+// -----------------------------------------------------------------------------
+
 uint8_t loadState(uint8_t index) {
   return MySensorsEEPROM::hwReadConfig(index);
 }
@@ -689,10 +697,37 @@ void ledStripUpdate() {
   }
 }
 
+void checkLedStripBtn() {
+  static uint8_t state = OFF;
+#ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
+  if(digitalRead(ERASE_CONFIG_BTN_PIN)) {
+#else
+  if(!digitalRead(ERASE_CONFIG_BTN_PIN)) {
+#endif
+    state = !state;
+    if(state == ON) {
+      ws2812fx.start();
+    } else {
+      // turn OFF rgb led strip
+      ws2812fx.stop();
+      digitalWrite(LED_STRIP_DATA_PIN, LOW);
+    }
+    sendLedStripState();
+  }
+}
+
 void portsConfig() {
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
   #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
+    INPUT
+  #else
+    INPUT_PULLUP
+  #endif
+  );
+  
+  pinMode(LED_STRIP_CTRL_BTN,
+  #ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
     INPUT
   #else
     INPUT_PULLUP
@@ -705,6 +740,11 @@ void portsConfig() {
   #else
     LOW
   #endif
+  );
+  
+  ledStripCtrlBtn.attach(
+    LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S,
+    checkLedStripBtn
   );
 }
 
