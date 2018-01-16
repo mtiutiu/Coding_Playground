@@ -150,7 +150,7 @@ const uint8_t ERASE_CONFIG_BTN_PIN = D14;
 // --------------------- LED STRIP CTRL BUTTON -----------------------------------
 //#define LED_STRIP_CTRL_BTN_INVERSE_LOGIC
 const uint8_t LED_STRIP_CTRL_BTN = ERASE_CONFIG_BTN_PIN;
-const float LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S = 0.25; // 250 ms
+const float LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S = 0.1; // 100 ms
 
 Ticker ledStripCtrlBtn;
 // -----------------------------------------------------------------------------
@@ -699,11 +699,16 @@ void ledStripUpdate() {
 
 void checkLedStripBtn() {
   static uint8_t state = OFF;
+  static uint32_t stillPressedCounter = 0;
+  
 #ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
   if(digitalRead(ERASE_CONFIG_BTN_PIN)) {
 #else
   if(!digitalRead(ERASE_CONFIG_BTN_PIN)) {
 #endif
+    if(stillPressedCounter++ > 0) {
+      return;
+    }
     state = !state;
     if(state == ON) {
       ws2812fx.start();
@@ -713,6 +718,8 @@ void checkLedStripBtn() {
       digitalWrite(LED_STRIP_DATA_PIN, LOW);
     }
     sendLedStripState();
+  } else {
+    stillPressedCounter = 0;
   }
 }
 
