@@ -698,7 +698,6 @@ void ledStripUpdate() {
 }
 
 void checkLedStripBtn() {
-  static uint8_t state = OFF;
   static uint32_t stillPressedCounter = 0;
   
 #ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
@@ -709,15 +708,16 @@ void checkLedStripBtn() {
     if(stillPressedCounter++ > 0) {
       return;
     }
-    state = !state;
-    if(state == ON) {
-      ws2812fx.start();
-    } else {
-      // turn OFF rgb led strip
+    if(ws2812fx.isRunning()) {
+      // turn OFF rgb led strip if it was running before
       ws2812fx.stop();
       digitalWrite(LED_STRIP_DATA_PIN, LOW);
+    } else {
+      ws2812fx.start();
     }
-    sendLedStripState();
+    if(mysNode.connected()) {
+      sendLedStripState();
+    }
   } else {
     stillPressedCounter = 0;
   }
