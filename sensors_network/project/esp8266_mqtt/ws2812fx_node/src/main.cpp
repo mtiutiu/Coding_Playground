@@ -76,7 +76,7 @@ MySensor mysNode;
 #define MAX_LED_COUNT 300
 uint8_t pix_buff[MAX_LED_COUNT * 3];
 
-const uint8_t LED_STRIP_DATA_PIN = D1;
+const uint8_t LED_STRIP_DATA_PIN = D15;
 
 const bool OFF = false;
 const bool ON = true;
@@ -144,7 +144,7 @@ Ticker noTransportLedTicker;
 
 // --------------------- ERASE CONFIG BUTTON -----------------------------------
 //#define ERASE_CFG_BTN_INVERSE_LOGIC
-const uint8_t ERASE_CONFIG_BTN_PIN = D2;
+const uint8_t ERASE_CONFIG_BTN_PIN = D14;
 // -----------------------------------------------------------------------------
 
 uint8_t loadState(uint8_t index) {
