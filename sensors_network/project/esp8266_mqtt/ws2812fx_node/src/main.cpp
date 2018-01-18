@@ -261,6 +261,38 @@ void sendLedStripState() {
   mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
 }
 
+void ledStripUpdate() {
+  if (ws2812fx.isRunning()) {
+    ws2812fx.service();
+  }
+}
+
+void ledStripInit(CfgData& cfgData, bool start = false) {
+  // led strip init
+  // very important - set led count and pixel buffer first
+  uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
+#ifdef DEBUG
+  Serial.printf("We have %d leds ...\r\n", ledCount);
+#endif
+  FastLED.addLeds<NEOPIXEL, LED_STRIP_DATA_PIN>(leds, ledCount);
+  ws2812fx.setLedCount(ledCount);
+  ws2812fx.init();
+
+  // load rgb led strip saved settings
+  loadRGBLedStripSavedSettings();
+
+  if(!start) {
+    // start led strip in OFF state
+    ws2812fx.stop();
+    digitalWrite(LED_STRIP_DATA_PIN, LOW);
+  } else {
+    ws2812fx.start();
+  }
+
+  ledStripUpdateTicker.detach();
+  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
+}
+
 // callback notifying us of the need to save config
 void saveConfigCallback() {
   configurationUpdated = true;
@@ -380,14 +412,8 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
 
 void onWiFiConfigPostHook(CfgData& cfgData) {
   // update led strip data after wifi config finished
-  // led strip init
-  // very important - set led count and pixel buffer first
-  uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
-#ifdef DEBUG
-  Serial.printf("We have %d leds ...\r\n", ledCount);
-#endif
-  ws2812fx.setLedCount(ledCount);
-  ws2812fx.init();
+  // led strip reinit and start
+  ledStripInit(cfgData, true);
 }
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
@@ -698,12 +724,6 @@ void sendReports() {
   sendRSSILevel();
 }
 
-void ledStripUpdate() {
-  if (ws2812fx.isRunning()) {
-    ws2812fx.service();
-  }
-}
-
 void checkLedStripBtn() {
   static uint32_t stillPressedCounter = 0;
   
@@ -762,30 +782,10 @@ void portsConfig() {
   );
 }
 
-void ledStripInit(CfgData& cfgData) {
-  // led strip init
-  // very important - set led count and pixel buffer first
-  uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
-#ifdef DEBUG
-  Serial.printf("We have %d leds ...\r\n", ledCount);
-#endif
-  FastLED.addLeds<NEOPIXEL, LED_STRIP_DATA_PIN>(leds, ledCount);
-  ws2812fx.setLedCount(ledCount);
-  ws2812fx.init();
-
-  // load rgb led strip saved settings
-  loadRGBLedStripSavedSettings();
-
-  // start led strip in OFF state
-  ws2812fx.stop();
-  digitalWrite(LED_STRIP_DATA_PIN, LOW);
-
-  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
-}
-
 void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
   // enabling this before WiFiManager in order to have visual feedback ASAP
+  noTransportLedTicker.detach();
   noTransportLedTicker.attach(
     NOT_CONNECTED_SIGNALING_INTERVAL_S,
     checkTransportConnection
@@ -836,14 +836,17 @@ void mySensorsInit(CfgData& cfgData) {
 }
 
 void reportersInit() {
+  batteryLevelReportTicker.detach();
   batteryLevelReportTicker.attach(
     BATTER_LVL_REPORT_INTERVAL_S,
     sendBatteryLevel
   );
+  signalLevelReportTicker.detach();
   signalLevelReportTicker.attach(
     RSSI_LVL_REPORT_INTERVAL_S,
     sendRSSILevel
   );
+  sensorStateReportTicker.detach();
   sensorStateReportTicker.attach(
     SENSOR_STATE_REPORT_INTERVAL_S,
     sendSensorState
