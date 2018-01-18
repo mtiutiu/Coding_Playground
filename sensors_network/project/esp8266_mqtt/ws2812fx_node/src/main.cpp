@@ -68,15 +68,19 @@ MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
+//#define FASTLED_ALLOW_INTERRUPTS 0
+//#define FASTLED_ESP8266_DMA
+#include <FastLED.h>
 #include <WS2812FX.h>
 
 //#define INVERSE_SENSOR_LOGIC
 // max led count that this node can take - this doesn't reflect the real number
 // using this approach to avoid dynamic allocations
 #define MAX_LED_COUNT 300
-uint8_t pix_buff[MAX_LED_COUNT * 3];
 
-const uint8_t LED_STRIP_DATA_PIN = D15;
+#ifndef LED_STRIP_DATA_PIN
+#define LED_STRIP_DATA_PIN  D3
+#endif
 
 const bool OFF = false;
 const bool ON = true;
@@ -106,13 +110,14 @@ const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
 const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
 const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
 
-const float LED_STRIP_UPDATE_INTERVAL_S = 0.05; // 50ms
+const float LED_STRIP_UPDATE_INTERVAL_S = 0.02; // 20ms
 
 Ticker ledStripUpdateTicker;
 
-// we don't know the number of leds here so pass 0 and NULL for pixels buffer
-// later we call setPixels from the Adafruit Neopixel modified library
-WS2812FX ws2812fx = WS2812FX(0, LED_STRIP_DATA_PIN, NEO_GRB + NEO_KHZ800, NULL);
+// leds pixel buffer
+CRGB leds[MAX_LED_COUNT];
+
+WS2812FX ws2812fx(leds);
 // -----------------------------------------------------------------------------
 
 // -------------------------- BATTERY LEVEL REPORTING --------------------------
@@ -144,7 +149,9 @@ Ticker noTransportLedTicker;
 
 // --------------------- ERASE CONFIG BUTTON -----------------------------------
 //#define ERASE_CFG_BTN_INVERSE_LOGIC
-const uint8_t ERASE_CONFIG_BTN_PIN = D14;
+#ifndef ERASE_CONFIG_BTN_PIN
+#define ERASE_CONFIG_BTN_PIN  D1
+#endif
 // -----------------------------------------------------------------------------
 
 // --------------------- LED STRIP CTRL BUTTON -----------------------------------
@@ -215,7 +222,7 @@ void loadRGBLedStripSavedSettings() {
                      (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE))
                         ? B_FieldColorSetting
                         : B_COLOR_FIELD_DEFAULT_VALUE);
-  ws2812fx.trigger();
+  //ws2812fx.trigger();
 }
 
 void sendLedStripState() {
@@ -379,7 +386,7 @@ void onWiFiConfigPostHook(CfgData& cfgData) {
 #ifdef DEBUG
   Serial.printf("We have %d leds ...\r\n", ledCount);
 #endif
-  ws2812fx.setPixels(ws2812fx.setLedCount(ledCount), pix_buff);
+  ws2812fx.setLedCount(ledCount);
   ws2812fx.init();
 }
 
@@ -569,7 +576,7 @@ void onMessage(MySensorMsg &message) {
         }
 
         ws2812fx.setColor(strtoul(message.payload, NULL, 16));
-        ws2812fx.trigger();
+        //ws2812fx.trigger();
         mysNode.send(RGB_SENSOR_ID, V_RGB, message.payload);
       } else if (message.sub_type == V_LIGHT_LEVEL) {
         if (!ws2812fx.isRunning()) {
@@ -581,7 +588,7 @@ void onMessage(MySensorMsg &message) {
           ws2812fx.setBrightness(
             round((brightnessPercentage * BRIGHTNESS_MAX_VALUE) / 100.0)
           );
-          ws2812fx.trigger();
+          //ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", brightnessPercentage);
           mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
         }
@@ -593,7 +600,7 @@ void onMessage(MySensorMsg &message) {
         uint16_t speedPercentage = (uint16_t)atoi(message.payload);
         if ((speedPercentage >= 0) && (speedPercentage <= 100)) {
           ws2812fx.setSpeed(round((speedPercentage * SPEED_MAX_VALUE) / 100.0));
-          ws2812fx.trigger();
+          //ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", speedPercentage);
           mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
         }
@@ -606,7 +613,7 @@ void onMessage(MySensorMsg &message) {
         if ((modeSetting >= MODE_MIN_VALUE) &&
             (modeSetting < ws2812fx.getModeCount())) {
           ws2812fx.setMode(modeSetting);
-          ws2812fx.trigger();
+          //ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", modeSetting);
           mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
         }
@@ -762,7 +769,8 @@ void ledStripInit(CfgData& cfgData) {
 #ifdef DEBUG
   Serial.printf("We have %d leds ...\r\n", ledCount);
 #endif
-  ws2812fx.setPixels(ws2812fx.setLedCount(ledCount), pix_buff);
+  FastLED.addLeds<NEOPIXEL, LED_STRIP_DATA_PIN>(leds, ledCount);
+  ws2812fx.setLedCount(ledCount);
   ws2812fx.init();
 
   // load rgb led strip saved settings

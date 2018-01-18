@@ -53,7 +53,7 @@
 #define WS2812FX_h
 
 #include "Arduino.h"
-#include <Adafruit_NeoPixel_Static.h>
+#include <Adafruit_FastLed.h>
 
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
@@ -120,13 +120,13 @@
 #define FX_MODE_FIRE_FLICKER_SOFT       46
 
 
-class WS2812FX : public Adafruit_NeoPixel {
+class WS2812FX : public Adafruit_NeoPixelFastLED {
 
   typedef void (WS2812FX::*mode_ptr)(void);
 
   public:
 
-    WS2812FX(uint16_t n, uint8_t p, neoPixelType t, uint8_t* pix_buff) : Adafruit_NeoPixel(n, p, t, pix_buff) {
+    WS2812FX(CRGB* leds) : Adafruit_NeoPixelFastLED(leds) {
       _mode[FX_MODE_STATIC]                = &WS2812FX::mode_static;
       _mode[FX_MODE_BLINK]                 = &WS2812FX::mode_blink;
       _mode[FX_MODE_BREATH]                = &WS2812FX::mode_breath;
@@ -179,7 +179,7 @@ class WS2812FX : public Adafruit_NeoPixel {
       _speed = DEFAULT_SPEED;
       _brightness = DEFAULT_BRIGHTNESS;
       _running = false;
-      _led_count = n;
+      //_led_count = n;
       _mode_last_call_time = 0;
       _mode_delay = 0;
       _color = DEFAULT_COLOR;
