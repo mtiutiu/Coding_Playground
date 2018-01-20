@@ -178,6 +178,7 @@ def index_page():
       with open(args.config, 'w') as config_file:
         app.iniconfig.write(config_file)
         config_file.flush()
+        os.fsync(config_file.fileno())
         # synchronize file config change checker thread with write operations on it
         # very important - unwanted things can happen otherwise
         with ini_file_write:
