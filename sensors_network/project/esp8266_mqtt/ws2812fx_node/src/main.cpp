@@ -1,6 +1,7 @@
 //#define DEBUG
 
 #ifdef DEBUG
+#define DEBUG_OUTPUT Serial
 #define SERIAL_DEBUG_BAUDRATE 115200
 #endif
 
@@ -22,7 +23,7 @@ ADC_MODE(ADC_VCC);
 // ------------------------ Module CONFIG --------------------------------------
 #define AP_SSID "WS2812FXController"
 #define AP_PASSWD "test1234"
-#define CFG_PORTAL_TIMEOUT_S 60UL
+#define CFG_PORTAL_TIMEOUT_S 120UL
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -222,7 +223,7 @@ void loadRGBLedStripSavedSettings() {
                      (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE))
                         ? B_FieldColorSetting
                         : B_COLOR_FIELD_DEFAULT_VALUE);
-  //ws2812fx.trigger();
+  ws2812fx.trigger();
 }
 
 void sendLedStripState() {
@@ -272,7 +273,7 @@ void ledStripInit(CfgData& cfgData, bool start = false) {
   // very important - set led count and pixel buffer first
   uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
 #ifdef DEBUG
-  Serial.printf("We have %d leds ...\r\n", ledCount);
+  DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
 #endif
   FastLED.addLeds<NEOPIXEL, LED_STRIP_DATA_PIN>(leds, ledCount);
   ws2812fx.setLedCount(ledCount);
@@ -319,8 +320,8 @@ CfgData& loadConfig(const char *cfgFilePath) {
         StaticJsonBuffer<512> jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(buf.get());
       #ifdef DEBUG
-        json.printTo(Serial);
-        Serial.println();
+        json.printTo(DEBUG_OUTPUT);
+        DEBUG_OUTPUT.println();
       #endif
 
         strncpy(data.mqtt_server, json["mqtt_server"], MQTT_SERVER_FIELD_MAX_LEN);
@@ -602,7 +603,7 @@ void onMessage(MySensorMsg &message) {
         }
 
         ws2812fx.setColor(strtoul(message.payload, NULL, 16));
-        //ws2812fx.trigger();
+        ws2812fx.trigger();
         mysNode.send(RGB_SENSOR_ID, V_RGB, message.payload);
       } else if (message.sub_type == V_LIGHT_LEVEL) {
         if (!ws2812fx.isRunning()) {
@@ -614,7 +615,7 @@ void onMessage(MySensorMsg &message) {
           ws2812fx.setBrightness(
             round((brightnessPercentage * BRIGHTNESS_MAX_VALUE) / 100.0)
           );
-          //ws2812fx.trigger();
+          ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", brightnessPercentage);
           mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
         }
@@ -626,7 +627,7 @@ void onMessage(MySensorMsg &message) {
         uint16_t speedPercentage = (uint16_t)atoi(message.payload);
         if ((speedPercentage >= 0) && (speedPercentage <= 100)) {
           ws2812fx.setSpeed(round((speedPercentage * SPEED_MAX_VALUE) / 100.0));
-          //ws2812fx.trigger();
+          ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", speedPercentage);
           mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
         }
@@ -639,7 +640,7 @@ void onMessage(MySensorMsg &message) {
         if ((modeSetting >= MODE_MIN_VALUE) &&
             (modeSetting < ws2812fx.getModeCount())) {
           ws2812fx.setMode(modeSetting);
-          //ws2812fx.trigger();
+          ws2812fx.trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", modeSetting);
           mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
         }
