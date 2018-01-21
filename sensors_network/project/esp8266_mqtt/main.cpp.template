@@ -1,6 +1,7 @@
 //#define DEBUG
 
 #ifdef DEBUG
+#define DEBUG_OUTPUT Serial
 #define SERIAL_DEBUG_BAUDRATE 115200
 #endif
 
@@ -22,7 +23,7 @@ ADC_MODE(ADC_VCC);
 // ------------------------ Module CONFIG --------------------------------------
 #define AP_SSID "ESP_NODE"
 #define AP_PASSWD "test1234"
-#define CFG_PORTAL_TIMEOUT_S 60UL
+#define CFG_PORTAL_TIMEOUT_S 120UL
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -134,8 +135,8 @@ CfgData& loadConfig(const char *cfgFilePath) {
         StaticJsonBuffer<512> jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(buf.get());
       #ifdef DEBUG
-        json.printTo(Serial);
-        Serial.println();
+        json.printTo(DEBUG_OUTPUT);
+        DEBUG_OUTPUT.println();
       #endif
 
         strncpy(
