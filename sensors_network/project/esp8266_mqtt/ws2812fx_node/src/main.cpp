@@ -1,8 +1,12 @@
 //#define DEBUG
 
 #ifdef DEBUG
-#define DEBUG_OUTPUT Serial
-#define SERIAL_DEBUG_BAUDRATE 115200
+  #ifndef DEBUG_OUTPUT
+    #define DEBUG_OUTPUT Serial
+  #endif
+  #ifndef SERIAL_DEBUG_BAUDRATE
+    #define SERIAL_DEBUG_BAUDRATE 115200
+  #endif
 #endif
 
 #define STRINGIFY(a) str(a)
@@ -21,9 +25,13 @@
 ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
+#ifndef AP_SSID
 #define AP_SSID "WS2812FXController"
+#endif
+#ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
-#define CFG_PORTAL_TIMEOUT_S 120UL
+#endif
+#define CFG_PORTAL_TIMEOUT_S 180UL  // 3 minutes timeout for configuration portal
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -698,7 +706,11 @@ void checkTransportConnection() {
 }
 
 void sendBatteryLevel() {
-  uint8_t vccPercent = round((ESP.getVcc() * 100.0) / VDD_VOLTAGE_MV);
+  uint8_t vccPercent = constrain(
+    round((ESP.getVcc() * 100.0) / VDD_VOLTAGE_MV),
+    0,
+    100
+  );
 #ifdef DEBUG
   DEBUG_OUTPUT.printf("Sending system voltage level: %d%%\r\n", vccPercent);
 #endif
@@ -727,7 +739,7 @@ void sendReports() {
 
 void checkLedStripBtn() {
   static uint32_t stillPressedCounter = 0;
-  
+
 #ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
   if(digitalRead(ERASE_CONFIG_BTN_PIN)) {
 #else
@@ -760,7 +772,7 @@ void portsConfig() {
     INPUT_PULLUP
   #endif
   );
-  
+
   pinMode(LED_STRIP_CTRL_BTN,
   #ifdef LED_STRIP_CTRL_BTN_INVERSE_LOGIC
     INPUT
@@ -776,7 +788,7 @@ void portsConfig() {
     LOW
   #endif
   );
-  
+
   ledStripCtrlBtn.attach(
     LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S,
     checkLedStripBtn

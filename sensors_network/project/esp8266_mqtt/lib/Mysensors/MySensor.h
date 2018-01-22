@@ -206,13 +206,13 @@ class MySensor {
       return  split_count;
     }
 
-    static void _mqtt_callback_wrapper(char* topic, byte* payload, uint16_t length) {
+    static void _mqtt_callback_wrapper(char* topic, uint8_t* payload, uint16_t length) {
       // use global variable to access member function by casting it first
       // http://www.newty.de/fpt/callback.html#static
       ((MySensor*)mqtt_cb_obj)->_mqtt_callback(topic, payload, length);
     }
 
-    void _mqtt_callback(char* topic, byte* payload, uint16_t length) {
+    void _mqtt_callback(char* topic, uint8_t* payload, uint16_t length) {
       _split_message(topic, "/");
       uint8_t node_id = atoi(mqtt_split_buff[1]);
       uint8_t child_id = atoi(mqtt_split_buff[2]);

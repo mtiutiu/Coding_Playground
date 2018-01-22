@@ -1,7 +1,12 @@
 //#define DEBUG
 
 #ifdef DEBUG
-#define SERIAL_DEBUG_BAUDRATE 115200
+  #ifndef DEBUG_OUTPUT
+    #define DEBUG_OUTPUT Serial
+  #endif
+  #ifndef SERIAL_DEBUG_BAUDRATE
+    #define SERIAL_DEBUG_BAUDRATE 115200
+  #endif
 #endif
 
 #define STRINGIFY(a) str(a)
@@ -20,9 +25,13 @@
 ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
+#ifndef AP_SSID
 #define AP_SSID "ESP_NODE"
+#endif
+#ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
-#define CFG_PORTAL_TIMEOUT_S 60UL
+#endif
+#define CFG_PORTAL_TIMEOUT_S 180UL  // 3 minutes timeout for configuration portal
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -51,7 +60,7 @@ typedef void (*cb)(CfgData& cfgData);
 bool configurationUpdated = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
-// ------------------------ MySensors-------------------------------------------
+// ------------------------ MySensors ------------------------------------------
 #include <MTypes.h>
 #include <MySensor.h>
 #include <MySensorsEEPROM.h>
@@ -97,13 +106,16 @@ Ticker noTransportLedTicker;
 
 // --------------------- ERASE CONFIG BUTTON -----------------------------------
 //#define ERASE_CFG_BTN_INVERSE_LOGIC
-const uint8_t ERASE_CONFIG_BTN_PIN = D2;
+#ifndef ERASE_CONFIG_BTN_PIN
+#define ERASE_CONFIG_BTN_PIN  D1
+#endif
 // -----------------------------------------------------------------------------
 
+// MySensors compatibility
 uint8_t loadState(uint8_t index) {
   return MySensorsEEPROM::hwReadConfig(index);
 }
-
+// MySensors compatibility
 void saveState(uint8_t index, uint8_t value) {
   MySensorsEEPROM::hwWriteConfig(index, value);
 }
@@ -134,50 +146,25 @@ CfgData& loadConfig(const char *cfgFilePath) {
         StaticJsonBuffer<512> jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(buf.get());
       #ifdef DEBUG
-        json.printTo(Serial);
-        Serial.println();
+        json.printTo(DEBUG_OUTPUT);
+        DEBUG_OUTPUT.println();
       #endif
 
-        strncpy(
-          data.mqtt_server,
-          json["mqtt_server"],
-          MQTT_SERVER_FIELD_MAX_LEN
-        );
-        strncpy(
-          data.mqtt_user,
-          json["mqtt_user"],
-          MQTT_USER_FIELD_MAX_LEN
-        );
-        strncpy(
-          data.mqtt_passwd,
-          json["mqtt_passwd"],
-          MQTT_PASS_FIELD_MAX_LEN
-        );
-        strncpy(
-          data.mqtt_port,
-          json["mqtt_port"],
-          MQTT_PORT_FIELD_MAX_LEN
-        );
-        strncpy(
-          data.mqtt_in_topic_prefix,
-          json["mqtt_in_topic_prefix"],
+        strncpy(data.mqtt_server, json["mqtt_server"], MQTT_SERVER_FIELD_MAX_LEN);
+        strncpy(data.mqtt_user, json["mqtt_user"], MQTT_USER_FIELD_MAX_LEN);
+        strncpy(data.mqtt_passwd, json["mqtt_passwd"], MQTT_PASS_FIELD_MAX_LEN);
+        strncpy(data.mqtt_port, json["mqtt_port"], MQTT_PORT_FIELD_MAX_LEN);
+        strncpy(data.mqtt_in_topic_prefix, json["mqtt_in_topic_prefix"],
           MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
         );
-        strncpy(
-          data.mqtt_out_topic_prefix,
-          json["mqtt_out_topic_prefix"],
+        strncpy(data.mqtt_out_topic_prefix, json["mqtt_out_topic_prefix"],
           MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
         );
-        strncpy(
-          data.mys_node_id,
-          json["mys_node_id"],
-          MYS_NODE_ID_FIELD_MAX_LEN
-        );
-        strncpy(
-          data.mys_node_alias,
-          json["mys_node_alias"],
+        strncpy(data.mys_node_id, json["mys_node_id"], MYS_NODE_ID_FIELD_MAX_LEN);
+        strncpy(data.mys_node_alias, json["mys_node_alias"],
           MYS_NODE_ALIAS_FIELD_MAX_LEN
         );
+
       } else {
       // config file couldn't be opened
       #ifdef DEBUG
@@ -247,7 +234,7 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
 }
 
 void onWiFiConfigPostHook(CfgData& cfgData) {
-  // perform post wifi config actions
+  // reinit things here if needed after portal closes and new settings were saved
 }
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
@@ -323,11 +310,11 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
   wifiManager.addParameter(&custom_mys_node_alias);
 
   if (forciblyStart) {
-  #ifdef DEBUG
+#ifdef DEBUG
     DEBUG_OUTPUT.println(
       "Resetting settings and forcing WiFi config portal to start ..."
     );
-  #endif
+#endif
     wifiManager.resetSettings();
   }
 
@@ -339,11 +326,11 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
 #endif
   wifiManager.setTimeout(CFG_PORTAL_TIMEOUT_S);
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
-  #ifdef DEBUG
+#ifdef DEBUG
     DEBUG_OUTPUT.println(
       "Failed to connect and configuration portal timeout was reached, rebooting ..."
     );
-  #endif
+#endif
     // fail to connect
     delay(1000);
     // reset and try again, or maybe put it to deep sleep
@@ -351,9 +338,9 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
   }
 
   if (configurationUpdated) {
-  #ifdef DEBUG
+#ifdef DEBUG
     DEBUG_OUTPUT.println("Configuration changed need to save it!");
-  #endif
+#endif
 
     strncpy(
       cfgData.mqtt_server,
@@ -363,8 +350,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
     strncpy(
       cfgData.mqtt_user,
       custom_mqtt_server_user.getValue(),
-      MQTT_USER_FIELD_MAX_LEN
-    );
+      MQTT_USER_FIELD_MAX_LEN);
     strncpy(
       cfgData.mqtt_passwd,
       custom_mqtt_server_passwd.getValue(),
@@ -446,7 +432,11 @@ void checkTransportConnection() {
 }
 
 void sendBatteryLevel() {
-  uint8_t vccPercent = round((ESP.getVcc() * 100) / VDD_VOLTAGE_MV);
+  uint8_t vccPercent = constrain(
+    round((ESP.getVcc() * 100.0) / VDD_VOLTAGE_MV),
+    0,
+    100
+  );
 #ifdef DEBUG
   DEBUG_OUTPUT.printf("Sending system voltage level: %d%%\r\n", vccPercent);
 #endif
@@ -476,25 +466,26 @@ void sendReports() {
 void portsConfig() {
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
-#ifdef ERASE_CFG_BTN_INVERSE_LOGIC
+  #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
     INPUT
-#else
+  #else
     INPUT_PULLUP
-#endif
+  #endif
   );
 
   digitalWrite(LED_SIGNAL_PIN,
-#ifdef INVERSE_LED_LOGIC
+  #ifdef INVERSE_LED_LOGIC
     HIGH
-#else
+  #else
     LOW
-#endif
+  #endif
   );
 }
 
 void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
   // enabling this before WiFiManager in order to have visual feedback ASAP
+  noTransportLedTicker.detach();
   noTransportLedTicker.attach(
     NOT_CONNECTED_SIGNALING_INTERVAL_S,
     checkTransportConnection
@@ -518,11 +509,11 @@ void nodeConfig(CfgData& cfgData) {
   // get reset cause first
   bool isExternalReset = (ESP.getResetInfoPtr()->reason == REASON_EXT_SYS_RST);
   startWiFiConfig(cfgData,
-#ifdef ERASE_CFG_BTN_INVERSE_LOGIC
+  #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
     isExternalReset && digitalRead(ERASE_CONFIG_BTN_PIN),
-#else
+  #else
     isExternalReset && !digitalRead(ERASE_CONFIG_BTN_PIN),
-#endif
+  #endif
     onWiFiConfigPostHook
   );
 }
@@ -545,14 +536,17 @@ void mySensorsInit(CfgData& cfgData) {
 }
 
 void reportersInit() {
+  batteryLevelReportTicker.detach();
   batteryLevelReportTicker.attach(
     BATTER_LVL_REPORT_INTERVAL_S,
     sendBatteryLevel
   );
+  signalLevelReportTicker.detach();
   signalLevelReportTicker.attach(
     RSSI_LVL_REPORT_INTERVAL_S,
     sendRSSILevel
   );
+  sensorStateReportTicker.detach();
   sensorStateReportTicker.attach(
     SENSOR_STATE_REPORT_INTERVAL_S,
     sendSensorState
