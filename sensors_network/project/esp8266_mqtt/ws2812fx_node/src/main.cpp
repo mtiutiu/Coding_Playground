@@ -173,7 +173,7 @@ Ticker noTransportLedTicker;
 const uint8_t LED_STRIP_CTRL_BTN = ERASE_CONFIG_BTN_PIN;
 const float LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S = 0.1; // 100 ms
 
-Ticker ledStripCtrlBtn;
+Ticker ledStripCtrlBtnCheckTicker;
 // -----------------------------------------------------------------------------
 
 // ----------------------------- OTA -------------------------------------------
@@ -805,7 +805,7 @@ void portsConfig() {
   #endif
   );
 
-  ledStripCtrlBtn.attach(
+  ledStripCtrlBtnCheckTicker.attach(
     LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S,
     checkLedStripBtn
   );
@@ -882,6 +882,17 @@ void reportersInit() {
   );
 }
 
+void disableReporters() {
+  batteryLevelReportTicker.detach();
+  signalLevelReportTicker.detach();
+  sensorStateReportTicker.detach();
+}
+
+void disableLedStripControlTickers() {
+  ledStripUpdateTicker.detach();
+  ledStripCtrlBtnCheckTicker.detach();
+}
+
 void otaInit() {
   ArduinoOTA.setPort(OTA_PORT);
   ArduinoOTA.setHostname(HOSTNAME);
@@ -900,6 +911,8 @@ void otaInit() {
     //   SPIFFS.end();
     // }
     otaInProgress = true;
+    disableReporters();
+    disableLedStripControlTickers();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG
@@ -922,7 +935,7 @@ void otaInit() {
     else if (error == OTA_RECEIVE_ERROR) DEBUG_OUTPUT.println("Receive Failed");
     else if (error == OTA_END_ERROR) DEBUG_OUTPUT.println("End Failed");
   #endif
-    otaInProgress = false;
+    ESP.restart();
   });
 
   ArduinoOTA.begin();

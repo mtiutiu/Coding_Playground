@@ -568,6 +568,12 @@ void reportersInit() {
   );
 }
 
+void disableReporters() {
+  batteryLevelReportTicker.detach();
+  signalLevelReportTicker.detach();
+  sensorStateReportTicker.detach();
+}
+
 void otaInit() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPort(OTA_PORT);
@@ -585,6 +591,7 @@ void otaInit() {
     //   SPIFFS.end();
     // }
     otaInProgress = true;
+    disableReporters();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG
@@ -607,7 +614,7 @@ void otaInit() {
     else if (error == OTA_RECEIVE_ERROR) DEBUG_OUTPUT.println("Receive Failed");
     else if (error == OTA_END_ERROR) DEBUG_OUTPUT.println("End Failed");
   #endif
-    otaInProgress = false;
+    ESP.restart();
   });
 
   ArduinoOTA.begin();
