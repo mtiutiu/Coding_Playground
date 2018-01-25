@@ -1,5 +1,5 @@
 {
-	"mqtt_server":"192.168.1.101",
+	"mqtt_server":"192.168.1.123",
 	"mqtt_user":"",
 	"mqtt_passwd":"",
 	"mqtt_port":"1883",
