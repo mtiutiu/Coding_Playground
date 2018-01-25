@@ -18,6 +18,9 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
 
@@ -26,12 +29,14 @@ ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
 #ifndef AP_SSID
-#define AP_SSID "ESP_NODE"
+#define AP_SSID "WS2812FXController"
 #endif
 #ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
 #endif
+#ifndef CFG_PORTAL_TIMEOUT_S
 #define CFG_PORTAL_TIMEOUT_S 180UL  // 3 minutes timeout for configuration portal
+#endif
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -60,7 +65,7 @@ typedef void (*cb)(CfgData& cfgData);
 bool configurationUpdated = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
-// ------------------------ MySensors ------------------------------------------
+// ------------------------ MySensors-------------------------------------------
 #include <MTypes.h>
 #include <MySensor.h>
 #include <MySensorsEEPROM.h>
@@ -111,11 +116,20 @@ Ticker noTransportLedTicker;
 #endif
 // -----------------------------------------------------------------------------
 
-// MySensors compatibility
+// ----------------------------- OTA -------------------------------------------
+#ifndef HOSTNAME
+#define HOSTNAME  AP_SSID
+#endif
+#ifndef OTA_PORT
+#define OTA_PORT 8266
+#endif
+static bool otaInProgress = false;
+// -----------------------------------------------------------------------------
+
 uint8_t loadState(uint8_t index) {
   return MySensorsEEPROM::hwReadConfig(index);
 }
-// MySensors compatibility
+
 void saveState(uint8_t index, uint8_t value) {
   MySensorsEEPROM::hwWriteConfig(index, value);
 }
@@ -139,12 +153,12 @@ CfgData& loadConfig(const char *cfgFilePath) {
 
         size_t size = configFile.size();
         // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-        configFile.readBytes(buf.get(), size);
+        char buf[size];
+        configFile.readBytes(buf, size);
         configFile.close();
 
         StaticJsonBuffer<512> jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf.get());
+        JsonObject &json = jsonBuffer.parseObject(buf);
       #ifdef DEBUG
         json.printTo(DEBUG_OUTPUT);
         DEBUG_OUTPUT.println();
@@ -164,7 +178,6 @@ CfgData& loadConfig(const char *cfgFilePath) {
         strncpy(data.mys_node_alias, json["mys_node_alias"],
           MYS_NODE_ALIAS_FIELD_MAX_LEN
         );
-
       } else {
       // config file couldn't be opened
       #ifdef DEBUG
@@ -234,62 +247,63 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
 }
 
 void onWiFiConfigPostHook(CfgData& cfgData) {
-  // reinit things here if needed after portal closes and new settings were saved
+  // receive new configuration data here after saving and portal closes
+  // reinit things here if needed
 }
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
                       cb wifiPostConfigCallback = NULL) {
   // custom parameters
-  WiFiManagerParameter mqtt_header_text("<br/><b>MQTT</b>");
+  WiFiManagerParameter mqtt_header_text("<br/><b>MQTT</b><br/><br/>");
   WiFiManagerParameter custom_mqtt_server(
-    "server",
-    "mqtt server",
+    "broker",
+    "Broker",
     cfgData.mqtt_server,
     MQTT_SERVER_FIELD_MAX_LEN
   );
   WiFiManagerParameter custom_mqtt_server_user(
     "user",
-    "mqtt user",
+    "User",
     cfgData.mqtt_user,
     MQTT_USER_FIELD_MAX_LEN
   );
   WiFiManagerParameter custom_mqtt_server_passwd(
-    "passwd",
-    "mqtt passwd",
+    "password",
+    "Password",
     cfgData.mqtt_passwd,
     MQTT_PASS_FIELD_MAX_LEN
   );
   WiFiManagerParameter custom_mqtt_port(
     "port",
-    "mqtt port",
+    "Port",
     cfgData.mqtt_port,
     MQTT_PORT_FIELD_MAX_LEN,
     "min=\"1\" max=\"65535\""
   );
   WiFiManagerParameter custom_mqtt_in_topic_prefix(
     "in_topic_prefix",
-    "mqtt in topic prefix",
+    "IN Topic Prefix",
     cfgData.mqtt_in_topic_prefix,
     MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
   );
   WiFiManagerParameter custom_mqtt_out_topic_prefix(
     "out_topic_prefix",
-    "mqtt out topic prefix",
+    "OUT Topic Prefix",
     cfgData.mqtt_out_topic_prefix,
     MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
   );
 
-  WiFiManagerParameter mys_header_text("<br/><br/><b>MySensors</b>");
+  WiFiManagerParameter mys_header_text("<br/><br/><b>MySensors</b><br/><br/>");
   WiFiManagerParameter custom_mys_node_id(
     "node_id",
-    "node id",
+    "ID",
     cfgData.mys_node_id,
     MYS_NODE_ID_FIELD_MAX_LEN,
     "min=\"1\" max=\"254\""
   );
   WiFiManagerParameter custom_mys_node_alias(
     "node_alias",
-    "node alias",
+    "Alias",
     cfgData.mys_node_alias,
     MYS_NODE_ALIAS_FIELD_MAX_LEN
   );
@@ -404,6 +418,7 @@ void onMessage(MySensorMsg &message) {
         message.payload
       );
     #endif
+
     }
   }
 
@@ -553,6 +568,51 @@ void reportersInit() {
   );
 }
 
+void otaInit() {
+  ArduinoOTA.setHostname(HOSTNAME);
+  ArduinoOTA.setPort(OTA_PORT);
+
+  ArduinoOTA.onStart([]() {
+    // if (ArduinoOTA.getCommand() == U_FLASH) {
+    // #ifdef DEBUG
+    //   DEBUG_OUTPUT.println("Start updating flash ...")
+    // #endif
+    // } else {
+    // #ifdef DEBUG
+    //   DEBUG_OUTPUT.println("Start updating filesystem (SPIFFS) ...")
+    // #endif
+    //   // Unmount SPIFFS using SPIFFS.end() first
+    //   SPIFFS.end();
+    // }
+    otaInProgress = true;
+  });
+  ArduinoOTA.onEnd([]() {
+  #ifdef DEBUG
+    DEBUG_OUTPUT.println("\nOTA finised.");
+  #endif
+    otaInProgress = false;
+  });
+  ArduinoOTA.onProgress([](uint16_t progress, uint16_t total) {
+  #ifdef DEBUG
+    DEBUG_OUTPUT.printf("Progress: %u%%\r", (progress / (total / 100)));
+  #endif
+    otaInProgress = true;
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+  #ifdef DEBUG
+    DEBUG_OUTPUT.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) DEBUG_OUTPUT.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) DEBUG_OUTPUT.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) DEBUG_OUTPUT.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) DEBUG_OUTPUT.println("Receive Failed");
+    else if (error == OTA_END_ERROR) DEBUG_OUTPUT.println("End Failed");
+  #endif
+    otaInProgress = false;
+  });
+
+  ArduinoOTA.begin();
+}
+
 void setup() {
 #ifdef DEBUG
   DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
@@ -566,6 +626,7 @@ void setup() {
   nodeConfig(cfgData);
   mySensorsInit(cfgData);
   reportersInit();
+  otaInit();
 
   // send initial reports on node startup
   if (mysNode.connected()) {
@@ -574,16 +635,20 @@ void setup() {
 }
 
 void loop() {
-  mysNode.loop();
+  ArduinoOTA.handle();
 
-  static bool needToSendReports = false;
-  if (!mysNode.connected()) {
-    needToSendReports = true;
-  }
+  if(!otaInProgress) {
+    mysNode.loop();
 
-  if (mysNode.connected() && needToSendReports) {
-    // send reports on node reconnection
-    sendReports();
-    needToSendReports = false;
+    static bool needToSendReports = false;
+    if (!mysNode.connected()) {
+      needToSendReports = true;
+    }
+
+    if (mysNode.connected() && needToSendReports) {
+      // send reports on node reconnection
+      sendReports();
+      needToSendReports = false;
+    }
   }
 }
