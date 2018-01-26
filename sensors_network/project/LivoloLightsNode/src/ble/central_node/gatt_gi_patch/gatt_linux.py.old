@@ -125,7 +125,6 @@ class DeviceManager:
         """
         Returns all known Bluetooth devices.
         """
-        self.update_devices()
         return self._devices.values()
 
     def start_discovery(self, service_uuids=[]):
@@ -213,24 +212,6 @@ class DeviceManager:
         # TODO: Implement
         pass
 
-    def remove_all_devices(self, skip_alias=None):
-        self.update_devices()
-
-        keys_to_be_deleted = []
-        for key, device in self._devices.items():
-            if skip_alias and device.alias() == skip_alias:
-                continue
-            mac_address = device.mac_address.replace(':', '_').upper()
-            path = '/org/bluez/%s/dev_%s' % (self.adapter_name, mac_address)
-            self._adapter.RemoveDevice('(o)', path)
-            keys_to_be_deleted.append(key)
-
-        for key in keys_to_be_deleted:
-            del self._devices[key]
-
-        self.update_devices()
-
-
 
 class Device:
     def __init__(self, mac_address, manager, managed=True):
@@ -304,16 +285,16 @@ class Device:
                 self.services_resolved()
 
         except GLib.GError as e:
-            if (Gio.DBusError.get_remote_error(e) == 'org.freedesktop.DBus.Error.UnknownObject'):
+            if (e.get_remote_error() == 'org.freedesktop.DBus.Error.UnknownObject'):
                 self.connect_failed(errors.Failed("Device does not exist, check adapter name and MAC address."))
-            elif ((Gio.DBusError.get_remote_error(e) == 'org.bluez.Error.Failed') and
+            elif ((e.get_remote_error() == 'org.bluez.Error.Failed') and
                   (e.message.endswith("Operation already in progress"))):
                 pass
             elif ((self._connect_retry_attempt < 5) and
-                  (Gio.DBusError.get_remote_error(e) == 'org.bluez.Error.Failed') and
+                  (e.get_remote_error() == 'org.bluez.Error.Failed') and
                   (e.message.endswith("Software caused connection abort"))):
                 self._connect()
-            elif (Gio.DBusError.get_remote_error(e) == 'org.freedesktop.DBus.Error.NoReply'):
+            elif (e.get_remote_error() == 'org.freedesktop.DBus.Error.NoReply'):
                 # TODO: How to handle properly?
                 # Reproducable when we repeatedly shut off Nuimo immediately after its flashing Bluetooth icon appears
                 self.connect_failed(_error_from_dbus_error(e))
@@ -388,7 +369,7 @@ class Device:
         try:
             return self._properties.Get('(ss)', 'org.bluez.Device1', 'Alias')
         except GLib.GError as e:
-            if Gio.DBusError.get_remote_error(e) == 'org.freedesktop.DBus.Error.UnknownObject':
+            if e.get_remote_error() == 'org.freedesktop.DBus.Error.UnknownObject':
                 # BlueZ sometimes doesn't provide an alias, we then simply return `None`.
                 # Might occur when device was deleted as the following issue points out:
                 # https://github.com/blueman-project/blueman/issues/460
@@ -630,13 +611,18 @@ class Characteristic:
         except GLib.GError as e:
             self._enable_notifications_failed(gerror=e)
 
-    def _enable_notifications_succeeded(self, proxy, result, user_data):
+    # getting this kind of exception for this method about arguments mismatch(that's why the a,b,c)
+    # Traceback (most recent call last):
+    #   File "/usr/lib/python3/dist-packages/gi/overrides/Gio.py", line 143, in __async_result_handler
+    #     result_callback(obj, self._unpack_result(ret), real_user_data)
+    # TypeError: _enable_notifications_succeeded() takes 1 positional argument but 4 were given
+    def _enable_notifications_succeeded(self, a, b, c):
         """
         Called when notification enabling has succeeded.
         """
         self.service.device.characteristic_enable_notifications_succeeded(characteristic=self)
 
-    def _enable_notifications_failed(self, proxy, gerror, user_data):
+    def _enable_notifications_failed(self, gerror):
         """
         Called when notification enabling has failed.
         """
