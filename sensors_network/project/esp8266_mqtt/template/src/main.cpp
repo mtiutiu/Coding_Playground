@@ -249,6 +249,7 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
 void onWiFiConfigPostHook(CfgData& cfgData) {
   // receive new configuration data here after saving and portal closes
   // reinit things here if needed
+  ESP.restart(); // better restart the module to make sure it reconnects
 }
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
@@ -577,19 +578,20 @@ void disableReporters() {
 void otaInit() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setRebootOnSuccess(true);
 
   ArduinoOTA.onStart([]() {
-    // if (ArduinoOTA.getCommand() == U_FLASH) {
-    // #ifdef DEBUG
-    //   DEBUG_OUTPUT.println("Start updating flash ...")
-    // #endif
-    // } else {
-    // #ifdef DEBUG
-    //   DEBUG_OUTPUT.println("Start updating filesystem (SPIFFS) ...")
-    // #endif
-    //   // Unmount SPIFFS using SPIFFS.end() first
-    //   SPIFFS.end();
-    // }
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+    #ifdef DEBUG
+      DEBUG_OUTPUT.println("Start updating flash ...");
+    #endif
+    } else {
+    #ifdef DEBUG
+      DEBUG_OUTPUT.println("Start updating filesystem (SPIFFS) ...");
+    #endif
+      // Unmount SPIFFS using SPIFFS.end() first
+      SPIFFS.end();
+    }
     otaInProgress = true;
     disableReporters();
   });
