@@ -1,85 +1,62 @@
-//#pragma GCC optimize ("-O2")
-
 #include <Arduino.h>
 
-// -------------------------------- NODE CUSTOM FEATURES ----------------------------
+// -------------------------------- NODE CONFIGURABLE FEATURES ----------------------------
+
+// Select number of channels(buttons)
 //#define LIVOLO_ONE_CHANNEL
-#define LIVOLO_TWO_CHANNEL
-// ----------------------------------------------------------------------------------
+//#define LIVOLO_TWO_CHANNEL
 
-// ----------------------------------------- MYSENSORS SECTION ---------------------------------------
-#define MY_REPEATER_FEATURE
-
-// NRF24 radio
-//#define MY_RADIO_RF24
-
-//NRF51822 radio
-#define MY_RADIO_NRF5_ESB
-
-// RFM69 radio
-//#define MY_RADIO_RFM69
-
-#ifdef MY_RADIO_RFM69
-#define MY_RFM69_NEW_DRIVER
-#define MY_RFM69_FREQUENCY RFM69_868MHZ
+// Is this switch having touch sensor(s) on it?
+#ifndef HAS_TOUCH_SENSING
+#define HAS_TOUCH_SENSING
 #endif
 
-#ifdef MY_RADIO_RF24
-#define MY_RF24_CE_PIN    9
-#define MY_RF24_CS_PIN    10
-#define MY_RF24_DATARATE  RF24_2MBPS
-#define MY_RF24_PA_LEVEL  RF24_PA_MAX
+// Is this switch using a MTCH102/105 touch controller IC ?
+#ifndef HAS_MTCH_TOUCH_SENSOR
+#define HAS_MTCH_TOUCH_SENSOR
 #endif
 
-#ifdef MY_RADIO_NRF5_ESB
-#define MY_NRF5_ESB_PA_LEVEL NRF5_PA_HIGH
-#define MY_NRF5_ESB_MODE NRF5_2MBPS
+// Is the touch controller outputing a logic LOW level or HIGH when channel(s) touched ?
+//#define TOUCH_SENSOR_INVERSE_LOGIC
+
+// Is this switch using LEDs for signaling when the corresponding button is touched?
+#ifndef HAS_LED_SIGNALING
+#define HAS_LED_SIGNALING
 #endif
+// -----------------------------------------------------------------------------------------
 
-#define MY_NODE_ID 100  // this needs to be set explicitly
 
-#define MY_PARENT_NODE_ID 0
-#define MY_PARENT_NODE_IS_STATIC
-#define MY_TRANSPORT_UPLINK_CHECK_DISABLED  // this node needs to be functional without mysensors network/gw too
-//#define MY_TRANSPORT_DONT_CARE_MODE // this node needs to be functional without mysensors network/gw to
-#define MY_TRANSPORT_RELAX // for future mysensors core upgrades(replaces MY_TRANSPORT_DONT_CARE_MODE)
-#define MY_TRANSPORT_WAIT_READY_MS  3000
-
-//#define MY_OTA_FIRMWARE_FEATURE
-
-#define MY_DISABLED_SERIAL
-
-#define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
-
-#include <MySensors.h>
-// --------------------------------------------------------------------------------------------------------------
+// ----------------- DON'T TOUCH WHAT COMES NEXT ONLY IF YOU KNOW WHAT YOU'RE DOING ------------
 
 // ---------------------------------------- TOUCH SENSORS CONFIGURATION ------------------------
-#ifdef MY_RADIO_NRF5_ESB
-#define MTCH_TOUCH_SENSOR
+#if defined (LIVOLO_ONE_CHANNEL)
+const uint8_t TOUCH_SENSORS_COUNT = 1;
+#elif defined (LIVOLO_TWO_CHANNEL)
+const uint8_t TOUCH_SENSORS_COUNT = 2;
+#else
+#error "Unknown Livolo switch type!"
 #endif
-//#define TOUCH_SENSOR_INVERSE_LOGIC
 
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 200;
-
-const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
-const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
+const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 600;
+const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 88; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
-#ifdef MY_RADIO_NRF5_ESB
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {8};
-#else
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3};
-#endif
+const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 29;
+const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 27;
 #elif defined (LIVOLO_TWO_CHANNEL)
-#ifdef MY_RADIO_NRF5_ESB
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {8, 9};
+const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
+const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
 #else
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3, A1};
+#error "Unknown Livolo switch type!"
 #endif
+
+#if defined (LIVOLO_ONE_CHANNEL)
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {28};
+#elif defined (LIVOLO_TWO_CHANNEL)
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8, 9};
 #else
 #error "Unknown Livolo switch type!"
 #endif
@@ -87,18 +64,17 @@ const uint8_t TOUCH_SENSOR_CHANNEL_PINS[] = {3, A1};
 
 // ----------------------- LIGHTS SECTION ----------------------
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t NODE_SENSORS_COUNT = 1;
+const uint8_t RELAY_COUNT = 1;
+const uint8_t LED_COUNT = 1;
 #elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t NODE_SENSORS_COUNT = 2;
+const uint8_t RELAY_COUNT = 2;
+const uint8_t LED_COUNT = 2;
 #else
 #error "Unknown Livolo switch type!"
 #endif
 
-const uint32_t LIGHTS_STATE_SEND_INTERVAL_MS = 180000; //3min status updates
-
-const uint8_t SENSOR_DATA_SEND_RETRIES = 6;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS = 1;
-const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 20;
+#define CHANNEL_1  0
+#define CHANNEL_2  1
 
 #define OFF 0
 #define ON  1
@@ -107,357 +83,251 @@ const uint32_t SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS = 20;
 
 const uint8_t RELAY_CH_PINS[][2] = {
 #if defined (LIVOLO_ONE_CHANNEL)
-  #ifdef MY_RADIO_NRF5_ESB
-  {26, 27} // channel 1 relay control pins(bistable relay - 2 coils)
-  #else
-  {A4, A5} // channel 1 relay control pins(bistable relay - 2 coils)
-  #endif
+  {17, 19} // channel 1 relay control pins(bistable relay - 2 coils)
 #elif defined (LIVOLO_TWO_CHANNEL)
-  #ifdef MY_RADIO_NRF5_ESB
   {28, 29}, // channel 1 relay control pins(bistable relay - 2 coils)
   {26, 27} // channel 2 relay control pins(bistable relay - 2 coils)
-  #else
-  {A4, A5}, // channel 1 relay control pins(bistable relay - 2 coils)
-  {0, 1} // channel 2 relay control pins(bistable relay - 2 coils)
-  #endif
 #else
-  #error "Unknown Livolo switch type!"
+#error "Unknown Livolo switch type!"
 #endif
 };
 
 const uint32_t RELAY_PULSE_DELAY_MS = 50;
 
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY};
-uint8_t channelState[] = {OFF};
-#ifdef MY_RADIO_NRF5_ESB
-const uint8_t LIGHT_STATE_LED_PINS[] = {18};
-#else
-const uint8_t LIGHT_STATE_LED_PINS[] = {4};
-#endif
+uint8_t channelState[RELAY_COUNT] = {OFF};
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {8};
 #elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t ATTACHED_SENSOR_TYPES[] = {S_BINARY, S_BINARY};
-uint8_t channelState[] = {OFF, OFF};
-#ifdef MY_RADIO_NRF5_ESB
-const uint8_t LIGHT_STATE_LED_PINS[] = {18, 19};
-#else
-const uint8_t LIGHT_STATE_LED_PINS[] = {4, A0};
-#endif
+uint8_t channelState[RELAY_COUNT] = {OFF, OFF};
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #else
 #error "Unknown Livolo switch type!"
 #endif
 
-#define TURN_RED_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], LOW)
-#define TURN_BLUE_LED_ON(channel) hwDigitalWrite(LIGHT_STATE_LED_PINS[channel], HIGH)
-// ------------------------------------------------------------------------------
+#define TURN_RED_LED_ON(channel) digitalWrite(LIGHT_STATE_LED_PINS[channel], LOW)
+#define TURN_BLUE_LED_ON(channel) digitalWrite(LIGHT_STATE_LED_PINS[channel], HIGH)
 
-// --------------------------------------- NODE ALIVE CONFIG ------------------------------------------
-//const uint32_t HEARTBEAT_SEND_INTERVAL_MS = 60000;  // 60s interval
-// -------------------------------------------------------------------------------------------------------------
+// --------------------------------------- BLE ----------------------------------------------------
+#include <SPI.h>
+#include <BLEPeripheral.h>
 
-// --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
-//const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000; // 10 min
-// -----------------------------------------------------------------------------------------------------------
+#define MANUFACTURER_DATA (const unsigned char*)"Livolo"
+#define MANUFACTURER_DATA_LEN 6
+#define DEVICE_LOCAL_NAME "Livolo"
+#define DEVICE_NAME "Livolo"
 
-// ------------------------------------------ SUPPLY VOLTAGE STATUS SECTION ---------------------------------
-const uint32_t POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS = 300000;  // 5min(5 * 60 * 1000)
-const uint16_t SUPPY_VOLTAGE_MV = 3000;
-// -----------------------------------------------------------------------------------------------------------
+//#define LIVOLO_BLE_CENTRAL_ADDR "b8:27:eb:cc:de:b2" // raspberry pi zero
+#define LIVOLO_BLE_CENTRAL_ADDR "00:1a:7d:da:71:13" // orange pi zero bta-403
 
-// --------------------------------- EEPROM CUSTOM CONFIG DATA SECTION ----------------------
-// eeprom start address index for our custom data saving
-// mysensors api uses eeprom addresses including 512 so we pick 514 for safety
-uint16_t EEPROM_CUSTOM_START_INDEX = 514;
-uint16_t EEPROM_CUSTOM_METADATA_INDEX = (EEPROM_CUSTOM_START_INDEX + 1);
-// flag for checking if eeprom was read/written for the first time or not
-const uint8_t EEPROM_FIRST_WRITE_MARK = '#';
-#define MAX_NODE_PAYLOAD_LENGTH 25
-// storing the string terminating character also
-#define MAX_NODE_METADATA_LENGTH (MAX_NODE_PAYLOAD_LENGTH + 1)
-#define DEFAULT_NODE_METADATA "Unknown:Unknown:Unknown"
+#define LIVOLO_BLE_SERVICE_UUID  "ccc0"
 
-char nodeInfo[NODE_SENSORS_COUNT + 1][MAX_NODE_METADATA_LENGTH];
-// -------------------------------------------------------------------------------------------------------------
+#define LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID "bbb0" // channel 1 read/write
 
-bool isFirstEepromRWAccess(uint16_t index, uint8_t mark) {
-  return (hwReadConfig(index) != mark);
-}
+#if defined (LIVOLO_TWO_CHANNEL)
+#define LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID "bbb1" // channel 2 read/write
+#endif
 
-void parseNodeMetadata(char *metadata, char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-  if (!metadata || !nodeInfo) {
-    return;
-  }
+#define BLE_TX_POWER  4 // 4dBm
 
-  for (uint8_t i = 0; i < maxFields; i++) {
-    if (i == 0) {
-      strncpy(nodeInfo[i], strtok(metadata, ":"), MAX_NODE_METADATA_LENGTH);
-      continue;
-    }
-    strncpy(nodeInfo[i], strtok(NULL, ":"), MAX_NODE_METADATA_LENGTH);
-  }
-}
 
-void loadNodeDefaultMetadata(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-  char metadata[MAX_NODE_METADATA_LENGTH];
-  memset(metadata, '\0', MAX_NODE_METADATA_LENGTH);
-  strncpy_P(metadata, PSTR(DEFAULT_NODE_METADATA), MAX_NODE_METADATA_LENGTH);
+BLEPeripheral blePeripheral = BLEPeripheral();
+BLEService livoloService = BLEService(LIVOLO_BLE_SERVICE_UUID);
 
-  parseNodeMetadata(metadata, nodeInfo, maxFields);
-}
+BLEUnsignedCharCharacteristic livoloSwitchOneCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_ONE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 
-void loadNodeEepromRawMetadata(char *destBuffer, uint8_t len) {
-  memset(destBuffer, '\0', len);
-  hwReadConfigBlock(destBuffer, &EEPROM_CUSTOM_METADATA_INDEX, len);
-}
-
-void loadNodeEepromMetadataFields(char nodeInfo[][MAX_NODE_METADATA_LENGTH], uint8_t maxFields) {
-  memset(nodeInfo, '\0', ((NODE_SENSORS_COUNT + 1) * MAX_NODE_METADATA_LENGTH));
-
-  if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX,
-    EEPROM_FIRST_WRITE_MARK) ||
-    !nodeInfo) {
-      loadNodeDefaultMetadata(nodeInfo, maxFields);
-      return;
-    }
-
-    char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-    loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
-
-    parseNodeMetadata(rawNodeMetadata, nodeInfo, maxFields);
-  }
-
-void saveNodeEepromMetadata(char *metadata) {
-  if (metadata) {
-    if (isFirstEepromRWAccess(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK)) {
-      hwWriteConfig(EEPROM_CUSTOM_START_INDEX, EEPROM_FIRST_WRITE_MARK);
-    }
-
-    hwWriteConfigBlock(metadata, &EEPROM_CUSTOM_METADATA_INDEX, MAX_NODE_METADATA_LENGTH);
-  }
-}
-
-uint8_t getSupplyVoltagePercentage() {
-  return constrain(((hwCPUVoltage() * 100) / SUPPY_VOLTAGE_MV), 0, 100);
-}
-
-void presentNodeMetadata() {
-  // load node metadata based on attached sensors count + the node name
-  loadNodeEepromMetadataFields(nodeInfo, (NODE_SENSORS_COUNT + 1));
-
-  sendSketchInfo(nodeInfo[0], MY_SENSOR_NODE_SKETCH_VERSION);
-      // don't send next data too fast
-
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    present(i + 1, ATTACHED_SENSOR_TYPES[i], nodeInfo[i + 1]);
-    // don't send next data too fast
-  }
-}
-
-void sendData(uint8_t sensorId, uint8_t sensorData, uint8_t dataType) {
-    MyMessage sensorDataMsg(sensorId, dataType);
-
-    for (uint8_t retries = 0; !send(sensorDataMsg.set(sensorData), false) &&
-         (retries < SENSOR_DATA_SEND_RETRIES); ++retries) {
-        // random sleep interval between retries for collisions
-        hwSleep(random(SENSOR_DATA_SEND_RETRIES_MIN_INTERVAL_MS,
-            SENSOR_DATA_SEND_RETRIES_MAX_INTERVAL_MS));
-    }
-
-    //send(sensorDataMsg.set(sensorData));
-}
-
-uint8_t getChannelState(uint8_t index) {
-  return channelState[index];
-}
+#if defined (LIVOLO_TWO_CHANNEL)
+BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
+#endif
 
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
-  if(newState == ON) {
-    hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-    hwSleep(RELAY_PULSE_DELAY_MS);
-    hwDigitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+  if (newState == ON) {
+    digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
+    delay(RELAY_PULSE_DELAY_MS);
+    digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
     channelState[channel] = ON;
+#ifdef HAS_LED_SIGNALING
     TURN_RED_LED_ON(channel);
+#endif
   } else {
-    hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-    hwSleep(RELAY_PULSE_DELAY_MS);
-    hwDigitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+    digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
+    delay(RELAY_PULSE_DELAY_MS);
+    digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
     channelState[channel] = OFF;
+#ifdef HAS_LED_SIGNALING
     TURN_BLUE_LED_ON(channel);
+#endif
   }
 }
 
-void sendLightsState() {
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    sendData(i + 1, getChannelState(i), V_STATUS);
-    hwSleep(10);
-  }
-}
+bool checkTouchSensor() {
+  static uint32_t lastTouchTimestamp[TOUCH_SENSORS_COUNT];
+  static uint8_t touchSensorState[TOUCH_SENSORS_COUNT];
+  bool triggered = false;
 
-void checkTouchSensor() {
-  static uint32_t lastTouchTimestamp[NODE_SENSORS_COUNT];
-  static uint8_t touchSensorState[NODE_SENSORS_COUNT];
-
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-  #ifdef TOUCH_SENSOR_INVERSE_LOGIC
-    if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
-  #else
-    if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
-  #endif
-    (touchSensorState[i] != TOUCHED)) {
+  for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
+#ifdef TOUCH_SENSOR_INVERSE_LOGIC
+    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+#else
+    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+#endif
+        (touchSensorState[i] != TOUCHED)) {
 
       // latch in TOUCH state
       touchSensorState[i] = TOUCHED;
-      lastTouchTimestamp[i] = hwMillis();
+      lastTouchTimestamp[i] = millis();
     }
 
-  #ifdef TOUCH_SENSOR_INVERSE_LOGIC
-    if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
-  #else
-    if((hwDigitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
-  #endif
-    (touchSensorState[i] != RELEASED)) {
+#ifdef TOUCH_SENSOR_INVERSE_LOGIC
+    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+#else
+    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+#endif
+        (touchSensorState[i] != RELEASED)) {
 
-      lastTouchTimestamp[i] = hwMillis() - lastTouchTimestamp[i];
+      lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
       // evaluate elapsed time between touch states
       // we can do here short press and long press handling if desired
-      if(lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
+      if (lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
         channelState[i] = !channelState[i];
         setChannelRelaySwitchState(i, channelState[i]);
-        sendData(i + 1, channelState[i], V_STATUS);
+        triggered = true;
       }
       // latch in RELEASED state
       touchSensorState[i] = RELEASED;
     }
   }
+
+  return triggered;
 }
 
-// called automatically by mysensors core for doing node presentation
-void presentation() {
-  presentNodeMetadata();
+void blePeripheralConnectHandler(BLECentral& central) {
+  // central connected event handler
+
+#ifndef DEBUG
+  // let our ble central device only to connect to Livolo
+  if(strcmp(central.address(), LIVOLO_BLE_CENTRAL_ADDR)) {
+    central.disconnect();
+  }
+#endif
 }
 
-// called automatically by mysensors core for incomming messages
-void receive(const MyMessage &message) {
-  switch (message.type) {
-    case V_VAR1:
-      if (message.getCommand() == C_SET) {
-        char rawNodeMetadata[MAX_NODE_METADATA_LENGTH];
-        loadNodeEepromRawMetadata(rawNodeMetadata, MAX_NODE_METADATA_LENGTH);
-
-        // save new node metadata only when they differ
-        if (strncmp(message.getString(), rawNodeMetadata,
-              MAX_NODE_METADATA_LENGTH) != 0) {
-          char recvMetadata[MAX_NODE_METADATA_LENGTH];
-          memset(recvMetadata, '\0', MAX_NODE_METADATA_LENGTH);
-          strncpy(recvMetadata, message.getString(), MAX_NODE_METADATA_LENGTH);
-          saveNodeEepromMetadata(recvMetadata);
-        }
-        presentNodeMetadata();
-      }
-      break;
-    case V_STATUS:
-      // V_STATUS message type for light switch set operations only
-      if (message.getCommand() == C_SET) {
-        // maybe perform some received data validation here ???
-        setChannelRelaySwitchState((message.sensor - 1), message.getBool());
-        //
-        sendData(message.sensor, message.getBool(), V_STATUS);
-      }
-
-      // V_STATUS message type for light switch get operations only
-      if(message.getCommand() == C_REQ) {
-        // maybe perform some received data validation here ???
-        sendData(message.sensor, getChannelState(message.sensor - 1), V_STATUS);
-      }
-      break;
-    default:;
-  }
+void blePeripheralDisconnectHandler(BLECentral& central) {
+  // central disconnected event handler
 }
 
-void before() {
-  wdt_enable(WDTO_8S);
-
-  #ifdef MTCH_TOUCH_SENSOR
-  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, 88);
-  hwDigitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
-  #endif
-
-  // set required mcu pins for reading touch sensors state
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    hwPinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
-  }
-
-  // lit BLUE leds when starting up
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    hwPinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
-    TURN_BLUE_LED_ON(i);
-  }
-
-  // set bistable relays initial state
-  for(uint8_t i = 0; i < NODE_SENSORS_COUNT; i++) {
-    for(uint8_t j = 0; j < NODE_SENSORS_COUNT; j++) {
-      hwPinMode(RELAY_CH_PINS[i][j], OUTPUT);
-      // make sure touch switch relays start in OFF state
-      hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
-      hwSleep(RELAY_PULSE_DELAY_MS);
-      hwDigitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
-    }
-  }
+// central wrote new value to characteristics, update state
+void switchOneCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
+  setChannelRelaySwitchState(CHANNEL_1, livoloSwitchOneCharacteristic.value());
 }
+#if defined (LIVOLO_TWO_CHANNEL)
+void switchTwoCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
+  setChannelRelaySwitchState(CHANNEL_2, livoloSwitchTwoCharacteristic.value());
+}
+#endif
+
+// void disableUart() {
+//   NRF_UART0->TASKS_STOPTX = 1;
+//   NRF_UART0->TASKS_STOPRX = 1;
+//   NRF_UART0->ENABLE = 0;
+// }
+//
+// void disableSPI() {
+//   NRF_SPI0->ENABLE = 0;
+// }
+//
+// void disableTWI() {
+//   NRF_TWI1->TASKS_STOP = 1;
+//   NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
+//   NRF_TWI1->INTENCLR = (TWI_INTENCLR_STOPPED_Disabled << TWI_INTENCLR_STOPPED_Pos)|
+//                           (TWI_INTENCLR_RXDREADY_Disabled << TWI_INTENCLR_RXDREADY_Pos)|
+//                           (TWI_INTENCLR_TXDSENT_Disabled << TWI_INTENCLR_TXDSENT_Pos)|
+//                           (TWI_INTENCLR_ERROR_Disabled << TWI_INTENCLR_ERROR_Pos)|
+//                           (TWI_INTENCLR_BB_Disabled << TWI_INTENCLR_BB_Pos);
+// }
 
 void setup() {
+  // disableUart();
+  // disableSPI();
+  // disableTWI();
 
+#ifdef HAS_MTCH_TOUCH_SENSOR
+  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, TOUCH_SENSOR_SENSITIVITY_LEVEL);
+  digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
+#endif
+
+#ifdef HAS_TOUCH_SENSING
+  // set required mcu pins for reading touch sensors state
+  for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
+    pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
+  }
+#endif
+
+#ifdef HAS_LED_SIGNALING
+  // lit BLUE leds when starting up
+  for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
+    pinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
+    TURN_BLUE_LED_ON(i);
+  }
+#endif
+
+  // set bistable relays initial state
+  for (uint8_t i = 0; i < RELAY_COUNT; i++) {
+    for (uint8_t j = 0; j < 2; j++) {
+      pinMode(RELAY_CH_PINS[i][j], OUTPUT);
+      // make sure touch switch relays start in OFF state
+      digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
+      delay(RELAY_PULSE_DELAY_MS);
+      digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
+    }
+  }
+
+  blePeripheral.setManufacturerData(MANUFACTURER_DATA, MANUFACTURER_DATA_LEN);
+  blePeripheral.setDeviceName(DEVICE_NAME);
+  blePeripheral.setLocalName(DEVICE_LOCAL_NAME);
+  blePeripheral.setAdvertisedServiceUuid(livoloService.uuid());
+
+  blePeripheral.addAttribute(livoloService);
+  blePeripheral.addAttribute(livoloSwitchOneCharacteristic);
+#if defined (LIVOLO_TWO_CHANNEL)
+  blePeripheral.addAttribute(livoloSwitchTwoCharacteristic);
+#endif
+
+  // assign event handlers for connected, disconnected to peripheral
+  blePeripheral.setEventHandler(BLEConnected, blePeripheralConnectHandler);
+  blePeripheral.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
+
+  // assign event handlers for characteristic
+  livoloSwitchOneCharacteristic.setEventHandler(BLEWritten, switchOneCharacteristicWritten);
+#if defined (LIVOLO_TWO_CHANNEL)
+  livoloSwitchTwoCharacteristic.setEventHandler(BLEWritten, switchTwoCharacteristicWritten);
+#endif
+
+  // set initial values for characteristics
+  livoloSwitchOneCharacteristic.setValue(OFF);
+#if defined (LIVOLO_TWO_CHANNEL)
+  livoloSwitchTwoCharacteristic.setValue(OFF);
+#endif
+
+  // begin initialization
+  blePeripheral.begin();
+
+  // set TX power - must be called after begin
+  blePeripheral.setTxPower(BLE_TX_POWER);
 }
 
-void loop()  {
-  wdt_reset();
+void loop() {
+  // poll peripheral
+  blePeripheral.poll();
 
-  static bool firstInit = false;
-  if(!firstInit) {
-    sendHeartbeat();
-    hwSleep(10);
-    sendBatteryLevel(getSupplyVoltagePercentage());
-    sendLightsState();
-    firstInit = true;
+#ifdef HAS_TOUCH_SENSING
+  // check touch sensors for changes
+  if (checkTouchSensor()) {
+    livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
+#if defined (LIVOLO_TWO_CHANNEL)
+    livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
+#endif
   }
+#endif
 
-  checkTouchSensor();
-
-  static uint32_t lastLightsStateReportTimestamp;
-  if(hwMillis() - lastLightsStateReportTimestamp >= LIGHTS_STATE_SEND_INTERVAL_MS) {
-    sendLightsState();
-    lastLightsStateReportTimestamp = hwMillis();
-  }
-
-  // static uint32_t lastHeartbeatReportTimestamp;
-  // if ((hwMillis() - lastHeartbeatReportTimestamp) >= HEARTBEAT_SEND_INTERVAL_MS) {
-  //  sendHeartbeat();
-  //  lastHeartbeatReportTimestamp = hwMillis();
-  // }
-
-  // send power supply voltage level
-  static uint32_t lastPowerSupplyVoltageLvlReportTimestamp;
-  if(hwMillis() - lastPowerSupplyVoltageLvlReportTimestamp >= POWER_SUPPLY_VOLTAGE_LVL_REPORT_INTERVAL_MS) {
-    sendBatteryLevel(getSupplyVoltagePercentage());
-    lastPowerSupplyVoltageLvlReportTimestamp = hwMillis();
-  }
-
-  // send presentation on a regular interval too
-  // static uint32_t lastPresentationTimestamp = 0;
-  // if ((hwMillis() - lastPresentationTimestamp) >= PRESENTATION_SEND_INTERVAL_MS) {
-  //  presentNodeMetadata();
-  //  lastPresentationTimestamp = hwMillis();
-  // }
-
-  // trying some magic here to lower powe consumption ...
-  // now the whole board draws around 8-10mA with nrf24l01
-  // but the rx/tx functionality is affected a little bit
-// #ifdef MY_RADIO_RF24
-//   RF24_startListening();
-// #endif
-//   wait(200);  // time window for receiving data if available
-//   sleep(200, false);
-// #ifdef MY_RADIO_RF24
-//   RF24_stopListening();
-// #endif
+  //sd_app_evt_wait();
 }
