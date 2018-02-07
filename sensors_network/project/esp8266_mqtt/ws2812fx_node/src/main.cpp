@@ -897,9 +897,12 @@ void disableLedStripControlTickers() {
 void otaInit() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPort(OTA_PORT);
+#if PLATFORM_VERSION >= 10600
   ArduinoOTA.setRebootOnSuccess(true);
+#endif
 
   ArduinoOTA.onStart([]() {
+  #if PLATFORM_VERSION >= 10600
     if (ArduinoOTA.getCommand() == U_FLASH) {
     #ifdef DEBUG
       DEBUG_OUTPUT.println("Start updating flash ...");
@@ -911,13 +914,13 @@ void otaInit() {
       // Unmount SPIFFS using SPIFFS.end() first
       SPIFFS.end();
     }
+  #endif
     otaInProgress = true;
     disableReporters();
-    disableLedStripControlTickers();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG
-    DEBUG_OUTPUT.println("\nOTA finised.");
+    DEBUG_OUTPUT.println("\nOTA finished.");
   #endif
     otaInProgress = false;
   });

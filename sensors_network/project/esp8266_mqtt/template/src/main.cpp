@@ -29,7 +29,7 @@ ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
 #ifndef AP_SSID
-#define AP_SSID "WS2812FXController"
+#define AP_SSID "MySensorNode"
 #endif
 #ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
@@ -73,7 +73,7 @@ bool configurationUpdated = false;
 const uint8_t SENSOR_COUNT = 1;
 const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
-const char* CHILD_ALIASES[SENSOR_COUNT] = { "Relay" };
+const char* CHILD_ALIASES[SENSOR_COUNT] = { "MySensorNode" };
 
 MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
@@ -578,9 +578,12 @@ void disableReporters() {
 void otaInit() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPort(OTA_PORT);
+#if PLATFORM_VERSION >= 10600
   ArduinoOTA.setRebootOnSuccess(true);
+#endif
 
   ArduinoOTA.onStart([]() {
+  #if PLATFORM_VERSION >= 10600
     if (ArduinoOTA.getCommand() == U_FLASH) {
     #ifdef DEBUG
       DEBUG_OUTPUT.println("Start updating flash ...");
@@ -592,12 +595,13 @@ void otaInit() {
       // Unmount SPIFFS using SPIFFS.end() first
       SPIFFS.end();
     }
+  #endif
     otaInProgress = true;
     disableReporters();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG
-    DEBUG_OUTPUT.println("\nOTA finised.");
+    DEBUG_OUTPUT.println("\nOTA finished.");
   #endif
     otaInProgress = false;
   });
