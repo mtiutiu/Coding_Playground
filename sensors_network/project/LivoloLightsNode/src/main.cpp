@@ -40,7 +40,7 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 600;
+const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 800;
 const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 88; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
@@ -116,8 +116,13 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #define DEVICE_LOCAL_NAME "Livolo"
 #define DEVICE_NAME "Livolo"
 
+#ifndef DEBUG
+  #ifndef LIVOLO_BLE_CENTRAL_ADDR
+  #error "LIVOLO_BLE_CENTRAL_ADDR is not defined!"
+  #endif
+#endif
 //#define LIVOLO_BLE_CENTRAL_ADDR "b8:27:eb:cc:de:b2" // raspberry pi zero
-#define LIVOLO_BLE_CENTRAL_ADDR "00:1a:7d:da:71:13" // orange pi zero bta-403
+//#define LIVOLO_BLE_CENTRAL_ADDR "00:1a:7d:da:71:13" // orange pi zero bta-403
 
 #define LIVOLO_BLE_SERVICE_UUID  "ccc0"
 
@@ -204,6 +209,7 @@ void blePeripheralConnectHandler(BLECentral& central) {
   // central connected event handler
 
 #ifndef DEBUG
+#pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " LIVOLO_BLE_CENTRAL_ADDR
   // let our ble central device only to connect to Livolo
   if(strcmp(central.address(), LIVOLO_BLE_CENTRAL_ADDR)) {
     central.disconnect();
