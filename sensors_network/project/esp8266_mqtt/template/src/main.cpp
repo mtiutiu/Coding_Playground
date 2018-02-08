@@ -103,7 +103,9 @@ Ticker sensorStateReportTicker;
 
 // ------------------------ LED SIGNALING --------------------------------------
 #define INVERSE_LED_LOGIC
-const uint8_t LED_SIGNAL_PIN = BUILTIN_LED;
+#ifndef LED_SIGNAL_PIN
+#define LED_SIGNAL_PIN  BUILTIN_LED
+#endif
 const float NOT_CONNECTED_SIGNALING_INTERVAL_S = 0.3; // 300 ms
 
 Ticker noTransportLedTicker;
