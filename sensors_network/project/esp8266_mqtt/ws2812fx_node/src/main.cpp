@@ -340,7 +340,7 @@ CfgData& loadConfig(const char *cfgFilePath) {
         configFile.close();
 
         DynamicJsonBuffer jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf);
+        JsonObject &json = jsonBuffer.parseObject(buff);
       #ifdef DEBUG
         json.printTo(DEBUG_OUTPUT);
         DEBUG_OUTPUT.println();
