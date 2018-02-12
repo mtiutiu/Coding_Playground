@@ -41,11 +41,11 @@ void WiFiManagerParameter::init(const char *id, const char *placeholder, const c
   _length         = length;
   _labelPlacement = labelPlacement;
   _value          = new char[length + 1];
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length + 1; i++) {
     _value[i] = 0;
   }
   if (defaultValue != NULL) {
-    strncpy(_value, defaultValue, length+1); // length+1 due to null terminated string
+    strncpy(_value, defaultValue, length + 1); // length+1 due to null terminated string
   }
 
   _customHTML = custom;
@@ -826,7 +826,7 @@ void WiFiManager::handleWifiSave() {
     //read parameter
     String value = server->arg(_params[i]->getID()).c_str();
     //store it in array
-    value.toCharArray(_params[i]->_value, _params[i]->_length+1); // length+1 null terminated
+    value.toCharArray(_params[i]->_value, _params[i]->_length + 1); // length+1 null terminated
     DEBUG_WM(F("Parameter"));
     DEBUG_WM(_params[i]->getID());
     DEBUG_WM(value);
