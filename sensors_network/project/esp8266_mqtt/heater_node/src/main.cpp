@@ -429,13 +429,9 @@ void sendSensorState() {
   mysNode.send(HEATER_RELAY_ACTUATOR_CHILD_ID, V_STATUS, reply);
 }
 
-void disableRelaySafetyChecker() {
-  heaterRelaySafetyTicker.detach();
-}
-
 void heaterRelayDisarm() {
   digitalWrite(RELAY_CMD_PIN, LOW);
-  disableRelaySafetyChecker();
+  heaterRelaySafetyTicker.detach(); // disable relay safety timer
   sendSensorState();
 }
 
