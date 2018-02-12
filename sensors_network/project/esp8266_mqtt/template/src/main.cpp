@@ -14,12 +14,7 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
@@ -71,6 +66,7 @@ bool configurationUpdated = false;
 #include <MySensorsEEPROM.h>
 
 const uint8_t SENSOR_COUNT = 1;
+const uint8_t SENSOR_CHILD_ID = 1;
 const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
 const char* CHILD_ALIASES[SENSOR_COUNT] = { "MySensorNode" };
@@ -152,15 +148,17 @@ CfgData& loadConfig(const char *cfgFilePath) {
       #ifdef DEBUG
         DEBUG_OUTPUT.println("Config file found!");
       #endif
-
-        size_t size = configFile.size();
+        size_t cfgFileSize = configFile.size();
         // Allocate a buffer to store contents of the file.
-        char buf[size];
-        configFile.readBytes(buf, size);
+        char* buff = (char*)malloc(cfgFileSize * sizeof(char));
+        if(buff) {
+          memset(buff, '\0', cfgFileSize);
+          configFile.readBytes(buff, cfgFileSize);
+        }
         configFile.close();
 
-        StaticJsonBuffer<512> jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(buff);
       #ifdef DEBUG
         json.printTo(DEBUG_OUTPUT);
         DEBUG_OUTPUT.println();
@@ -180,6 +178,11 @@ CfgData& loadConfig(const char *cfgFilePath) {
         strncpy(data.mys_node_alias, json["mys_node_alias"],
           MYS_NODE_ALIAS_FIELD_MAX_LEN
         );
+
+        // free dynamically allocated buffer for config file contents
+        if(buff) {
+          free(buff);
+        }
       } else {
       // config file couldn't be opened
       #ifdef DEBUG
@@ -213,7 +216,7 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
         DEBUG_OUTPUT.println("Config file found!");
       #endif
 
-        StaticJsonBuffer<512> jsonBuffer;
+        DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.createObject();
 
         json["mqtt_server"] = data.mqtt_server;
@@ -411,8 +414,6 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
 }
 
 void onMessage(MySensorMsg &message) {
-  char reply[MQTT_MAX_PAYLOAD_LENGTH];
-
   if (message.cmd_type == M_SET) {
     if (strlen(message.payload) > 0) {
     #ifdef DEBUG
@@ -468,7 +469,7 @@ void sendRSSILevel() {
   DEBUG_OUTPUT.printf("Sending RSSI level: %d ...\r\n", WiFi.RSSI());
 #endif
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "rssi:%d dBm", WiFi.RSSI());
-  mysNode.send(1, V_VAR5, reply);
+  mysNode.send(SENSOR_CHILD_ID, V_VAR5, reply);
 }
 
 void sendSensorState() {

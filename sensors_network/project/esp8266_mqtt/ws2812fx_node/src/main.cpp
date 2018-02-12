@@ -14,12 +14,7 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
@@ -335,14 +330,16 @@ CfgData& loadConfig(const char *cfgFilePath) {
       #ifdef DEBUG
         DEBUG_OUTPUT.println("Config file found!");
       #endif
-
-        size_t size = configFile.size();
+        size_t cfgFileSize = configFile.size();
         // Allocate a buffer to store contents of the file.
-        char buf[size];
-        configFile.readBytes(buf, size);
+        char* buff = (char*)malloc(cfgFileSize * sizeof(char));
+        if(buff) {
+          memset(buff, '\0', cfgFileSize);
+          configFile.readBytes(buff, cfgFileSize);
+        }
         configFile.close();
 
-        StaticJsonBuffer<512> jsonBuffer;
+        DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(buf);
       #ifdef DEBUG
         json.printTo(DEBUG_OUTPUT);
@@ -367,6 +364,10 @@ CfgData& loadConfig(const char *cfgFilePath) {
           MYS_NODE_LED_COUNT_FIELD_MAX_LEN
         );
 
+        // free dynamically allocated buffer for config file contents
+        if(buff) {
+          free(buff);
+        }
       } else {
       // config file couldn't be opened
       #ifdef DEBUG
@@ -400,7 +401,7 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
         DEBUG_OUTPUT.println("Config file found!");
       #endif
 
-        StaticJsonBuffer<512> jsonBuffer;
+        DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.createObject();
 
         json["mqtt_server"] = data.mqtt_server;

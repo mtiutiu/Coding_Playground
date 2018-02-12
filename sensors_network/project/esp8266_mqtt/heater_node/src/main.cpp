@@ -14,12 +14,7 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
@@ -29,7 +24,7 @@ ADC_MODE(ADC_VCC);
 
 // ------------------------ Module CONFIG --------------------------------------
 #ifndef AP_SSID
-#define AP_SSID "RelayActuator"
+#define AP_SSID "HeaterActuator"
 #endif
 #ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
@@ -71,9 +66,10 @@ bool configurationUpdated = false;
 #include <MySensorsEEPROM.h>
 
 const uint8_t SENSOR_COUNT = 1;
+const uint8_t HEATER_RELAY_ACTUATOR_CHILD_ID = 1;
 const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
-const char* CHILD_ALIASES[SENSOR_COUNT] = { "Relay" };
+const char* CHILD_ALIASES[SENSOR_COUNT] = { "HeaterActuator" };
 
 MySensor mysNode;
 // ------------------------ END MySensors---------------------------------------
@@ -99,6 +95,16 @@ Ticker signalLevelReportTicker;
 const float SENSOR_STATE_REPORT_INTERVAL_S = 180.0; // 3 mins
 
 Ticker sensorStateReportTicker;
+// -----------------------------------------------------------------------------
+
+// --------------------------- HEATER RELAY  -----------------------------------
+#ifndef RELAY_CMD_PIN
+#define RELAY_CMD_PIN 3
+#endif
+const uint8_t HEATER_OFF = 0;
+const uint8_t HEATER_ON = 1;
+const float HEATER_RELAY_SAFETY_TIMEOUT_S = 300.0; // 5 min
+Ticker heaterRelaySafetyTicker;
 // -----------------------------------------------------------------------------
 
 // ------------------------ LED SIGNALING --------------------------------------
@@ -152,15 +158,17 @@ CfgData& loadConfig(const char *cfgFilePath) {
       #ifdef DEBUG
         DEBUG_OUTPUT.println("Config file found!");
       #endif
-
-        size_t size = configFile.size();
+        size_t cfgFileSize = configFile.size();
         // Allocate a buffer to store contents of the file.
-        char buf[size];
-        configFile.readBytes(buf, size);
+        char* buff = (char*)malloc(cfgFileSize * sizeof(char));
+        if(buff) {
+          memset(buff, '\0', cfgFileSize);
+          configFile.readBytes(buff, cfgFileSize);
+        }
         configFile.close();
 
-        StaticJsonBuffer<512> jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(buff);
       #ifdef DEBUG
         json.printTo(DEBUG_OUTPUT);
         DEBUG_OUTPUT.println();
@@ -180,6 +188,11 @@ CfgData& loadConfig(const char *cfgFilePath) {
         strncpy(data.mys_node_alias, json["mys_node_alias"],
           MYS_NODE_ALIAS_FIELD_MAX_LEN
         );
+
+        // free dynamically allocated buffer for config file contents
+        if(buff) {
+          free(buff);
+        }
       } else {
       // config file couldn't be opened
       #ifdef DEBUG
@@ -213,7 +226,7 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
         DEBUG_OUTPUT.println("Config file found!");
       #endif
 
-        StaticJsonBuffer<512> jsonBuffer;
+        DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.createObject();
 
         json["mqtt_server"] = data.mqtt_server;
@@ -410,18 +423,57 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
   }
 }
 
-void onMessage(MySensorMsg &message) {
+void sendSensorState() {
   char reply[MQTT_MAX_PAYLOAD_LENGTH];
+  sprintf(reply, "%d", digitalRead(RELAY_CMD_PIN));
+  mysNode.send(HEATER_RELAY_ACTUATOR_CHILD_ID, V_STATUS, reply);
+}
 
+void disableRelaySafetyChecker() {
+  heaterRelaySafetyTicker.detach();
+}
+
+void heaterRelayDisarm() {
+  digitalWrite(RELAY_CMD_PIN, LOW);
+  disableRelaySafetyChecker();
+  sendSensorState();
+}
+
+void enableRelaySafetyChecker() {
+  heaterRelaySafetyTicker.detach();
+  heaterRelaySafetyTicker.once(
+    HEATER_RELAY_SAFETY_TIMEOUT_S,
+    []() {
+      heaterRelayDisarm();
+    }
+  );
+}
+
+void heaterRelayArm() {
+  digitalWrite(RELAY_CMD_PIN, HIGH);
+  enableRelaySafetyChecker();
+  sendSensorState();
+}
+
+void onMessage(MySensorMsg &message) {
   if (message.cmd_type == M_SET) {
     if (strlen(message.payload) > 0) {
-    #ifdef DEBUG
-      DEBUG_OUTPUT.printf(
-        "Received M_SET command with value: %s\r\n",
-        message.payload
-      );
-    #endif
+      if (message.sub_type == V_STATUS) {
+      #ifdef DEBUG
+        DEBUG_OUTPUT.printf(
+          "Received V_STATUS command with value: %s\r\n",
+          message.payload
+        );
+      #endif
+        uint8_t newState = (uint8_t)atoi(message.payload);
+        if(newState == HEATER_ON) {
+          heaterRelayArm();
+        }
 
+        if(newState == HEATER_OFF) {
+          heaterRelayDisarm();
+        }
+      }
     }
   }
 
@@ -468,11 +520,7 @@ void sendRSSILevel() {
   DEBUG_OUTPUT.printf("Sending RSSI level: %d ...\r\n", WiFi.RSSI());
 #endif
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "rssi:%d dBm", WiFi.RSSI());
-  mysNode.send(1, V_VAR5, reply);
-}
-
-void sendSensorState() {
-
+  mysNode.send(HEATER_RELAY_ACTUATOR_CHILD_ID, V_VAR5, reply);
 }
 
 void sendReports() {
@@ -482,6 +530,7 @@ void sendReports() {
 }
 
 void portsConfig() {
+  pinMode(RELAY_CMD_PIN, OUTPUT);
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
   #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
