@@ -79,7 +79,7 @@ MySensor mysNode;
 // -----------------------------------------------------------------------------
 
 // -------------------------- BATTERY LEVEL REPORTING --------------------------
-const float VDD_VOLTAGE_MV = 3000.0;
+const float VDD_VOLTAGE_MV = 3300.0;
 const float BATTER_LVL_REPORT_INTERVAL_S = 300.0; // 5 mins
 
 Ticker batteryLevelReportTicker;
