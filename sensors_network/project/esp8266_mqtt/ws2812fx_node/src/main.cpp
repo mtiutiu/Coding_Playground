@@ -712,6 +712,7 @@ void checkTransportConnection() {
   if (!mysNode.connected()) {
     digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
   } else {
+    // make sure led is off when connected
     digitalWrite(LED_SIGNAL_PIN,
   #ifdef INVERSE_LED_LOGIC
       HIGH
