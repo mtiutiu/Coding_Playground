@@ -711,18 +711,15 @@ void onMessage(MySensorMsg &message) {
 void checkTransportConnection() {
   if (!mysNode.connected()) {
     digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+  } else {
+    digitalWrite(LED_SIGNAL_PIN,
+  #ifdef INVERSE_LED_LOGIC
+      HIGH
+  #else
+      LOW
+  #endif
+    );
   }
-
-// make sure signaling led is off if transport is connected
-#ifdef INVERSE_LED_LOGIC
-  if (mysNode.connected() && !digitalRead(LED_SIGNAL_PIN)) {
-    digitalWrite(LED_SIGNAL_PIN, HIGH);
-  }
-#else
-  if (mysNode.connected() && digitalRead(LED_SIGNAL_PIN)) {
-    digitalWrite(LED_SIGNAL_PIN, LOW);
-  }
-#endif
 }
 
 void sendBatteryLevel() {

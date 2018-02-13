@@ -108,7 +108,7 @@ Ticker heaterRelaySafetyTicker;
 // -----------------------------------------------------------------------------
 
 // ------------------------ LED SIGNALING --------------------------------------
-#define INVERSE_LED_LOGIC
+//#define INVERSE_LED_LOGIC
 #ifndef LED_SIGNAL_PIN
 #define LED_SIGNAL_PIN  BUILTIN_LED
 #endif
@@ -483,18 +483,15 @@ void onMessage(MySensorMsg &message) {
 void checkTransportConnection() {
   if (!mysNode.connected()) {
     digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+  } else {
+    digitalWrite(LED_SIGNAL_PIN,
+  #ifdef INVERSE_LED_LOGIC
+      HIGH
+  #else
+      LOW
+  #endif
+    );
   }
-
-// make sure signaling led is off if transport is connected
-#ifdef INVERSE_LED_LOGIC
-  if (mysNode.connected() && !digitalRead(LED_SIGNAL_PIN)) {
-    digitalWrite(LED_SIGNAL_PIN, HIGH);
-  }
-#else
-  if (mysNode.connected() && digitalRead(LED_SIGNAL_PIN)) {
-    digitalWrite(LED_SIGNAL_PIN, LOW);
-  }
-#endif
 }
 
 void sendBatteryLevel() {
@@ -527,6 +524,7 @@ void sendReports() {
 
 void portsConfig() {
   pinMode(RELAY_CMD_PIN, OUTPUT);
+  digitalWrite(RELAY_CMD_PIN, LOW); // make sure relay is of at node startup
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
   #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
