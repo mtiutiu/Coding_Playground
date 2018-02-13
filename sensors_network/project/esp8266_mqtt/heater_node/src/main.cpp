@@ -99,7 +99,7 @@ Ticker sensorStateReportTicker;
 
 // --------------------------- HEATER RELAY  -----------------------------------
 #ifndef RELAY_CMD_PIN
-#define RELAY_CMD_PIN 3
+#define RELAY_CMD_PIN 13
 #endif
 const uint8_t HEATER_OFF = 0;
 const uint8_t HEATER_ON = 1;
@@ -463,11 +463,17 @@ void onMessage(MySensorMsg &message) {
       #endif
         uint8_t newState = (uint8_t)atoi(message.payload);
         if(newState == HEATER_ON) {
+          // arm relay and safety timer
           heaterRelayArm();
         }
 
         if(newState == HEATER_OFF) {
           heaterRelayDisarm();
+        }
+      } else if(message.sub_type == V_VAR2) {
+        if(strcasecmp(message.payload, "reset") == 0) {
+          // re-arm relay and safety timer
+          heaterRelayArm();
         }
       }
     }
