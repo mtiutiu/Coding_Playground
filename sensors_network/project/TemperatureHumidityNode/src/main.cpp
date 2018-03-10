@@ -61,6 +61,10 @@
 //const uint8_t OTHER_UNUSED_PINS[] = {A6, A7, 1};
 // -------------------------------------------------------------------------------------------
 
+#ifndef HAS_NODE_ID_SET_SWITCH
+const uint8_t UNUSED_PINS[] = {0, 1, 3, 4, 5, 6, 7, 8, A1, A2, A3, A6, A7};
+#endif
+
 // ---------------------------------------- DIP SW NODE ID CONFIGURATION ------------------------
 #ifdef HAS_NODE_ID_SET_SWITCH
 /*
@@ -104,7 +108,7 @@ const float ANALOG_REF_V = 3.0;
 // ---------------------------------------- VOLTAGE REGULATOR SECTION -----------------------------
 #ifdef HAS_FIXED_VOLTAGE_REGULATOR
 // we need to read the battery direclty
-const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A2;
+const uint8_t BATTERY_STATE_ANALOG_READ_PIN = A0;
 #else
 // here we read the battery level using the MCU internal voltage reference
 #include <Vcc.h>
@@ -173,13 +177,13 @@ PRESENTATION_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
 #ifdef USE_VBATT_RESISTOR_DIVIDER
-const float DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 470.0;
-const float DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 1000.0;
+const float DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM = 100.0;
+const float DIVIDER_INPUT_RESISTOR_VALUE_KOHM = 220.0;
 const float RESISTOR_DIVIDER_RATIO = DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM /
 (DIVIDER_OUTPUT_RESISTOR_VALUE_KOHM + DIVIDER_INPUT_RESISTOR_VALUE_KOHM);
 #endif
 const float CHARGED_VBATT_THRESHOLD_V = 3.0;
-const float LOW_VBATT_THRESHOLD_V = 1.1;
+const float LOW_VBATT_THRESHOLD_V = 0.0;
 const uint8_t VBATT_THRESHOLD_SAMPLES = 10;
 
 // battery level report interval
@@ -481,6 +485,10 @@ void before() {
 #ifdef USE_SI7021_SENSOR
   tempHumSensor.setHumidityRes(12); // Humidity = 12-bit / Temperature = 14-bit
 #endif
+#endif
+
+#ifndef HAS_NODE_ID_SET_SWITCH
+  optimize_port_pins_low_power(UNUSED_PINS, sizeof(UNUSED_PINS));
 #endif
 }
 
