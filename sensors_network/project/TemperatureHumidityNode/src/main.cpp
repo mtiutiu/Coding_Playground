@@ -12,7 +12,7 @@
 #define USE_VBATT_RESISTOR_DIVIDER
 //#define INSPECT_SYSTEM_CLOCK            // this needs CLKOUT fuse to be set
 //#define MOCK_SENSOR_DATA
-#define HAS_NODE_ID_SET_SWITCH
+//#define HAS_NODE_ID_SET_SWITCH
 #define WANT_TX_FAILURES_MONITORING
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
 //#define USE_SI7021_SENSOR
@@ -21,10 +21,10 @@
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // NRF24 radio
-#define MY_RADIO_RF24
+//#define MY_RADIO_RF24
 
 // RFM69 radio
-//#define MY_RADIO_RFM69
+#define MY_RADIO_RFM69
 
 #ifdef MY_RADIO_RFM69
 #define MY_RFM69_NEW_DRIVER
@@ -49,7 +49,7 @@
 
 #define MY_DISABLED_SERIAL
 
-#define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
+#define MY_SENSOR_NODE_SKETCH_VERSION "2.2.0"
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
@@ -401,7 +401,7 @@ void receive(const MyMessage &message) {
   }
 }
 
-voide before() {
+void before() {
   // compute the sysclk divider based on the board xtal frequency
 #if defined(WANT_8MHZ_SYSCLK)
   #if BOARD_XTAL_FREQUENCY == 8000000UL
