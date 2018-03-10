@@ -401,7 +401,7 @@ void receive(const MyMessage &message) {
   }
 }
 
-voide before() {
+void before() {
   // compute the sysclk divider based on the board xtal frequency
 #if defined(WANT_8MHZ_SYSCLK)
   #if BOARD_XTAL_FREQUENCY == 8000000UL
