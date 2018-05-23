@@ -40,9 +40,9 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 300;
+const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 500;
 //const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 800;
-const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 88; // 0 - biggest sensitivity, 255 - lowest sensitivity
+const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 98; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
 const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 29;
@@ -93,7 +93,7 @@ const uint8_t RELAY_CH_PINS[][2] = {
 #endif
 };
 
-const uint32_t RELAY_PULSE_DELAY_MS = 50;
+const uint32_t RELAY_PULSE_DELAY_MS = 100;
 
 #if defined (LIVOLO_ONE_CHANNEL)
 uint8_t channelState[RELAY_COUNT] = {OFF};
@@ -134,7 +134,32 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #endif
 
 #define BLE_TX_POWER  4 // 4dBm
+// -----------------------------------------------------------------------------
 
+// -------------------------- SCHEDULER ----------------------------------------
+#define TASKER_MAX_TASKS 4
+#include "Tasker.h"
+
+Tasker tasker;
+
+void triggerSetCoilLow(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+}
+
+void triggerResetCoilLow(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+}
+
+void pulseSetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
+  tasker.setTimeout(triggerSetCoilLow, RELAY_PULSE_DELAY_MS, channel);
+}
+
+void pulseResetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
+  tasker.setTimeout(triggerResetCoilLow, RELAY_PULSE_DELAY_MS, channel);
+}
+// -----------------------------------------------------------------------------
 
 BLEPeripheral blePeripheral = BLEPeripheral();
 BLEService livoloService = BLEService(LIVOLO_BLE_SERVICE_UUID);
@@ -147,17 +172,13 @@ BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCha
 
 void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
   if (newState == ON) {
-    digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-    delay(RELAY_PULSE_DELAY_MS);
-    digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+    pulseSetCoil(channel);
     channelState[channel] = ON;
 #ifdef HAS_LED_SIGNALING
     TURN_RED_LED_ON(channel);
 #endif
   } else {
-    digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-    delay(RELAY_PULSE_DELAY_MS);
-    digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+    pulseResetCoil(channel);
     channelState[channel] = OFF;
 #ifdef HAS_LED_SIGNALING
     TURN_BLUE_LED_ON(channel);
@@ -300,11 +321,9 @@ void setup() {
   for (uint8_t i = 0; i < RELAY_COUNT; i++) {
     for (uint8_t j = 0; j < 2; j++) {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
-      // make sure touch switch relays start in OFF state
-      digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], HIGH);
-      delay(RELAY_PULSE_DELAY_MS);
-      digitalWrite(RELAY_CH_PINS[i][RESET_COIL_INDEX], LOW);
     }
+    // make sure touch switch relays start in OFF state
+    pulseResetCoil(i);
   }
 
   blePeripheral.setManufacturerData(MANUFACTURER_DATA, MANUFACTURER_DATA_LEN);
@@ -342,6 +361,8 @@ void setup() {
 }
 
 void loop() {
+  tasker.loop();
+
   // poll peripheral
   blePeripheral.poll();
 
