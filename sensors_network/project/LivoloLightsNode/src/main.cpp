@@ -40,7 +40,8 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 800;
+const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 300;
+//const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 800;
 const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 88; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
@@ -164,45 +165,64 @@ void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
   }
 }
 
-bool checkTouchSensor() {
-  static uint32_t lastTouchTimestamp[TOUCH_SENSORS_COUNT];
-  static uint8_t touchSensorState[TOUCH_SENSORS_COUNT];
-  bool triggered = false;
+bool touchSensorTriggered() {
+  //static uint32_t lastTouchTimestamp[TOUCH_SENSORS_COUNT];
+  //static uint8_t touchSensorState[TOUCH_SENSORS_COUNT];
+  static uint32_t touchSensorStillPressedCounter[TOUCH_SENSORS_COUNT];
+  //bool triggered = false;
+
+//   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
+// #ifdef TOUCH_SENSOR_INVERSE_LOGIC
+//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+// #else
+//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+// #endif
+//         (touchSensorState[i] != TOUCHED)) {
+//
+//       // latch in TOUCH state
+//       touchSensorState[i] = TOUCHED;
+//       lastTouchTimestamp[i] = millis();
+//     }
+//
+// #ifdef TOUCH_SENSOR_INVERSE_LOGIC
+//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+// #else
+//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+// #endif
+//         (touchSensorState[i] != RELEASED)) {
+//
+//       lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
+//       // evaluate elapsed time between touch states
+//       // we can do here short press and long press handling if desired
+//       if (lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
+//         channelState[i] = !channelState[i];
+//         setChannelRelaySwitchState(i, channelState[i]);
+//         triggered = true;
+//       }
+//       // latch in RELEASED state
+//       touchSensorState[i] = RELEASED;
+//     }
+//   }
 
   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
 #ifdef TOUCH_SENSOR_INVERSE_LOGIC
-    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
+    if (digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) {
 #else
-    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
+    if (digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) {
 #endif
-        (touchSensorState[i] != TOUCHED)) {
-
-      // latch in TOUCH state
-      touchSensorState[i] = TOUCHED;
-      lastTouchTimestamp[i] = millis();
-    }
-
-#ifdef TOUCH_SENSOR_INVERSE_LOGIC
-    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
-#else
-    if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
-#endif
-        (touchSensorState[i] != RELEASED)) {
-
-      lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
-      // evaluate elapsed time between touch states
-      // we can do here short press and long press handling if desired
-      if (lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
+      // act only when the first touch happens by using a counter
+      if(touchSensorStillPressedCounter[i]++ == 1) {
         channelState[i] = !channelState[i];
         setChannelRelaySwitchState(i, channelState[i]);
-        triggered = true;
+        return true;
       }
-      // latch in RELEASED state
-      touchSensorState[i] = RELEASED;
+    } else {
+      // reset counter when no touch is detected
+      touchSensorStillPressedCounter[i] = 0;
     }
   }
 
-  return triggered;
+  return false;
 }
 
 void blePeripheralConnectHandler(BLECentral& central) {
@@ -326,12 +346,14 @@ void loop() {
   blePeripheral.poll();
 
 #ifdef HAS_TOUCH_SENSING
-  // check touch sensors for changes
-  if (checkTouchSensor()) {
+  static uint32_t lastTouchSamplingTimestamp = 0;
+  // sample touch sensor(s) state at a fixed interval
+  if ((millis() - lastTouchSamplingTimestamp) >= TOUCH_DETECT_SAMPLING_INTERVAL_MS && touchSensorTriggered()) {
     livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
 #if defined (LIVOLO_TWO_CHANNEL)
     livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
 #endif
+    lastTouchSamplingTimestamp = millis();
   }
 #endif
 
