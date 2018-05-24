@@ -40,9 +40,8 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 500;
-//const uint32_t SHORT_TOUCH_DETECT_THRESHOLD_MS = 800;
-const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 98; // 0 - biggest sensitivity, 255 - lowest sensitivity
+const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 50;
+const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 90; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
 const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 29;
@@ -141,24 +140,6 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #include "Tasker.h"
 
 Tasker tasker;
-
-void triggerSetCoilLow(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
-}
-
-void triggerResetCoilLow(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
-}
-
-void pulseSetCoil(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-  tasker.setTimeout(triggerSetCoilLow, RELAY_PULSE_DELAY_MS, channel);
-}
-
-void pulseResetCoil(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-  tasker.setTimeout(triggerResetCoilLow, RELAY_PULSE_DELAY_MS, channel);
-}
 // -----------------------------------------------------------------------------
 
 BLEPeripheral blePeripheral = BLEPeripheral();
@@ -170,60 +151,48 @@ BLEUnsignedCharCharacteristic livoloSwitchOneCharacteristic = BLEUnsignedCharCha
 BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 #endif
 
-void setChannelRelaySwitchState(uint8_t channel, uint8_t newState) {
+void deEnergizeSetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+  channelState[channel] = ON;
+#ifdef HAS_LED_SIGNALING
+  TURN_RED_LED_ON(channel);
+#endif
+}
+
+void deEnergizeResetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+  channelState[channel] = OFF;
+#ifdef HAS_LED_SIGNALING
+  TURN_BLUE_LED_ON(channel);
+#endif
+}
+
+void energizeSetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
+  tasker.setTimeout(deEnergizeSetCoil, RELAY_PULSE_DELAY_MS, channel);
+}
+
+void energizeResetCoil(int channel) {
+  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
+  tasker.setTimeout(deEnergizeResetCoil, RELAY_PULSE_DELAY_MS, channel);
+}
+
+void setRelaySwitchChannelState(uint8_t channel, uint8_t newState) {
   if (newState == ON) {
-    pulseSetCoil(channel);
-    channelState[channel] = ON;
-#ifdef HAS_LED_SIGNALING
-    TURN_RED_LED_ON(channel);
-#endif
+    energizeSetCoil(channel);
   } else {
-    pulseResetCoil(channel);
-    channelState[channel] = OFF;
-#ifdef HAS_LED_SIGNALING
-    TURN_BLUE_LED_ON(channel);
-#endif
+    energizeResetCoil(channel);
   }
 }
 
-bool touchSensorTriggered() {
-  //static uint32_t lastTouchTimestamp[TOUCH_SENSORS_COUNT];
-  //static uint8_t touchSensorState[TOUCH_SENSORS_COUNT];
-  static uint32_t touchSensorStillPressedCounter[TOUCH_SENSORS_COUNT];
-  //bool triggered = false;
+void toggleRelayChannelState(uint8_t channel) {
+  channelState[channel] = !channelState[channel];
+  setRelaySwitchChannelState(channel, channelState[channel]);
+}
 
-//   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
-// #ifdef TOUCH_SENSOR_INVERSE_LOGIC
-//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
-// #else
-//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
-// #endif
-//         (touchSensorState[i] != TOUCHED)) {
-//
-//       // latch in TOUCH state
-//       touchSensorState[i] = TOUCHED;
-//       lastTouchTimestamp[i] = millis();
-//     }
-//
-// #ifdef TOUCH_SENSOR_INVERSE_LOGIC
-//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == HIGH) &&
-// #else
-//     if ((digitalRead(TOUCH_SENSOR_CHANNEL_PINS[i]) == LOW) &&
-// #endif
-//         (touchSensorState[i] != RELEASED)) {
-//
-//       lastTouchTimestamp[i] = millis() - lastTouchTimestamp[i];
-//       // evaluate elapsed time between touch states
-//       // we can do here short press and long press handling if desired
-//       if (lastTouchTimestamp[i] >= SHORT_TOUCH_DETECT_THRESHOLD_MS) {
-//         channelState[i] = !channelState[i];
-//         setChannelRelaySwitchState(i, channelState[i]);
-//         triggered = true;
-//       }
-//       // latch in RELEASED state
-//       touchSensorState[i] = RELEASED;
-//     }
-//   }
+#ifdef HAS_TOUCH_SENSING
+bool touchSensorTriggered() {
+  static uint32_t touchSensorStillPressedCounter[TOUCH_SENSORS_COUNT];
 
   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
 #ifdef TOUCH_SENSOR_INVERSE_LOGIC
@@ -233,8 +202,7 @@ bool touchSensorTriggered() {
 #endif
       // act only when the first touch happens by using a counter
       if(touchSensorStillPressedCounter[i]++ == 1) {
-        channelState[i] = !channelState[i];
-        setChannelRelaySwitchState(i, channelState[i]);
+        toggleRelayChannelState(i);
         return true;
       }
     } else {
@@ -246,9 +214,18 @@ bool touchSensorTriggered() {
   return false;
 }
 
+void checkTouchSensor(int arg) {
+  if (touchSensorTriggered()) {
+    livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
+#if defined (LIVOLO_TWO_CHANNEL)
+    livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
+#endif
+  }
+}
+#endif
+
 void blePeripheralConnectHandler(BLECentral& central) {
   // central connected event handler
-
 #ifndef DEBUG
 #pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " LIVOLO_BLE_CENTRAL_ADDR
   // let our ble central device only to connect to Livolo
@@ -264,42 +241,42 @@ void blePeripheralDisconnectHandler(BLECentral& central) {
 
 // central wrote new value to characteristics, update state
 void switchOneCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setChannelRelaySwitchState(CHANNEL_1, livoloSwitchOneCharacteristic.value());
+  setRelaySwitchChannelState(CHANNEL_1, livoloSwitchOneCharacteristic.value());
 }
 #if defined (LIVOLO_TWO_CHANNEL)
 void switchTwoCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setChannelRelaySwitchState(CHANNEL_2, livoloSwitchTwoCharacteristic.value());
+  setRelaySwitchChannelState(CHANNEL_2, livoloSwitchTwoCharacteristic.value());
 }
 #endif
 
-// void disableUart() {
-//   NRF_UART0->TASKS_STOPTX = 1;
-//   NRF_UART0->TASKS_STOPRX = 1;
-//   NRF_UART0->ENABLE = 0;
-// }
-//
-// void disableSPI() {
-//   NRF_SPI0->ENABLE = 0;
-// }
-//
-// void disableTWI() {
-//   NRF_TWI1->TASKS_STOP = 1;
-//   NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
-//   NRF_TWI1->INTENCLR = (TWI_INTENCLR_STOPPED_Disabled << TWI_INTENCLR_STOPPED_Pos)|
-//                           (TWI_INTENCLR_RXDREADY_Disabled << TWI_INTENCLR_RXDREADY_Pos)|
-//                           (TWI_INTENCLR_TXDSENT_Disabled << TWI_INTENCLR_TXDSENT_Pos)|
-//                           (TWI_INTENCLR_ERROR_Disabled << TWI_INTENCLR_ERROR_Pos)|
-//                           (TWI_INTENCLR_BB_Disabled << TWI_INTENCLR_BB_Pos);
-// }
+void disableUart() {
+  NRF_UART0->TASKS_STOPTX = 1;
+  NRF_UART0->TASKS_STOPRX = 1;
+  NRF_UART0->ENABLE = 0;
+}
+
+void disableSPI() {
+  NRF_SPI0->ENABLE = 0;
+}
+
+void disableTWI() {
+  NRF_TWI1->TASKS_STOP = 1;
+  NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
+  NRF_TWI1->INTENCLR = (TWI_INTENCLR_STOPPED_Disabled << TWI_INTENCLR_STOPPED_Pos)|
+                          (TWI_INTENCLR_RXDREADY_Disabled << TWI_INTENCLR_RXDREADY_Pos)|
+                          (TWI_INTENCLR_TXDSENT_Disabled << TWI_INTENCLR_TXDSENT_Pos)|
+                          (TWI_INTENCLR_ERROR_Disabled << TWI_INTENCLR_ERROR_Pos)|
+                          (TWI_INTENCLR_BB_Disabled << TWI_INTENCLR_BB_Pos);
+}
 
 void setup() {
-  // disableUart();
-  // disableSPI();
-  // disableTWI();
+  disableUart();
+  disableSPI();
+  disableTWI();
 
 #ifdef HAS_MTCH_TOUCH_SENSOR
   analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, TOUCH_SENSOR_SENSITIVITY_LEVEL);
-  digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, HIGH); // disable low power mode
+  digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, LOW); // enable low power mode
 #endif
 
 #ifdef HAS_TOUCH_SENSING
@@ -307,13 +284,13 @@ void setup() {
   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
     pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
   }
+  tasker.setInterval(checkTouchSensor, TOUCH_DETECT_SAMPLING_INTERVAL_MS);
 #endif
 
 #ifdef HAS_LED_SIGNALING
   // lit BLUE leds when starting up
   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
     pinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
-    TURN_BLUE_LED_ON(i);
   }
 #endif
 
@@ -323,7 +300,7 @@ void setup() {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
     }
     // make sure touch switch relays start in OFF state
-    pulseResetCoil(i);
+    setRelaySwitchChannelState(i, OFF);
   }
 
   blePeripheral.setManufacturerData(MANUFACTURER_DATA, MANUFACTURER_DATA_LEN);
@@ -348,9 +325,9 @@ void setup() {
 #endif
 
   // set initial values for characteristics
-  livoloSwitchOneCharacteristic.setValue(OFF);
+  livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
 #if defined (LIVOLO_TWO_CHANNEL)
-  livoloSwitchTwoCharacteristic.setValue(OFF);
+  livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
 #endif
 
   // begin initialization
@@ -358,25 +335,16 @@ void setup() {
 
   // set TX power - must be called after begin
   blePeripheral.setTxPower(BLE_TX_POWER);
+
+  //sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
 }
 
 void loop() {
+  // run tasker tasks
   tasker.loop();
 
   // poll peripheral
   blePeripheral.poll();
-
-#ifdef HAS_TOUCH_SENSING
-  static uint32_t lastTouchSamplingTimestamp = 0;
-  // sample touch sensor(s) state at a fixed interval
-  if ((millis() - lastTouchSamplingTimestamp) >= TOUCH_DETECT_SAMPLING_INTERVAL_MS && touchSensorTriggered()) {
-    livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
-#if defined (LIVOLO_TWO_CHANNEL)
-    livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
-#endif
-    lastTouchSamplingTimestamp = millis();
-  }
-#endif
 
   //sd_app_evt_wait();
 }
