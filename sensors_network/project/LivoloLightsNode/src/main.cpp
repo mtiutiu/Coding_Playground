@@ -40,7 +40,7 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 50;
+const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 100;
 const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 90; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
 #if defined (LIVOLO_ONE_CHANNEL)
@@ -104,9 +104,12 @@ const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
 #error "Unknown Livolo switch type!"
 #endif
 
+const uint32_t CHANNEL_LED_TOGGLE_INTERVAL_MS = 500;
+const uint8_t CHANNEL_LED_TOGGLE_COUNT = 3;
+
 #define TURN_RED_LED_ON(channel) digitalWrite(LIGHT_STATE_LED_PINS[channel], LOW)
 #define TURN_BLUE_LED_ON(channel) digitalWrite(LIGHT_STATE_LED_PINS[channel], HIGH)
-
+#define TOGGLE_CHANNEL_LED(channel) digitalWrite(LIGHT_STATE_LED_PINS[channel], !digitalRead(LIGHT_STATE_LED_PINS[channel]))
 // --------------------------------------- BLE ----------------------------------------------------
 #include <SPI.h>
 #include <BLEPeripheral.h>
@@ -151,43 +154,38 @@ BLEUnsignedCharCharacteristic livoloSwitchOneCharacteristic = BLEUnsignedCharCha
 BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 #endif
 
-void deEnergizeSetCoil(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
-  channelState[channel] = ON;
-#ifdef HAS_LED_SIGNALING
-  TURN_RED_LED_ON(channel);
-#endif
-}
-
-void deEnergizeResetCoil(int channel) {
-  digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
-  channelState[channel] = OFF;
-#ifdef HAS_LED_SIGNALING
-  TURN_BLUE_LED_ON(channel);
-#endif
-}
-
 void energizeSetCoil(int channel) {
   digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
-  tasker.setTimeout(deEnergizeSetCoil, RELAY_PULSE_DELAY_MS, channel);
+  tasker.setTimeout([](int channel) {
+    digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], LOW);
+  }, RELAY_PULSE_DELAY_MS, channel);
 }
 
 void energizeResetCoil(int channel) {
   digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], HIGH);
-  tasker.setTimeout(deEnergizeResetCoil, RELAY_PULSE_DELAY_MS, channel);
+  tasker.setTimeout([](int channel) {
+    digitalWrite(RELAY_CH_PINS[channel][RESET_COIL_INDEX], LOW);
+  }, RELAY_PULSE_DELAY_MS, channel);
 }
 
 void setRelaySwitchChannelState(uint8_t channel, uint8_t newState) {
   if (newState == ON) {
     energizeSetCoil(channel);
+    channelState[channel] = ON;
+  #ifdef HAS_LED_SIGNALING
+    TURN_RED_LED_ON(channel);
+  #endif
   } else {
     energizeResetCoil(channel);
+    channelState[channel] = OFF;
+  #ifdef HAS_LED_SIGNALING
+    TURN_BLUE_LED_ON(channel);
+  #endif
   }
 }
 
 void toggleRelayChannelState(uint8_t channel) {
-  channelState[channel] = !channelState[channel];
-  setRelaySwitchChannelState(channel, channelState[channel]);
+  setRelaySwitchChannelState(channel, !channelState[channel]);
 }
 
 #ifdef HAS_TOUCH_SENSING
@@ -212,15 +210,6 @@ bool touchSensorTriggered() {
   }
 
   return false;
-}
-
-void checkTouchSensor(int arg) {
-  if (touchSensorTriggered()) {
-    livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
-#if defined (LIVOLO_TWO_CHANNEL)
-    livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
-#endif
-  }
 }
 #endif
 
@@ -274,21 +263,8 @@ void setup() {
   disableSPI();
   disableTWI();
 
-#ifdef HAS_MTCH_TOUCH_SENSOR
-  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, TOUCH_SENSOR_SENSITIVITY_LEVEL);
-  digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, LOW); // enable low power mode
-#endif
-
-#ifdef HAS_TOUCH_SENSING
-  // set required mcu pins for reading touch sensors state
-  for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
-    pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
-  }
-  tasker.setInterval(checkTouchSensor, TOUCH_DETECT_SAMPLING_INTERVAL_MS);
-#endif
-
 #ifdef HAS_LED_SIGNALING
-  // lit BLUE leds when starting up
+  // set led pins direction
   for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
     pinMode(LIGHT_STATE_LED_PINS[i], OUTPUT);
   }
@@ -300,8 +276,40 @@ void setup() {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
     }
     // make sure touch switch relays start in OFF state
-    setRelaySwitchChannelState(i, OFF);
+    // play a short led animation first
+    tasker.setRepeated([](int channel) {
+      static uint8_t toggleCount = 0;
+
+      TOGGLE_CHANNEL_LED(channel);
+
+      if(++toggleCount >= CHANNEL_LED_TOGGLE_COUNT) {
+        setRelaySwitchChannelState(channel, OFF);
+        toggleCount = 0;
+      }
+    }, CHANNEL_LED_TOGGLE_INTERVAL_MS, CHANNEL_LED_TOGGLE_COUNT, i);
   }
+
+#ifdef HAS_TOUCH_SENSING
+#ifdef HAS_MTCH_TOUCH_SENSOR
+  analogWrite(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN, TOUCH_SENSOR_SENSITIVITY_LEVEL);
+  digitalWrite(TOUCH_SENSE_LOW_POWER_MODE_PIN, LOW); // enable low power mode
+#endif
+
+  // set required mcu pins for reading touch sensors state
+  for (uint8_t i = 0; i < TOUCH_SENSORS_COUNT; i++) {
+    pinMode(TOUCH_SENSOR_CHANNEL_PINS[i], INPUT);
+  }
+
+  // enable touch sensor check/sampling
+  tasker.setInterval([](int arg) {
+    if (touchSensorTriggered()) {
+      livoloSwitchOneCharacteristic.setValue(channelState[CHANNEL_1]);
+  #if defined (LIVOLO_TWO_CHANNEL)
+      livoloSwitchTwoCharacteristic.setValue(channelState[CHANNEL_2]);
+  #endif
+    }
+  }, TOUCH_DETECT_SAMPLING_INTERVAL_MS);
+#endif
 
   blePeripheral.setManufacturerData(MANUFACTURER_DATA, MANUFACTURER_DATA_LEN);
   blePeripheral.setDeviceName(DEVICE_NAME);
