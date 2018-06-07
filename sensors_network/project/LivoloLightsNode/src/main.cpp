@@ -59,7 +59,7 @@ const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 90; // 0 - biggest sensitivity, 
 #define TOUCH_SENSOR_CHANNEL_ONE_PIN  8
 #pragma message "TOUCH_SENSOR_CHANNEL_ONE_PIN is not defined, using default value: " STR(TOUCH_SENSOR_CHANNEL_ONE_PIN)
 #endif
-#ifndef TOUCH_SENSOR_CHANNEL_TWO_PIN
+#if defined(LIVOLO_TWO_CHANNEL) && !defined(TOUCH_SENSOR_CHANNEL_TWO_PIN)
 #define TOUCH_SENSOR_CHANNEL_TWO_PIN  9
 #pragma message "TOUCH_SENSOR_CHANNEL_TWO_PIN is not defined, using default value: " STR(TOUCH_SENSOR_CHANNEL_TWO_PIN)
 #endif
@@ -106,11 +106,11 @@ const uint8_t LED_COUNT = 2;
 #pragma message "RELAY_CHANNEL_ONE_RESET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_ONE_RESET_PIN)
 #endif
 
-#ifndef RELAY_CHANNEL_TWO_SET_PIN
+#if defined(LIVOLO_TWO_CHANNEL) && !defined(RELAY_CHANNEL_TWO_SET_PIN)
 #define RELAY_CHANNEL_TWO_SET_PIN  26
 #pragma message "RELAY_CHANNEL_TWO_SET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_TWO_SET_PIN)
 #endif
-#ifndef RELAY_CHANNEL_TWO_RESET_PIN
+#if defined(LIVOLO_TWO_CHANNEL) && !defined(RELAY_CHANNEL_TWO_RESET_PIN)
 #define RELAY_CHANNEL_TWO_RESET_PIN  27
 #pragma message "RELAY_CHANNEL_TWO_RESET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_TWO_RESET_PIN)
 #endif
@@ -132,7 +132,7 @@ const uint8_t RELAY_CH_PINS[][COILS_COUNT] = {
 #define LIGHT_STATE_CHANNEL_ONE_LED_PIN  18
 #pragma message "LIGHT_STATE_CHANNEL_ONE_LED_PIN is not defined, using default value: " STR(LIGHT_STATE_CHANNEL_ONE_LED_PIN)
 #endif
-#ifndef LIGHT_STATE_CHANNEL_TWO_LED_PIN
+#if defined(LIVOLO_TWO_CHANNEL) && !defined(LIGHT_STATE_CHANNEL_TWO_LED_PIN)
 #define LIGHT_STATE_CHANNEL_TWO_LED_PIN  19
 #pragma message "LIGHT_STATE_CHANNEL_TWO_LED_PIN is not defined, using default value: " STR(LIGHT_STATE_CHANNEL_TWO_LED_PIN)
 #endif
@@ -271,7 +271,7 @@ bool touchSensorTriggered() {
 void blePeripheralConnectHandler(BLECentral& central) {
   // central connected event handler
 #ifndef DEBUG
-#pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " STR(LIVOLO_BLE_CENTRAL_ADDR)
+#pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " LIVOLO_BLE_CENTRAL_ADDR
   // let our ble central device only to connect to Livolo
   if(strcmp(central.address(), LIVOLO_BLE_CENTRAL_ADDR)) {
     central.disconnect();
