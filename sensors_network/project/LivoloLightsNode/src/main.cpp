@@ -1,5 +1,8 @@
 #include <Arduino.h>
 
+#define STRING(x) #x
+#define STR(x) STRING(x)
+
 // -------------------------------- NODE CONFIGURABLE FEATURES ----------------------------
 
 // Select number of channels(buttons)
@@ -43,23 +46,35 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 100;
 const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 90; // 0 - biggest sensitivity, 255 - lowest sensitivity
 
-#if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 29;
-const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 27;
-#elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t TOUCH_SENSE_LOW_POWER_MODE_PIN = 12;
-const uint8_t TOUCH_SENSE_SENSITIVITY_ADJUST_PIN = 17;
-#else
-#error "Unknown Livolo switch type!"
+#ifndef TOUCH_SENSE_LOW_POWER_MODE_PIN
+#define TOUCH_SENSE_LOW_POWER_MODE_PIN  12
+#pragma message "TOUCH_SENSE_LOW_POWER_MODE_PIN is not defined, using default value: " STR(TOUCH_SENSE_LOW_POWER_MODE_PIN)
+#endif
+#ifndef TOUCH_SENSE_SENSITIVITY_ADJUST_PIN
+#define TOUCH_SENSE_SENSITIVITY_ADJUST_PIN  17
+#pragma message "TOUCH_SENSE_SENSITIVITY_ADJUST_PIN is not defined, using default value: " STR(TOUCH_SENSE_SENSITIVITY_ADJUST_PIN)
 #endif
 
+#ifndef TOUCH_SENSOR_CHANNEL_ONE_PIN
+#define TOUCH_SENSOR_CHANNEL_ONE_PIN  8
+#pragma message "TOUCH_SENSOR_CHANNEL_ONE_PIN is not defined, using default value: " STR(TOUCH_SENSOR_CHANNEL_ONE_PIN)
+#endif
+#ifndef TOUCH_SENSOR_CHANNEL_TWO_PIN
+#define TOUCH_SENSOR_CHANNEL_TWO_PIN  9
+#pragma message "TOUCH_SENSOR_CHANNEL_TWO_PIN is not defined, using default value: " STR(TOUCH_SENSOR_CHANNEL_TWO_PIN)
+#endif
+
+const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {
 #if defined (LIVOLO_ONE_CHANNEL)
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {28};
+  TOUCH_SENSOR_CHANNEL_ONE_PIN
 #elif defined (LIVOLO_TWO_CHANNEL)
-const uint8_t TOUCH_SENSOR_CHANNEL_PINS[TOUCH_SENSORS_COUNT] = {8, 9};
+  TOUCH_SENSOR_CHANNEL_ONE_PIN,
+  TOUCH_SENSOR_CHANNEL_TWO_PIN
 #else
 #error "Unknown Livolo switch type!"
 #endif
+};
+
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------- LIGHTS SECTION ----------------------
@@ -78,31 +93,71 @@ const uint8_t LED_COUNT = 2;
 
 #define OFF 0
 #define ON  1
+#define COILS_COUNT        2
 #define SET_COIL_INDEX     0
 #define RESET_COIL_INDEX   1
 
-const uint8_t RELAY_CH_PINS[][2] = {
+#ifndef RELAY_CHANNEL_ONE_SET_PIN
+#define RELAY_CHANNEL_ONE_SET_PIN  28
+#pragma message "RELAY_CHANNEL_ONE_SET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_ONE_SET_PIN)
+#endif
+#ifndef RELAY_CHANNEL_ONE_RESET_PIN
+#define RELAY_CHANNEL_ONE_RESET_PIN  29
+#pragma message "RELAY_CHANNEL_ONE_RESET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_ONE_RESET_PIN)
+#endif
+
+#ifndef RELAY_CHANNEL_TWO_SET_PIN
+#define RELAY_CHANNEL_TWO_SET_PIN  26
+#pragma message "RELAY_CHANNEL_TWO_SET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_TWO_SET_PIN)
+#endif
+#ifndef RELAY_CHANNEL_TWO_RESET_PIN
+#define RELAY_CHANNEL_TWO_RESET_PIN  27
+#pragma message "RELAY_CHANNEL_TWO_RESET_PIN is not defined, using default value: " STR(RELAY_CHANNEL_TWO_RESET_PIN)
+#endif
+
+const uint32_t RELAY_PULSE_DELAY_MS = 100;
+
+const uint8_t RELAY_CH_PINS[][COILS_COUNT] = {
 #if defined (LIVOLO_ONE_CHANNEL)
-  {17, 19} // channel 1 relay control pins(bistable relay - 2 coils)
+  {RELAY_CHANNEL_ONE_SET_PIN, RELAY_CHANNEL_ONE_RESET_PIN} // channel 1 relay control pins(bistable relay - 2 coils)
 #elif defined (LIVOLO_TWO_CHANNEL)
-  {28, 29}, // channel 1 relay control pins(bistable relay - 2 coils)
-  {26, 27} // channel 2 relay control pins(bistable relay - 2 coils)
+  {RELAY_CHANNEL_ONE_SET_PIN, RELAY_CHANNEL_ONE_RESET_PIN}, // channel 1 relay control pins(bistable relay - 2 coils)
+  {RELAY_CHANNEL_TWO_SET_PIN, RELAY_CHANNEL_TWO_RESET_PIN} // channel 2 relay control pins(bistable relay - 2 coils)
 #else
 #error "Unknown Livolo switch type!"
 #endif
 };
 
-const uint32_t RELAY_PULSE_DELAY_MS = 100;
+#ifndef LIGHT_STATE_CHANNEL_ONE_LED_PIN
+#define LIGHT_STATE_CHANNEL_ONE_LED_PIN  18
+#pragma message "LIGHT_STATE_CHANNEL_ONE_LED_PIN is not defined, using default value: " STR(LIGHT_STATE_CHANNEL_ONE_LED_PIN)
+#endif
+#ifndef LIGHT_STATE_CHANNEL_TWO_LED_PIN
+#define LIGHT_STATE_CHANNEL_TWO_LED_PIN  19
+#pragma message "LIGHT_STATE_CHANNEL_TWO_LED_PIN is not defined, using default value: " STR(LIGHT_STATE_CHANNEL_TWO_LED_PIN)
+#endif
 
+const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {
 #if defined (LIVOLO_ONE_CHANNEL)
-uint8_t channelState[RELAY_COUNT] = {OFF};
-const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {8};
+  LIGHT_STATE_CHANNEL_ONE_LED_PIN
 #elif defined (LIVOLO_TWO_CHANNEL)
-uint8_t channelState[RELAY_COUNT] = {OFF, OFF};
-const uint8_t LIGHT_STATE_LED_PINS[LED_COUNT] = {18, 19};
+  LIGHT_STATE_CHANNEL_ONE_LED_PIN,
+  LIGHT_STATE_CHANNEL_TWO_LED_PIN
 #else
 #error "Unknown Livolo switch type!"
 #endif
+};
+
+uint8_t channelState[RELAY_COUNT] = {
+#if defined (LIVOLO_ONE_CHANNEL)
+  OFF
+#elif defined (LIVOLO_TWO_CHANNEL)
+  OFF,
+  OFF
+#else
+#error "Unknown Livolo switch type!"
+#endif
+};
 
 const uint32_t CHANNEL_LED_TOGGLE_INTERVAL_MS = 500;
 const uint8_t CHANNEL_LED_TOGGLE_COUNT = 3;
@@ -139,7 +194,7 @@ const uint8_t CHANNEL_LED_TOGGLE_COUNT = 3;
 // -----------------------------------------------------------------------------
 
 // -------------------------- SCHEDULER ----------------------------------------
-#define TASKER_MAX_TASKS 4
+#define TASKER_MAX_TASKS 10
 #include "Tasker.h"
 
 Tasker tasker;
@@ -216,7 +271,7 @@ bool touchSensorTriggered() {
 void blePeripheralConnectHandler(BLECentral& central) {
   // central connected event handler
 #ifndef DEBUG
-#pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " LIVOLO_BLE_CENTRAL_ADDR
+#pragma message "Pairing is allowed for this BLE CENTRAL ADDRESS: " STR(LIVOLO_BLE_CENTRAL_ADDR)
   // let our ble central device only to connect to Livolo
   if(strcmp(central.address(), LIVOLO_BLE_CENTRAL_ADDR)) {
     central.disconnect();
@@ -272,7 +327,7 @@ void setup() {
 
   // set bistable relays initial state
   for (uint8_t i = 0; i < RELAY_COUNT; i++) {
-    for (uint8_t j = 0; j < 2; j++) {
+    for (uint8_t j = 0; j < COILS_COUNT; j++) {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
     }
     // make sure touch switch relays start in OFF state
@@ -346,7 +401,7 @@ void setup() {
 
   //sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
 #ifdef HAS_DC_DC_POWER_MODE_SUPPORT
-#warning "DC-DC power mode support enabled!"
+#pragma message "DC-DC power mode support enabled!"
   sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
 #endif
 }
