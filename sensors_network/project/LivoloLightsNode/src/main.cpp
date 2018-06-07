@@ -238,30 +238,30 @@ void switchTwoCharacteristicWritten(BLECentral& central, BLECharacteristic& char
 }
 #endif
 
-void disableUart() {
-  NRF_UART0->TASKS_STOPTX = 1;
-  NRF_UART0->TASKS_STOPRX = 1;
-  NRF_UART0->ENABLE = 0;
-}
-
-void disableSPI() {
-  NRF_SPI0->ENABLE = 0;
-}
-
-void disableTWI() {
-  NRF_TWI1->TASKS_STOP = 1;
-  NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
-  NRF_TWI1->INTENCLR = (TWI_INTENCLR_STOPPED_Disabled << TWI_INTENCLR_STOPPED_Pos)|
-                          (TWI_INTENCLR_RXDREADY_Disabled << TWI_INTENCLR_RXDREADY_Pos)|
-                          (TWI_INTENCLR_TXDSENT_Disabled << TWI_INTENCLR_TXDSENT_Pos)|
-                          (TWI_INTENCLR_ERROR_Disabled << TWI_INTENCLR_ERROR_Pos)|
-                          (TWI_INTENCLR_BB_Disabled << TWI_INTENCLR_BB_Pos);
-}
+// void disableUart() {
+//   NRF_UART0->TASKS_STOPTX = 1;
+//   NRF_UART0->TASKS_STOPRX = 1;
+//   NRF_UART0->ENABLE = 0;
+// }
+//
+// void disableSPI() {
+//   NRF_SPI0->ENABLE = 0;
+// }
+//
+// void disableTWI() {
+//   NRF_TWI1->TASKS_STOP = 1;
+//   NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
+//   NRF_TWI1->INTENCLR = (TWI_INTENCLR_STOPPED_Disabled << TWI_INTENCLR_STOPPED_Pos)|
+//                           (TWI_INTENCLR_RXDREADY_Disabled << TWI_INTENCLR_RXDREADY_Pos)|
+//                           (TWI_INTENCLR_TXDSENT_Disabled << TWI_INTENCLR_TXDSENT_Pos)|
+//                           (TWI_INTENCLR_ERROR_Disabled << TWI_INTENCLR_ERROR_Pos)|
+//                           (TWI_INTENCLR_BB_Disabled << TWI_INTENCLR_BB_Pos);
+// }
 
 void setup() {
-  disableUart();
-  disableSPI();
-  disableTWI();
+  // disableUart();
+  // disableSPI();
+  // disableTWI();
 
 #ifdef HAS_LED_SIGNALING
   // set led pins direction
@@ -345,6 +345,10 @@ void setup() {
   blePeripheral.setTxPower(BLE_TX_POWER);
 
   //sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
+#ifdef HAS_DC_DC_POWER_MODE_SUPPORT
+#warning "DC-DC power mode support enabled!"
+  sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+#endif
 }
 
 void loop() {
