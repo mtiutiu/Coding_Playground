@@ -43,8 +43,15 @@ const uint8_t TOUCH_SENSORS_COUNT = 2;
 #define RELEASED  0
 #define TOUCHED   1
 
-const uint32_t TOUCH_DETECT_SAMPLING_INTERVAL_MS = 100;
-const uint32_t TOUCH_SENSOR_SENSITIVITY_LEVEL = 90; // 0 - biggest sensitivity, 255 - lowest sensitivity
+#ifndef TOUCH_DETECT_SAMPLING_INTERVAL_MS
+#define TOUCH_DETECT_SAMPLING_INTERVAL_MS 100
+#pragma message "TOUCH_DETECT_SAMPLING_INTERVAL_MS is not defined, using default value: " STR(TOUCH_DETECT_SAMPLING_INTERVAL_MS)
+#endif
+
+#ifndef TOUCH_SENSOR_SENSITIVITY_LEVEL
+#define TOUCH_SENSOR_SENSITIVITY_LEVEL  90  // 0 - biggest sensitivity, 255 - lowest sensitivity
+#pragma message "TOUCH_SENSOR_SENSITIVITY_LEVEL is not defined, using default value: " STR(TOUCH_SENSOR_SENSITIVITY_LEVEL)
+#endif
 
 #ifndef TOUCH_SENSE_LOW_POWER_MODE_PIN
 #define TOUCH_SENSE_LOW_POWER_MODE_PIN  12
