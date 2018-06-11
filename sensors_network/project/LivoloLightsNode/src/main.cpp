@@ -198,14 +198,6 @@ const uint8_t CHANNEL_LED_TOGGLE_COUNT = 3;
 #endif
 
 #define BLE_TX_POWER  4 // 4dBm
-// -----------------------------------------------------------------------------
-
-// -------------------------- SCHEDULER ----------------------------------------
-#define TASKER_MAX_TASKS 10
-#include "Tasker.h"
-
-Tasker tasker;
-// -----------------------------------------------------------------------------
 
 BLEPeripheral blePeripheral = BLEPeripheral();
 BLEService livoloService = BLEService(LIVOLO_BLE_SERVICE_UUID);
@@ -215,6 +207,14 @@ BLEUnsignedCharCharacteristic livoloSwitchOneCharacteristic = BLEUnsignedCharCha
 #if defined (LIVOLO_TWO_CHANNEL)
 BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCharacteristic(LIVOLO_BLE_SWITCH_TWO_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify);
 #endif
+// -----------------------------------------------------------------------------
+
+// -------------------------- SCHEDULER ----------------------------------------
+#define TASKER_MAX_TASKS 10
+#include "Tasker.h"
+
+Tasker tasker;
+// -----------------------------------------------------------------------------
 
 void energizeSetCoil(int channel) {
   digitalWrite(RELAY_CH_PINS[channel][SET_COIL_INDEX], HIGH);
