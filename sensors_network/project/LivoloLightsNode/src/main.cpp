@@ -211,9 +211,23 @@ BLEUnsignedCharCharacteristic livoloSwitchTwoCharacteristic = BLEUnsignedCharCha
 
 // -------------------------- SCHEDULER ----------------------------------------
 #define TASKER_MAX_TASKS 10
-#include "Tasker.h"
+#include <Tasker.h>
 
 Tasker tasker;
+// -----------------------------------------------------------------------------
+
+// --------------------------- EEPROM ------------------------------------------
+#include <DS2431.h>
+#include <OneWire.h>
+
+#ifndef EEPROM_ONE_WIRE_PIN
+#define EEPROM_ONE_WIRE_PIN  25
+#pragma message "EEPROM_ONE_WIRE_PIN is not defined, using default value: " STR(EEPROM_ONE_WIRE_PIN)
+#endif
+
+static bool eepromDevicePresent = false;
+OneWire eepromOneWire(EEPROM_ONE_WIRE_PIN);
+uint8_t serialNb[8];
 // -----------------------------------------------------------------------------
 
 void energizeSetCoil(int channel) {
@@ -230,7 +244,25 @@ void energizeResetCoil(int channel) {
   }, RELAY_PULSE_DELAY_MS, channel);
 }
 
-void setRelaySwitchChannelState(uint8_t channel, uint8_t newState) {
+void setRelaySwitchChannelState(uint8_t channel, uint8_t newState, bool saveState = false) {
+#ifdef HAS_DS2431_EEPROM_STORAGE
+  if (eepromDevicePresent && saveState) {
+    uint8_t savedSwitchState[RELAY_COUNT];
+    memset(savedSwitchState, 0, RELAY_COUNT);
+
+    DS2431 eeprom(eepromOneWire, serialNb);
+    eeprom.read(0, savedSwitchState, RELAY_COUNT);
+
+    if (newState != savedSwitchState[channel]) {
+      uint8_t newStateToSave[8];
+      memset(newStateToSave, 0, sizeof(newStateToSave));
+      newStateToSave[channel] = newState;
+      eeprom.write(0, newStateToSave);
+      eepromOneWire.depower();
+    }
+  }
+#endif
+
   if (newState == ON) {
     energizeSetCoil(channel);
     channelState[channel] = ON;
@@ -247,7 +279,7 @@ void setRelaySwitchChannelState(uint8_t channel, uint8_t newState) {
 }
 
 void toggleRelayChannelState(uint8_t channel) {
-  setRelaySwitchChannelState(channel, !channelState[channel]);
+  setRelaySwitchChannelState(channel, !channelState[channel], true);
 }
 
 #ifdef HAS_TOUCH_SENSING
@@ -292,11 +324,11 @@ void blePeripheralDisconnectHandler(BLECentral& central) {
 
 // central wrote new value to characteristics, update state
 void switchOneCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setRelaySwitchChannelState(CHANNEL_1, livoloSwitchOneCharacteristic.value());
+  setRelaySwitchChannelState(CHANNEL_1, livoloSwitchOneCharacteristic.value(), true);
 }
 #if defined (LIVOLO_TWO_CHANNEL)
 void switchTwoCharacteristicWritten(BLECentral& central, BLECharacteristic& characteristic) {
-  setRelaySwitchChannelState(CHANNEL_2, livoloSwitchTwoCharacteristic.value());
+  setRelaySwitchChannelState(CHANNEL_2, livoloSwitchTwoCharacteristic.value(), true);
 }
 #endif
 
@@ -332,23 +364,52 @@ void setup() {
   }
 #endif
 
+#ifdef HAS_DS2431_EEPROM_STORAGE
+  // Search the 1-Wire bus for a connected device and check serial number CRC
+  eepromOneWire.target_search(DS2431::ONE_WIRE_FAMILY_CODE);
+  if (eepromOneWire.search(serialNb) && eepromOneWire.crc8(serialNb, 7) == serialNb[7]) {
+    eepromDevicePresent = true;
+  }
+
+  // load saved state for relays
+  uint8_t savedSwitchState[RELAY_COUNT];
+  memset(savedSwitchState, 0, RELAY_COUNT);
+
+  if(eepromDevicePresent) {
+    DS2431 eeprom(eepromOneWire, serialNb);
+    eeprom.read(0, savedSwitchState, RELAY_COUNT);
+  }
+#endif
+
   // set bistable relays initial state
   for (uint8_t i = 0; i < RELAY_COUNT; i++) {
     for (uint8_t j = 0; j < COILS_COUNT; j++) {
       pinMode(RELAY_CH_PINS[i][j], OUTPUT);
     }
-    // make sure touch switch relays start in OFF state
+    // make sure touch switch relays start in a well known state
     // play a short led animation first
-    tasker.setRepeated([](int channel) {
-      static uint8_t toggleCount = 0;
-
-      TOGGLE_CHANNEL_LED(channel);
-
-      if(++toggleCount >= CHANNEL_LED_TOGGLE_COUNT) {
-        setRelaySwitchChannelState(channel, OFF);
-        toggleCount = 0;
-      }
-    }, CHANNEL_LED_TOGGLE_INTERVAL_MS, CHANNEL_LED_TOGGLE_COUNT, i);
+    // tasker.setRepeated([](int channel) {
+    //   static uint8_t toggleCount = 0;
+    //
+    //   TOGGLE_CHANNEL_LED(channel);
+    //
+    //   if(++toggleCount >= CHANNEL_LED_TOGGLE_COUNT) {
+    //   #ifdef HAS_DS2431_EEPROM_STORAGE
+    //     setRelaySwitchChannelState(channel,
+    //       (savedSwitchState[channel] == ON || savedSwitchState[channel] == OFF) ? savedSwitchState[channel] : OFF);
+    //   #else
+    //     setRelaySwitchChannelState(channel, OFF);
+    //   #endif
+    //     toggleCount = 0;
+    //   }
+    // }, CHANNEL_LED_TOGGLE_INTERVAL_MS, CHANNEL_LED_TOGGLE_COUNT, i);
+  #ifdef HAS_DS2431_EEPROM_STORAGE
+    if (eepromDevicePresent) {
+      setRelaySwitchChannelState(i, savedSwitchState[i]);
+    }
+  #else
+    setRelaySwitchChannelState(i, OFF);
+  #endif
   }
 
 #ifdef HAS_TOUCH_SENSING
