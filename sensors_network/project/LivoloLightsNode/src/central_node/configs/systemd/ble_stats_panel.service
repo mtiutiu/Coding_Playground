@@ -1,6 +1,6 @@
 [Unit]
 Description=Livolo BLE Web Config Panel
-After=network.target
+After=networking.target
 
 [Service]
 User=pi

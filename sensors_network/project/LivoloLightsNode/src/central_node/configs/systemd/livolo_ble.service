@@ -1,6 +1,6 @@
 [Unit]
 Description=Livolo BLE Central Node
-After=network.target,bluetooth.target
+After=networking.target,bluetooth.target
 
 [Service]
 User=pi
