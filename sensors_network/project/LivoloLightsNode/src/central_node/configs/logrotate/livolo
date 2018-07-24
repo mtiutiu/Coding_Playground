@@ -1,0 +1,10 @@
+/var/log/livolo*
+{
+        rotate 7
+        size 500K
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+}
