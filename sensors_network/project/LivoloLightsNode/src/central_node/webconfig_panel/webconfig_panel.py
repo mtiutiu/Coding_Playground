@@ -19,6 +19,7 @@ import subprocess
 import hashlib
 import socket
 from pydbus import SystemBus
+import tailer
 
 app = Flask(__name__)
 app.iniconfig = FlaskIni()
@@ -138,6 +139,9 @@ def service_operation(name, operation):
       stderr=hide_output
     ).wait() == 0
 
+def get_mysensors_livolo_syslog(count):
+  return tailer.tail(open('/var/log/livolo_ble.log'), count)
+
 @flask_sijax.route(app, '/')
 def index_page():
   def get_system_stats(obj_response):
@@ -185,6 +189,9 @@ def index_page():
           ini_file_write.notifyAll()
     obj_response.alert('Settings saved!')
 
+  def get_syslog_contents(obj_response):
+    obj_response.html("#app_syslog_content", render_template('app_syslog.html', app_syslog_output=get_mysensors_livolo_syslog(100)))
+
   if g.sijax.is_sijax_request:
     # Sijax request detected - let Sijax handle it
     g.sijax.register_callback('get_system_stats', get_system_stats)
@@ -193,6 +200,7 @@ def index_page():
     # g.sijax.register_callback('livolo_ble_central_service_status', livolo_ble_central_service_status)
     g.sijax.register_callback('settings_page_update', settings_page_update)
     g.sijax.register_callback('settings_page_save', settings_page_save)
+    g.sijax.register_callback('get_syslog_contents', get_syslog_contents)
     return g.sijax.process_request()
   return render_template('index.html')
 
@@ -258,8 +266,8 @@ def setup():
     # log to syslog
     logging.basicConfig(
       level=logging.DEBUG,
-      format="[ble_webconfig_panel] %(message)s",
-      handlers=[logging.handlers.SysLogHandler(address='/dev/log')]
+      format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s",
+      handlers=[logging.FileHandler('/var/log/livolo_ble_webpanel.log')]
     )
   else:
     logging.basicConfig(

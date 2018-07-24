@@ -349,8 +349,8 @@ def setup():
     # log to syslog
     logging.basicConfig(
       level=logging.DEBUG,
-      format="[livolo_ble] %(message)s",
-      handlers=[logging.handlers.SysLogHandler(address='/dev/log')]
+      format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s",
+      handlers=[logging.FileHandler('/var/log/livolo_ble.log')]
     )
   else:
     logging.basicConfig(
