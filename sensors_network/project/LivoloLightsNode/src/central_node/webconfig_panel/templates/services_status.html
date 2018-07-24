@@ -17,9 +17,9 @@
          <td>{{ ble_device['mac_address'] }}</td>
          <td>{{ 'Unknown' if '-1' in ble_device['alias'] else ble_device['alias'] }}</td>
          {% if ble_device['state'] == 0 %}
-           <td class="text-center"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></td>
+           <td class="text-center"><span class="dot_red"></span></td>
          {% elif ble_device['state'] == 1 %}
-           <td class="text-center"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></td>
+           <td class="text-center"><span class="dot_green"></span></td>
          {% else %}
            <td class="text-center"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i></td>
          {% endif %}
@@ -58,7 +58,7 @@
           <td>{{ mqtt_broker['address'] }}</td>
           <td>{{ mqtt_broker['port'] }}</td>
           <td class="text-center">
-            <i class="fa {{ 'fa-arrow-circle-down' if not mqtt_broker['connected'] else 'fa-arrow-circle-up' }}" aria-hidden="true"></i>
+            <span class="{{ 'dot_red' if not mqtt_broker['connected'] else 'dot_green' }}"></span>
           </td>
        </tr>
        {% endfor %}
@@ -91,7 +91,7 @@
         <tr>
           <td>Livolo BLE</td>
           <td class="text-center">
-            <i class="fa {{ 'fa-arrow-circle-down' if not services_status['livolo_ble'] else 'fa-arrow-circle-up' }}" aria-hidden="true"></i>
+            <span class="{{ 'dot_red' if not services_status['livolo_ble'] else 'dot_green' }}"></span>
           </td>
         </tr>
       </tbody>
