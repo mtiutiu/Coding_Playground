@@ -149,6 +149,10 @@ Ticker sensorStateReportTicker;
 // -----------------------------------------------------------------------------
 
 // ------------------------ LED SIGNALING --------------------------------------
+#if defined(HAS_BTN_LED) && ! defined(BTN_LED_PIN)
+#define BTN_LED_PIN	D5
+#endif
+
 #define INVERSE_LED_LOGIC
 #ifndef LED_SIGNAL_PIN
 #define LED_SIGNAL_PIN  BUILTIN_LED
@@ -682,6 +686,9 @@ void onMessage(MySensorMsg &message) {
           // turn OFF rgb led strip
           ws2812fx.stop();
           digitalWrite(LED_STRIP_DATA_PIN, LOW);
+    		  #ifdef HAS_BTN_LED
+    		  digitalWrite(BTN_LED_PIN, HIGH);
+    		  #endif
 
           saveRGBLedStripCurrentSettings(
             previousLedStripBrightness,
@@ -695,6 +702,9 @@ void onMessage(MySensorMsg &message) {
           // load rgb led strip saved settings
           loadRGBLedStripSavedSettings();
           ws2812fx.start();
+    		  #ifdef HAS_BTN_LED
+    		  digitalWrite(BTN_LED_PIN, LOW);
+    		  #endif
           sendLedStripState();
         }
       }
@@ -770,8 +780,14 @@ void checkLedStripBtn() {
       // turn OFF rgb led strip if it was running before
       ws2812fx.stop();
       digitalWrite(LED_STRIP_DATA_PIN, LOW);
+	  #ifdef HAS_BTN_LED
+	  digitalWrite(BTN_LED_PIN, HIGH);
+	  #endif
     } else {
       ws2812fx.start();
+	  #ifdef HAS_BTN_LED
+	  digitalWrite(BTN_LED_PIN, LOW);
+	  #endif
     }
     if(mysNode.connected()) {
       sendLedStripState();
@@ -782,6 +798,10 @@ void checkLedStripBtn() {
 }
 
 void portsConfig() {
+  #ifdef HAS_BTN_LED
+  pinMode(BTN_LED_PIN, OUTPUT);
+  digitalWrite(BTN_LED_PIN, HIGH);
+  #endif
   pinMode(LED_SIGNAL_PIN, OUTPUT);
   pinMode(ERASE_CONFIG_BTN_PIN,
   #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
