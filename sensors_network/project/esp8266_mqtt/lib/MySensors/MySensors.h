@@ -24,9 +24,9 @@ typedef struct {
 
 typedef void (*mys_msg_cb)(MySensorMsg& msg);
 
-class MySensor {
+class MySensors {
   public:
-    MySensor(){}
+    MySensors(){}
 
     void begin(const uint8_t node_id,
                 const char* node_alias,
@@ -54,7 +54,7 @@ class MySensor {
       // dirty hack to allow callbacks to member functions using a global pointer variable
       // http://www.newty.de/fpt/callback.html#static
       mqtt_cb_obj = (void*) this;
-      mqtt.setCallback(MySensor::_mqtt_callback_wrapper);
+      mqtt.setCallback(MySensors::_mqtt_callback_wrapper);
 
       mqtt.setServer(mqtt_server, mqtt_port);
     }
@@ -170,6 +170,7 @@ class MySensor {
         }
 
         mqtt.loop();
+        delay(10);  // for stability after mqtt loop
       }
     }
 
@@ -209,7 +210,7 @@ class MySensor {
     static void _mqtt_callback_wrapper(char* topic, uint8_t* payload, uint16_t length) {
       // use global variable to access member function by casting it first
       // http://www.newty.de/fpt/callback.html#static
-      ((MySensor*)mqtt_cb_obj)->_mqtt_callback(topic, payload, length);
+      ((MySensors*)mqtt_cb_obj)->_mqtt_callback(topic, payload, length);
     }
 
     void _mqtt_callback(char* topic, uint8_t* payload, uint16_t length) {

@@ -64,7 +64,7 @@ bool configurationUpdated = false;
 
 // ------------------------ MySensors-------------------------------------------
 #include <MTypes.h>
-#include <MySensor.h>
+#include <MySensors.h>
 #include <MySensorsEEPROM.h>
 
 const uint8_t RGB_SENSOR_ID = 1;
@@ -73,7 +73,7 @@ const uint8_t CHILD_TYPES[SENSOR_COUNT] = {S_RGB_LIGHT};
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = {V_RGB};
 const char *CHILD_ALIASES[SENSOR_COUNT] = {"RGB"};
 
-MySensor mysNode;
+MySensors mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
@@ -262,24 +262,20 @@ void sendLedStripState() {
     (uint8_t)((ws2812fx.getColor() & 0x000000FF) >> 0)
   );
   mysNode.send(RGB_SENSOR_ID, V_RGB, reply);
-  // wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
   uint8_t currentLedStripBrightness =
     round((ws2812fx.getBrightness() * 100.0) / BRIGHTNESS_MAX_VALUE);
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripBrightness);
   mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
-  // wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
   uint8_t currentLedStripSpeed =
     round((ws2812fx.getSpeed() * 100.0) / SPEED_MAX_VALUE);
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripSpeed);
   mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
-  // wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
   uint8_t currentLedStripMode = ws2812fx.getMode();
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripMode);
   mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
-  // wait(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);
 
   uint8_t currentLedStripState = ws2812fx.isRunning();
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripState);

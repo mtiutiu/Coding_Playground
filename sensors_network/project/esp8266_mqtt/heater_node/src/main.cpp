@@ -62,7 +62,7 @@ bool configurationUpdated = false;
 
 // ------------------------ MySensors-------------------------------------------
 #include <MTypes.h>
-#include <MySensor.h>
+#include <MySensors.h>
 #include <MySensorsEEPROM.h>
 
 const uint8_t SENSOR_COUNT = 1;
@@ -71,7 +71,7 @@ const uint8_t CHILD_TYPES[SENSOR_COUNT] = { S_BINARY };
 const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = { V_STATUS };
 const char* CHILD_ALIASES[SENSOR_COUNT] = { "HeaterActuator" };
 
-MySensor mysNode;
+MySensors mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
