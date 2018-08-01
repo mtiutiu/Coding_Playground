@@ -60,10 +60,6 @@ protected:
 	///@param scale the rgb scaling to apply to each led before writing it out
     virtual void show(const struct CRGB *data, int nLeds, CRGB scale) = 0;
 
-    /// Once we know the number of LED's, we can init any underlying buffers
-    /// used for DMA or such
-    virtual void initLedBuffers() {}
-
 public:
 	/// create an led controller object, add it to the chain of controllers
     CLEDController() : m_Data(NULL), m_ColorCorrection(UncorrectedColor), m_ColorTemperature(UncorrectedTemperature), m_DitherMode(BINARY_DITHER), m_nLeds(0) {
@@ -108,7 +104,6 @@ public:
     CLEDController & setLeds(CRGB *data, int nLeds) {
         m_Data = data;
         m_nLeds = nLeds;
-        initLedBuffers();
         return *this;
     }
 

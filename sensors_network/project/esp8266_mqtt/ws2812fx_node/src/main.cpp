@@ -701,17 +701,11 @@ void onMessage(MySensorMsg &message) {
     		  #ifdef HAS_BTN_LED
     		  digitalWrite(BTN_LED_PIN, LOW);
     		  #endif
-          sendLedStripState();
         }
       }
+      sendLedStripState();
     }
   }
-
-  /*if(message.cmd_type == M_REQ) {
-  #ifdef DEBUG
-    DEBUG_OUTPUT.println("Received M_REQ command");
-  #endif
-  }*/
 }
 
 void checkTransportConnection() {
@@ -934,6 +928,7 @@ void otaInit() {
   #endif
     otaInProgress = true;
     disableReporters();
+    disableLedStripControlTickers();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG

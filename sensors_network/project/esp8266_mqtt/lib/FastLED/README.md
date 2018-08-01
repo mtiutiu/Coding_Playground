@@ -1,31 +1,5 @@
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/FastLED/public)
 
-Notes about this fork
-=====================
-
-## RGBW Support
-
-For ESP8266, this fork supports RGBW SK6812 strips.  This implementation makes use of the White LED by substracting out the "common" values for Red, Green, Blue (eg: if RGB was 100, 100, 200, then the RGBW would be 0, 0, 100, 100.  RGB of 255,255,255 would become 0,0,0,255).  You cannot directly control the white LED using this method.
-
-So far, I've been using this on two of my personal projects and it looks fantastic.  Much better, IMHO, than just RGB alone.
-
-To use this, add this define somewhere above where you `#include <FastLED.h>`:
-
-`#define FASTLED_RGBW`
-
-Note that when FastLED supports RGBW natively, I'll discontinue this code and make the switch.
-
-## ESP8266 DMA support
-
-In order to fix some annoying flicker issues, I added DMA support for ESP8266.  This only works for GPIO pin 3 (commonly found as the "RX" pin on many dev boards).  It has only been tested for SK6812 and WS2812b--the longest strip I've used so far is 300 LEDs and so far its been buttery smooth with zero flicker.  Note: It will not work with FastLED's multi-channel stuff.
-
-To use this, add this define somewhere above where you `#include <FastLED.h>`:
-
-`#define FASTLED_ESP8266_DMA`
-
-
----
-
 IMPORTANT NOTE: For AVR based systems, avr-gcc 4.8.x is supported and tested.  This means Arduino 1.6.5 and later.
 
 
