@@ -14,10 +14,14 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <WiFiManager.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
+
+AsyncWebServer server(80);
+DNSServer dns;
 
 // enable reading of Vcc
 ADC_MODE(ADC_VCC);
@@ -57,9 +61,7 @@ typedef struct {
 } CfgData;
 
 typedef void (*cb)(CfgData& cfgData);
-
-// flag for saving data
-bool configurationUpdated = false;
+bool needToSaveConfig = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
 // ------------------------ MySensors-------------------------------------------
@@ -288,6 +290,18 @@ void ledStripUpdate() {
   }
 }
 
+void ledStripStart() {
+  ws2812fx.start();
+  ledStripUpdateTicker.detach();
+  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
+}
+
+void ledStripStop() {
+  ledStripUpdateTicker.detach();
+  ws2812fx.stop();
+  digitalWrite(LED_STRIP_DATA_PIN, LOW);
+}
+
 void ledStripInit(CfgData& cfgData, bool start = false) {
   // led strip init
   // very important - set led count and pixel buffer first
@@ -304,19 +318,10 @@ void ledStripInit(CfgData& cfgData, bool start = false) {
 
   if(!start) {
     // start led strip in OFF state
-    ws2812fx.stop();
-    digitalWrite(LED_STRIP_DATA_PIN, LOW);
+    ledStripStop();
   } else {
-    ws2812fx.start();
+    ledStripStart();
   }
-
-  ledStripUpdateTicker.detach();
-  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
-}
-
-// callback notifying us of the need to save config
-void saveConfigCallback() {
-  configurationUpdated = true;
 }
 
 CfgData& loadConfig(const char *cfgFilePath) {
@@ -437,71 +442,67 @@ void saveConfig(const char *cfgFilePath, CfgData &data) {
   }
 }
 
-void onWiFiConfigPostHook(CfgData& cfgData) {
-  // receive new configuration data here after saving and portal closes
-  // update led strip data after wifi config finished
-  // led strip reinit and start
-  //ledStripInit(cfgData, true);
-  ESP.restart(); // better restart the module to make sure it reconnects
+// callback notifying us of the need to save config
+void saveConfigCallback() {
+  needToSaveConfig = true;
 }
 
-void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
-                      cb wifiPostConfigCallback = NULL) {
+void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
   // custom parameters
-  WiFiManagerParameter mqtt_header_text("<br/><b>MQTT</b><br/><br/>");
-  WiFiManagerParameter custom_mqtt_server(
+  AsyncWiFiManagerParameter  mqtt_header_text("<br/><b>MQTT</b><br/><br/>");
+  AsyncWiFiManagerParameter  custom_mqtt_server(
     "broker",
     "Broker",
     cfgData.mqtt_server,
     MQTT_SERVER_FIELD_MAX_LEN
   );
-  WiFiManagerParameter custom_mqtt_server_user(
+  AsyncWiFiManagerParameter  custom_mqtt_server_user(
     "user",
     "User",
     cfgData.mqtt_user,
     MQTT_USER_FIELD_MAX_LEN
   );
-  WiFiManagerParameter custom_mqtt_server_passwd(
+  AsyncWiFiManagerParameter  custom_mqtt_server_passwd(
     "password",
     "Password",
     cfgData.mqtt_passwd,
     MQTT_PASS_FIELD_MAX_LEN
   );
-  WiFiManagerParameter custom_mqtt_port(
+  AsyncWiFiManagerParameter  custom_mqtt_port(
     "port",
     "Port",
     cfgData.mqtt_port,
     MQTT_PORT_FIELD_MAX_LEN,
     "min=\"1\" max=\"65535\""
   );
-  WiFiManagerParameter custom_mqtt_in_topic_prefix(
+  AsyncWiFiManagerParameter  custom_mqtt_in_topic_prefix(
     "in_topic_prefix",
     "IN Topic Prefix",
     cfgData.mqtt_in_topic_prefix,
     MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
   );
-  WiFiManagerParameter custom_mqtt_out_topic_prefix(
+  AsyncWiFiManagerParameter  custom_mqtt_out_topic_prefix(
     "out_topic_prefix",
     "OUT Topic Prefix",
     cfgData.mqtt_out_topic_prefix,
     MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
   );
 
-  WiFiManagerParameter mys_header_text("<br/><br/><b>MySensors</b><br/><br/>");
-  WiFiManagerParameter custom_mys_node_id(
+  AsyncWiFiManagerParameter  mys_header_text("<br/><br/><b>MySensors</b><br/><br/>");
+  AsyncWiFiManagerParameter  custom_mys_node_id(
     "node_id",
     "ID",
     cfgData.mys_node_id,
     MYS_NODE_ID_FIELD_MAX_LEN,
     "min=\"1\" max=\"254\""
   );
-  WiFiManagerParameter custom_mys_node_alias(
+  AsyncWiFiManagerParameter  custom_mys_node_alias(
     "node_alias",
     "Alias",
     cfgData.mys_node_alias,
     MYS_NODE_ALIAS_FIELD_MAX_LEN
   );
-  WiFiManagerParameter custom_mys_node_led_count(
+  AsyncWiFiManagerParameter  custom_mys_node_led_count(
     "node_led_count",
     "LEDs",
     cfgData.mys_node_led_count,
@@ -509,7 +510,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
     "min=\"1\" max=\"" STRINGIFY(MAX_LED_COUNT) "\""
   );
 
-  WiFiManager wifiManager;
+  AsyncWiFiManager wifiManager(&server, &dns);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&mqtt_header_text);
@@ -541,76 +542,72 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false,
   );
 #endif
   wifiManager.setTimeout(CFG_PORTAL_TIMEOUT_S);
+  //wifiManager.setConnectTimeout(60);
+  wifiManager.setBreakAfterConfig(true); // we want settings saved even if connection to new AP was unsuccessful
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
 #ifdef DEBUG
     DEBUG_OUTPUT.println(
       "Failed to connect and configuration portal timeout was reached, rebooting ..."
     );
 #endif
-    // fail to connect
     delay(1000);
     // reset and try again, or maybe put it to deep sleep
-    ESP.restart();
+    //ESP.restart();
   }
 
-  if (configurationUpdated) {
-#ifdef DEBUG
-    DEBUG_OUTPUT.println("Configuration changed need to save it!");
-#endif
+  if (needToSaveConfig) {
+    #ifdef DEBUG
+        DEBUG_OUTPUT.println("Configuration changed need to save it!");
+    #endif
 
-    strncpy(
-      cfgData.mqtt_server,
-      custom_mqtt_server.getValue(),
-      MQTT_SERVER_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mqtt_user,
-      custom_mqtt_server_user.getValue(),
-      MQTT_USER_FIELD_MAX_LEN);
-    strncpy(
-      cfgData.mqtt_passwd,
-      custom_mqtt_server_passwd.getValue(),
-      MQTT_PASS_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mqtt_port,
-      custom_mqtt_port.getValue(),
-      MQTT_PORT_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mqtt_in_topic_prefix,
-      custom_mqtt_in_topic_prefix.getValue(),
-      MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mqtt_out_topic_prefix,
-      custom_mqtt_out_topic_prefix.getValue(),
-      MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mys_node_id,
-      custom_mys_node_id.getValue(),
-      MYS_NODE_ID_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mys_node_alias,
-      custom_mys_node_alias.getValue(),
-      MYS_NODE_ALIAS_FIELD_MAX_LEN
-    );
-    strncpy(
-      cfgData.mys_node_led_count,
-      custom_mys_node_led_count.getValue(),
-      MYS_NODE_LED_COUNT_FIELD_MAX_LEN
-    );
+      strncpy(
+        cfgData.mqtt_server,
+        custom_mqtt_server.getValue(),
+        MQTT_SERVER_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mqtt_user,
+        custom_mqtt_server_user.getValue(),
+        MQTT_USER_FIELD_MAX_LEN);
+      strncpy(
+        cfgData.mqtt_passwd,
+        custom_mqtt_server_passwd.getValue(),
+        MQTT_PASS_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mqtt_port,
+        custom_mqtt_port.getValue(),
+        MQTT_PORT_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mqtt_in_topic_prefix,
+        custom_mqtt_in_topic_prefix.getValue(),
+        MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mqtt_out_topic_prefix,
+        custom_mqtt_out_topic_prefix.getValue(),
+        MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mys_node_id,
+        custom_mys_node_id.getValue(),
+        MYS_NODE_ID_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mys_node_alias,
+        custom_mys_node_alias.getValue(),
+        MYS_NODE_ALIAS_FIELD_MAX_LEN
+      );
+      strncpy(
+        cfgData.mys_node_led_count,
+        custom_mys_node_led_count.getValue(),
+        MYS_NODE_LED_COUNT_FIELD_MAX_LEN
+      );
 
-    // save new cfg data
-    saveConfig(CONFIG_FILE, cfgData);
-
-    if(wifiPostConfigCallback) {
-      wifiPostConfigCallback(cfgData);
-    }
-
-    configurationUpdated = false;
+      // save new cfg data
+      saveConfig(CONFIG_FILE, cfgData);
+      ESP.restart();
   }
 }
 
@@ -680,8 +677,7 @@ void onMessage(MySensorMsg &message) {
           uint32_t previousLedStripColor = ws2812fx.getColor();
 
           // turn OFF rgb led strip
-          ws2812fx.stop();
-          digitalWrite(LED_STRIP_DATA_PIN, LOW);
+          ledStripStop();
     		  #ifdef HAS_BTN_LED
     		  digitalWrite(BTN_LED_PIN, HIGH);
     		  #endif
@@ -697,7 +693,7 @@ void onMessage(MySensorMsg &message) {
         if ((newLedStripState == ON) && (!ws2812fx.isRunning())) {
           // load rgb led strip saved settings
           loadRGBLedStripSavedSettings();
-          ws2812fx.start();
+          ledStripStart();
     		  #ifdef HAS_BTN_LED
     		  digitalWrite(BTN_LED_PIN, LOW);
     		  #endif
@@ -768,13 +764,12 @@ void checkLedStripBtn() {
     }
     if(ws2812fx.isRunning()) {
       // turn OFF rgb led strip if it was running before
-      ws2812fx.stop();
-      digitalWrite(LED_STRIP_DATA_PIN, LOW);
+      ledStripStop();
 	  #ifdef HAS_BTN_LED
 	  digitalWrite(BTN_LED_PIN, HIGH);
 	  #endif
     } else {
-      ws2812fx.start();
+      ledStripStart();
 	  #ifdef HAS_BTN_LED
 	  digitalWrite(BTN_LED_PIN, LOW);
 	  #endif
@@ -817,6 +812,7 @@ void portsConfig() {
   #endif
   );
 
+  ledStripCtrlBtnCheckTicker.detach();
   ledStripCtrlBtnCheckTicker.attach(
     LED_STRIP_CTRL_BTN_CHECK_INTERVAL_S,
     checkLedStripBtn
@@ -825,7 +821,7 @@ void portsConfig() {
 
 void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
-  // enabling this before WiFiManager in order to have visual feedback ASAP
+  // enabling this before AsyncWiFiManager in order to have visual feedback ASAP
   noTransportLedTicker.detach();
   noTransportLedTicker.attach(
     NOT_CONNECTED_SIGNALING_INTERVAL_S,
@@ -853,9 +849,8 @@ void nodeConfig(CfgData& cfgData) {
   #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
     isExternalReset && digitalRead(ERASE_CONFIG_BTN_PIN),
   #else
-    isExternalReset && !digitalRead(ERASE_CONFIG_BTN_PIN),
+    isExternalReset && !digitalRead(ERASE_CONFIG_BTN_PIN)
   #endif
-    onWiFiConfigPostHook
   );
 }
 
@@ -927,8 +922,6 @@ void otaInit() {
     }
   #endif
     otaInProgress = true;
-    disableReporters();
-    disableLedStripControlTickers();
   });
   ArduinoOTA.onEnd([]() {
   #ifdef DEBUG
@@ -995,5 +988,9 @@ void loop() {
       sendReports();
       needToSendReports = false;
     }
+  } else {
+    disableReporters();
+    disableLedStripControlTickers();
+    ledStripStop();
   }
 }
