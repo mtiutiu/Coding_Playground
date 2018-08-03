@@ -33,9 +33,7 @@ ADC_MODE(ADC_VCC);
 #ifndef AP_PASSWD
 #define AP_PASSWD "test1234"
 #endif
-#ifndef CFG_PORTAL_TIMEOUT_S
-#define CFG_PORTAL_TIMEOUT_S 300UL  // 5 minutes timeout for configuration portal
-#endif
+
 #define CONFIG_FILE "/config.json"
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
@@ -333,24 +331,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
     wifiManager.resetSettings();
   }
 
-#ifdef DEBUG
-  DEBUG_OUTPUT.printf(
-    "Starting WiFi autoconfig portal with %lus timeout...\r\n",
-    CFG_PORTAL_TIMEOUT_S
-  );
-#endif
-  wifiManager.setTimeout(CFG_PORTAL_TIMEOUT_S);
-  //wifiManager.setConnectTimeout(60);
-  if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
-#ifdef DEBUG
-    DEBUG_OUTPUT.println(
-      "Failed to connect and configuration portal timeout was reached, rebooting ..."
-    );
-#endif
-    delay(1000);
-    // reset and try again, or maybe put it to deep sleep
-    ESP.restart();
-  }
+  wifiManager.autoConnect(AP_SSID, AP_PASSWD);
 
   if (needToSaveConfig) {
     #ifdef DEBUG
@@ -399,8 +380,8 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
 
       // save new cfg data
       saveConfig(CONFIG_FILE, cfgData);
-
-      // reinit things that depend on cfg data ??
+      delay(1000);
+      ESP.restart();
   }
 }
 
@@ -623,7 +604,7 @@ void setup() {
   MySensorsEEPROM::hwInit();
   loadConfig(CONFIG_FILE, cfgData);
 
-  nodeConfig(cfgData);
+  nodeConfig(cfgData); // this blocks untill networking is configured and active
 
   reportersInit();
   otaInit();
