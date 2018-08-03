@@ -79,9 +79,7 @@ MySensors mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
-//#define FASTLED_ALLOW_INTERRUPTS 0
-//#define FASTLED_ESP8266_DMA
-#include <FastLED.h>
+#include <Adafruit_NeoPixelBusEsp8266DMA.h>
 #include <WS2812FX.h>
 
 //#define INVERSE_SENSOR_LOGIC
@@ -125,10 +123,7 @@ const float LED_STRIP_UPDATE_INTERVAL_S = 0.02; // 20ms
 
 Ticker ledStripUpdateTicker;
 
-// leds pixel buffer
-CRGB leds[MAX_LED_COUNT];
-
-WS2812FX ws2812fx(leds);
+WS2812FX ws2812fx(MAX_LED_COUNT, LED_STRIP_DATA_PIN);
 // -----------------------------------------------------------------------------
 
 // -------------------------- BATTERY LEVEL REPORTING --------------------------
@@ -309,7 +304,6 @@ void ledStripInit(CfgData& cfgData, bool start = false) {
 #ifdef DEBUG
   DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
 #endif
-  FastLED.addLeds<NEOPIXEL, LED_STRIP_DATA_PIN>(leds, ledCount);
   ws2812fx.setLedCount(ledCount);
   ws2812fx.init();
 

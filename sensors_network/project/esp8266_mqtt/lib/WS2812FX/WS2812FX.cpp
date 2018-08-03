@@ -9,10 +9,6 @@
     * A lot of blinken modes and counting
     * WS2812FX can be used as drop-in replacement for Adafruit Neopixel Library
 
-  NOTES
-    * Uses the Adafruit Neopixel library. Get it here:
-      https://github.com/adafruit/Adafruit_NeoPixelFastLED
-
 
 
   LICENSE
@@ -56,9 +52,9 @@
 #define CALL_MODE(n) (this->*_mode[n])();
 
 void WS2812FX::init() {
-  Adafruit_NeoPixelFastLED::begin();
+  Adafruit_NeoPixelBusEsp8266DMA::begin();
   WS2812FX::setBrightness(_brightness);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 uint16_t WS2812FX::setLedCount(uint16_t n) {
@@ -102,7 +98,7 @@ void WS2812FX::setMode(uint8_t m) {
   _mode_last_call_time = 0;
   _mode_index = constrain(m, 0, MODE_COUNT-1);
   _mode_color = _color;
-  Adafruit_NeoPixelFastLED::setBrightness(_brightness);
+  Adafruit_NeoPixelBusEsp8266DMA::setBrightness(_brightness);
   //strip_off();
 }
 
@@ -134,14 +130,14 @@ void WS2812FX::setColor(uint32_t c) {
   _counter_mode_step = 0;
   _mode_last_call_time = 0;
   _mode_color = _color;
-  Adafruit_NeoPixelFastLED::setBrightness(_brightness);
+  Adafruit_NeoPixelBusEsp8266DMA::setBrightness(_brightness);
   //strip_off();
 }
 
 void WS2812FX::setBrightness(uint8_t b) {
   _brightness = constrain(b, BRIGHTNESS_MIN, BRIGHTNESS_MAX);
-  Adafruit_NeoPixelFastLED::setBrightness(_brightness);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setBrightness(_brightness);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 void WS2812FX::increaseBrightness(uint8_t s) {
@@ -188,8 +184,8 @@ uint32_t WS2812FX::getColor(void) {
  * Turns everything off. Doh.
  */
 void WS2812FX::strip_off() {
-  Adafruit_NeoPixelFastLED::clear();
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::clear();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -237,9 +233,9 @@ uint8_t WS2812FX::get_random_wheel_index(uint8_t pos) {
  */
 void WS2812FX::mode_static(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 50;
 }
@@ -251,9 +247,9 @@ void WS2812FX::mode_static(void) {
 void WS2812FX::mode_blink(void) {
   if(_counter_mode_call % 2 == 1) {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
     }
-    Adafruit_NeoPixelFastLED::show();
+    Adafruit_NeoPixelBusEsp8266DMA::show();
   } else {
     strip_off();
   }
@@ -268,11 +264,11 @@ void WS2812FX::mode_blink(void) {
  */
 void WS2812FX::mode_color_wipe(void) {
   if(_counter_mode_step < _led_count) {
-    Adafruit_NeoPixelFastLED::setPixelColor(_counter_mode_step, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_counter_mode_step, _color);
   } else {
-    Adafruit_NeoPixelFastLED::setPixelColor(_counter_mode_step - _led_count, 0);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_counter_mode_step - _led_count, 0);
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % (_led_count * 2);
 
@@ -289,8 +285,8 @@ void WS2812FX::mode_color_wipe_random(void) {
     _mode_color = get_random_wheel_index(_mode_color);
   }
 
-  Adafruit_NeoPixelFastLED::setPixelColor(_counter_mode_step, color_wheel(_mode_color));
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_counter_mode_step, color_wheel(_mode_color));
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
 
@@ -306,10 +302,10 @@ void WS2812FX::mode_random_color(void) {
   _mode_color = get_random_wheel_index(_mode_color);
 
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(_mode_color));
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
   _mode_delay = 100 + ((5000 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
 
@@ -321,12 +317,12 @@ void WS2812FX::mode_random_color(void) {
 void WS2812FX::mode_single_dynamic(void) {
   if(_counter_mode_call == 0) {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(random(256)));
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(random(256)));
     }
   }
 
-  Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), color_wheel(random(256)));
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), color_wheel(random(256)));
+  Adafruit_NeoPixelBusEsp8266DMA::show();
   _mode_delay = 10 + ((5000 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
 
@@ -337,9 +333,9 @@ void WS2812FX::mode_single_dynamic(void) {
  */
 void WS2812FX::mode_multi_dynamic(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(random(256)));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(random(256)));
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
   _mode_delay = 100 + ((5000 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
 
@@ -371,11 +367,11 @@ void WS2812FX::mode_breath(void) {
   }
 
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);           // set all LEDs to selected color
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);           // set all LEDs to selected color
   }
   int b = map(breath_brightness, 0, 255, 0, _brightness);  // keep brightness below brightness set by user
-  Adafruit_NeoPixelFastLED::setBrightness(b);                     // set new brightness to leds
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setBrightness(b);                     // set new brightness to leds
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_color = breath_brightness;                         // we use _mode_color to store the brightness
   _mode_delay = breath_delay_steps[_counter_mode_step];
@@ -387,14 +383,14 @@ void WS2812FX::mode_breath(void) {
  */
 void WS2812FX::mode_fade(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   int b = _counter_mode_step - 127;
   b = 255 - (abs(b) * 2);
   b = map(b, 0, 255, min(25, _brightness), _brightness);
-  Adafruit_NeoPixelFastLED::setBrightness(b);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setBrightness(b);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 256;
   _mode_delay = 5 + ((15 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
@@ -413,9 +409,9 @@ void WS2812FX::mode_scan(void) {
   int i = _counter_mode_step - (_led_count - 1);
   i = abs(i);
 
-  Adafruit_NeoPixelFastLED::clear();
-  Adafruit_NeoPixelFastLED::setPixelColor(abs(i), _color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::clear();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(abs(i), _color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
 }
@@ -433,10 +429,10 @@ void WS2812FX::mode_dual_scan(void) {
   int i = _counter_mode_step - (_led_count - 1);
   i = abs(i);
 
-  Adafruit_NeoPixelFastLED::clear();
-  Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
-  Adafruit_NeoPixelFastLED::setPixelColor(_led_count - (i+1), _color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::clear();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_led_count - (i+1), _color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
 }
@@ -448,9 +444,9 @@ void WS2812FX::mode_dual_scan(void) {
 void WS2812FX::mode_rainbow(void) {
   uint32_t color = color_wheel(_counter_mode_step);
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color);
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 256;
 
@@ -463,9 +459,9 @@ void WS2812FX::mode_rainbow(void) {
  */
 void WS2812FX::mode_rainbow_cycle(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(((i * 256 / _led_count) + _counter_mode_step) % 256));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(((i * 256 / _led_count) + _counter_mode_step) % 256));
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 256;
 
@@ -481,13 +477,13 @@ void WS2812FX::mode_theater_chase(void) {
   uint8_t j = _counter_mode_call % 6;
   if(j % 2 == 0) {
     for(uint16_t i=0; i < _led_count; i=i+3) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i+(j/2), _color);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i+(j/2), _color);
     }
-    Adafruit_NeoPixelFastLED::show();
+    Adafruit_NeoPixelBusEsp8266DMA::show();
     _mode_delay = 50 + ((500 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   } else {
     for(uint16_t i=0; i < _led_count; i=i+3) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i+(j/2), 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i+(j/2), 0);
     }
     _mode_delay = 1;
   }
@@ -502,13 +498,13 @@ void WS2812FX::mode_theater_chase_rainbow(void) {
   uint8_t j = _counter_mode_call % 6;
   if(j % 2 == 0) {
     for(uint16_t i=0; i < _led_count; i=i+3) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i+(j/2), color_wheel((i+_counter_mode_step) % 256));
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i+(j/2), color_wheel((i+_counter_mode_step) % 256));
     }
-    Adafruit_NeoPixelFastLED::show();
+    Adafruit_NeoPixelBusEsp8266DMA::show();
     _mode_delay = 50 + ((500 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   } else {
     for(uint16_t i=0; i < _led_count; i=i+3) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i+(j/2), 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i+(j/2), 0);
     }
     _mode_delay = 1;
   }
@@ -526,10 +522,10 @@ void WS2812FX::mode_running_lights(void) {
 
   for(uint16_t i=0; i < _led_count; i++) {
     int s = (sin(i+_counter_mode_call) * 127) + 128;
-     Adafruit_NeoPixelFastLED::setPixelColor(i, (((uint32_t)(r * s)) / 255), (((uint32_t)(g * s)) / 255), (((uint32_t)(b * s)) / 255));
+     Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, (((uint32_t)(r * s)) / 255), (((uint32_t)(g * s)) / 255), (((uint32_t)(b * s)) / 255));
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 35 + ((350 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
@@ -547,8 +543,8 @@ void WS2812FX::mode_twinkle(void) {
     _counter_mode_step = random(min_leds, max_leds);
   }
 
-  Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), _mode_color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), _mode_color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step--;
   _mode_delay = 50 + ((1986 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
@@ -571,7 +567,7 @@ void WS2812FX::mode_twinkle_random(void) {
 void WS2812FX::mode_twinkle_fade(void) {
 
   for(uint16_t i=0; i < _led_count; i++) {
-    uint32_t px_rgb = Adafruit_NeoPixelFastLED::getPixelColor(i);
+    uint32_t px_rgb = Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i);
 
     byte px_r = (px_rgb & 0x00FF0000) >> 16;
     byte px_g = (px_rgb & 0x0000FF00) >>  8;
@@ -582,14 +578,14 @@ void WS2812FX::mode_twinkle_fade(void) {
     px_g = px_g >> 1;
     px_b = px_b >> 1;
 
-    Adafruit_NeoPixelFastLED::setPixelColor(i, px_r, px_g, px_b);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, px_r, px_g, px_b);
   }
 
   if(random(3) == 0) {
-    Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), _mode_color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), _mode_color);
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 100 + ((100 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
@@ -609,9 +605,9 @@ void WS2812FX::mode_twinkle_fade_random(void) {
  * Inspired by www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
  */
 void WS2812FX::mode_sparkle(void) {
-  Adafruit_NeoPixelFastLED::clear();
-  Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count),_color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::clear();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count),_color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
   _mode_delay = 10 + ((200 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
 
@@ -622,17 +618,17 @@ void WS2812FX::mode_sparkle(void) {
  */
 void WS2812FX::mode_flash_sparkle(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   if(random(10) == 7) {
-    Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), 255, 255, 255);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), 255, 255, 255);
     _mode_delay = 20;
   } else {
     _mode_delay = 20 + ((200 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -642,19 +638,19 @@ void WS2812FX::mode_flash_sparkle(void) {
  */
 void WS2812FX::mode_hyper_sparkle(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   if(random(10) < 4) {
     for(uint16_t i=0; i < max(1, _led_count/3); i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), 255, 255, 255);
     }
     _mode_delay = 20;
   } else {
     _mode_delay = 15 + ((120 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -664,16 +660,16 @@ void WS2812FX::mode_hyper_sparkle(void) {
 void WS2812FX::mode_strobe(void) {
   if(_counter_mode_call % 2 == 0) {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
     }
     _mode_delay = 20;
   } else {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 0);
     }
     _mode_delay = 50 + ((1986 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -682,13 +678,13 @@ void WS2812FX::mode_strobe(void) {
  */
 void WS2812FX::mode_multi_strobe(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, 0);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 0);
   }
 
   if(_counter_mode_step < (2 * ((_speed / 10) + 1))) {
     if(_counter_mode_step % 2 == 0) {
       for(uint16_t i=0; i < _led_count; i++) {
-        Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+        Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
       }
       _mode_delay = 20;
     } else {
@@ -699,7 +695,7 @@ void WS2812FX::mode_multi_strobe(void) {
     _mode_delay = 100 + ((9 - (_speed % 10)) * 125);
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
   _counter_mode_step = (_counter_mode_step + 1) % ((2 * ((_speed / 10) + 1)) + 1);
 }
 
@@ -710,16 +706,16 @@ void WS2812FX::mode_multi_strobe(void) {
 void WS2812FX::mode_strobe_rainbow(void) {
   if(_counter_mode_call % 2 == 0) {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(_counter_mode_call % 256));
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(_counter_mode_call % 256));
     }
     _mode_delay = 20;
   } else {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 0);
     }
     _mode_delay = 50 + ((1986 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -729,9 +725,9 @@ void WS2812FX::mode_strobe_rainbow(void) {
 void WS2812FX::mode_blink_rainbow(void) {
   if(_counter_mode_call % 2 == 1) {
     for(uint16_t i=0; i < _led_count; i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(_counter_mode_call % 256));
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(_counter_mode_call % 256));
     }
-    Adafruit_NeoPixelFastLED::show();
+    Adafruit_NeoPixelBusEsp8266DMA::show();
   } else {
     strip_off();
   }
@@ -745,14 +741,14 @@ void WS2812FX::mode_blink_rainbow(void) {
  */
 void WS2812FX::mode_chase_white(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, 255, 255, 255);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 255, 255, 255);
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, _color);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, _color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, _color);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, _color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -764,14 +760,14 @@ void WS2812FX::mode_chase_white(void) {
  */
 void WS2812FX::mode_chase_color(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, 255, 255, 255);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, 255, 255, 255);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -783,20 +779,20 @@ void WS2812FX::mode_chase_color(void) {
  */
 void WS2812FX::mode_chase_random(void) {
   if(_counter_mode_step == 0) {
-    Adafruit_NeoPixelFastLED::setPixelColor(_led_count-1, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_led_count-1, color_wheel(_mode_color));
     _mode_color = get_random_wheel_index(_mode_color);
   }
 
   for(uint16_t i=0; i < _counter_mode_step; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(_mode_color));
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, 255, 255, 255);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 255, 255, 255);
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -808,14 +804,14 @@ void WS2812FX::mode_chase_random(void) {
  */
 void WS2812FX::mode_chase_rainbow(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(((i * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(((i * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, 255, 255, 255);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, 255, 255, 255);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 255, 255, 255);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -830,15 +826,15 @@ void WS2812FX::mode_chase_flash(void) {
   uint8_t flash_step = _counter_mode_call % ((flash_count * 2) + 1);
 
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   if(flash_step < (flash_count * 2)) {
     if(flash_step % 2 == 0) {
       uint16_t n = _counter_mode_step;
       uint16_t m = (_counter_mode_step + 1) % _led_count;
-      Adafruit_NeoPixelFastLED::setPixelColor(n, 255, 255, 255);
-      Adafruit_NeoPixelFastLED::setPixelColor(m, 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 255, 255, 255);
       _mode_delay = 20;
     } else {
       _mode_delay = 30;
@@ -848,7 +844,7 @@ void WS2812FX::mode_chase_flash(void) {
     _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -860,19 +856,19 @@ void WS2812FX::mode_chase_flash_random(void) {
   uint8_t flash_step = _counter_mode_call % ((flash_count * 2) + 1);
 
   for(uint16_t i=0; i < _counter_mode_step; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(_mode_color));
   }
 
   if(flash_step < (flash_count * 2)) {
     uint16_t n = _counter_mode_step;
     uint16_t m = (_counter_mode_step + 1) % _led_count;
     if(flash_step % 2 == 0) {
-      Adafruit_NeoPixelFastLED::setPixelColor(n, 255, 255, 255);
-      Adafruit_NeoPixelFastLED::setPixelColor(m, 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 255, 255, 255);
       _mode_delay = 20;
     } else {
-      Adafruit_NeoPixelFastLED::setPixelColor(n, color_wheel(_mode_color));
-      Adafruit_NeoPixelFastLED::setPixelColor(m, 0, 0, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, color_wheel(_mode_color));
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 0, 0, 0);
       _mode_delay = 30;
     }
   } else {
@@ -884,7 +880,7 @@ void WS2812FX::mode_chase_flash_random(void) {
     }
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 }
 
 
@@ -893,14 +889,14 @@ void WS2812FX::mode_chase_flash_random(void) {
  */
 void WS2812FX::mode_chase_rainbow_white(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, 255, 255, 255);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 255, 255, 255);
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, color_wheel(((n * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
-  Adafruit_NeoPixelFastLED::setPixelColor(m, color_wheel(((m * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, color_wheel(((n * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, color_wheel(((m * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -912,14 +908,14 @@ void WS2812FX::mode_chase_rainbow_white(void) {
  */
 void WS2812FX::mode_chase_blackout(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, _color);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _color);
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, 0, 0, 0);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, 0, 0, 0);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 0, 0, 0);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 0, 0, 0);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -931,14 +927,14 @@ void WS2812FX::mode_chase_blackout(void) {
  */
 void WS2812FX::mode_chase_blackout_rainbow(void) {
   for(uint16_t i=0; i < _led_count; i++) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, color_wheel(((i * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, color_wheel(((i * 256 / _led_count) + (_counter_mode_call % 256)) % 256));
   }
 
   uint16_t n = _counter_mode_step;
   uint16_t m = (_counter_mode_step + 1) % _led_count;
-  Adafruit_NeoPixelFastLED::setPixelColor(n, 0, 0, 0);
-  Adafruit_NeoPixelFastLED::setPixelColor(m, 0, 0, 0);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(n, 0, 0, 0);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(m, 0, 0, 0);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -954,11 +950,11 @@ void WS2812FX::mode_color_sweep_random(void) {
   }
 
   if(_counter_mode_step < _led_count) {
-    Adafruit_NeoPixelFastLED::setPixelColor(_counter_mode_step, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_counter_mode_step, color_wheel(_mode_color));
   } else {
-    Adafruit_NeoPixelFastLED::setPixelColor((_led_count * 2) - _counter_mode_step - 1, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor((_led_count * 2) - _counter_mode_step - 1, color_wheel(_mode_color));
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % (_led_count * 2);
   _mode_delay = 5 + ((50 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -971,12 +967,12 @@ void WS2812FX::mode_color_sweep_random(void) {
 void WS2812FX::mode_running_color(void) {
   for(uint16_t i=0; i < _led_count; i++) {
     if((i + _counter_mode_step) % 4 < 2) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, _mode_color);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, _mode_color);
     } else {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 255, 255, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 255, 255, 255);
     }
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 4;
   _mode_delay = 10 + ((30 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -989,12 +985,12 @@ void WS2812FX::mode_running_color(void) {
 void WS2812FX::mode_running_red_blue(void) {
   for(uint16_t i=0; i < _led_count; i++) {
     if((i + _counter_mode_step) % 4 < 2) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 255, 0, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 255, 0, 0);
     } else {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 0, 0, 255);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 0, 0, 255);
     }
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 4;
   _mode_delay = 100 + ((100 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -1006,15 +1002,15 @@ void WS2812FX::mode_running_red_blue(void) {
  */
 void WS2812FX::mode_running_random(void) {
   for(uint16_t i=_led_count-1; i > 0; i--) {
-    Adafruit_NeoPixelFastLED::setPixelColor(i, Adafruit_NeoPixelFastLED::getPixelColor(i-1));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i-1));
   }
 
   if(_counter_mode_step == 0) {
     _mode_color = get_random_wheel_index(_mode_color);
-    Adafruit_NeoPixelFastLED::setPixelColor(0, color_wheel(_mode_color));
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(0, color_wheel(_mode_color));
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 2;
 
@@ -1028,7 +1024,7 @@ void WS2812FX::mode_running_random(void) {
 void WS2812FX::mode_larson_scanner(void) {
 
   for(uint16_t i=0; i < _led_count; i++) {
-    uint32_t px_rgb = Adafruit_NeoPixelFastLED::getPixelColor(i);
+    uint32_t px_rgb = Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i);
 
     byte px_r = (px_rgb & 0x00FF0000) >> 16;
     byte px_g = (px_rgb & 0x0000FF00) >>  8;
@@ -1039,7 +1035,7 @@ void WS2812FX::mode_larson_scanner(void) {
     px_g = px_g >> 1;
     px_b = px_b >> 1;
 
-    Adafruit_NeoPixelFastLED::setPixelColor(i, px_r, px_g, px_b);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, px_r, px_g, px_b);
   }
 
   uint16_t pos = 0;
@@ -1050,8 +1046,8 @@ void WS2812FX::mode_larson_scanner(void) {
     pos = (_led_count * 2) - _counter_mode_step - 2;
   }
 
-  Adafruit_NeoPixelFastLED::setPixelColor(pos, _color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(pos, _color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % ((_led_count * 2) - 2);
   _mode_delay = 10 + ((10 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -1064,7 +1060,7 @@ void WS2812FX::mode_larson_scanner(void) {
 void WS2812FX::mode_comet(void) {
 
   for(uint16_t i=0; i < _led_count; i++) {
-    uint32_t px_rgb = Adafruit_NeoPixelFastLED::getPixelColor(i);
+    uint32_t px_rgb = Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i);
 
     byte px_r = (px_rgb & 0x00FF0000) >> 16;
     byte px_g = (px_rgb & 0x0000FF00) >>  8;
@@ -1075,11 +1071,11 @@ void WS2812FX::mode_comet(void) {
     px_g = px_g >> 1;
     px_b = px_b >> 1;
 
-    Adafruit_NeoPixelFastLED::setPixelColor(i, px_r, px_g, px_b);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, px_r, px_g, px_b);
   }
 
-  Adafruit_NeoPixelFastLED::setPixelColor(_counter_mode_step, _color);
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_counter_mode_step, _color);
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % _led_count;
   _mode_delay = 10 + ((10 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -1096,7 +1092,7 @@ void WS2812FX::mode_fireworks(void) {
   byte px_b = 0;
 
   for(uint16_t i=0; i < _led_count; i++) {
-    px_rgb = Adafruit_NeoPixelFastLED::getPixelColor(i);
+    px_rgb = Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i);
 
     px_r = (px_rgb & 0x00FF0000) >> 16;
     px_g = (px_rgb & 0x0000FF00) >>  8;
@@ -1107,54 +1103,54 @@ void WS2812FX::mode_fireworks(void) {
     px_g = px_g >> 1;
     px_b = px_b >> 1;
 
-    Adafruit_NeoPixelFastLED::setPixelColor(i, px_r, px_g, px_b);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, px_r, px_g, px_b);
   }
 
   // first LED has only one neighbour
-  px_r = (((Adafruit_NeoPixelFastLED::getPixelColor(1) & 0x00FF0000) >> 16) >> 1) + ((Adafruit_NeoPixelFastLED::getPixelColor(0) & 0x00FF0000) >> 16);
-  px_g = (((Adafruit_NeoPixelFastLED::getPixelColor(1) & 0x0000FF00) >>  8) >> 1) + ((Adafruit_NeoPixelFastLED::getPixelColor(0) & 0x0000FF00) >>  8);
-  px_b = (((Adafruit_NeoPixelFastLED::getPixelColor(1) & 0x000000FF) >>  0) >> 1) + ((Adafruit_NeoPixelFastLED::getPixelColor(0) & 0x000000FF) >>  0);
-  Adafruit_NeoPixelFastLED::setPixelColor(0, px_r, px_g, px_b);
+  px_r = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(1) & 0x00FF0000) >> 16) >> 1) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(0) & 0x00FF0000) >> 16);
+  px_g = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(1) & 0x0000FF00) >>  8) >> 1) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(0) & 0x0000FF00) >>  8);
+  px_b = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(1) & 0x000000FF) >>  0) >> 1) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(0) & 0x000000FF) >>  0);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(0, px_r, px_g, px_b);
 
   // set brightness(i) = ((brightness(i-1)/2 + brightness(i+1)) / 2) + brightness(i)
   for(uint16_t i=1; i < _led_count-1; i++) {
     px_r = ((
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i-1) & 0x00FF0000) >> 16) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i+1) & 0x00FF0000) >> 16) >> 0) ) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i  ) & 0x00FF0000) >> 16) >> 0);
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i-1) & 0x00FF0000) >> 16) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i+1) & 0x00FF0000) >> 16) >> 0) ) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i  ) & 0x00FF0000) >> 16) >> 0);
 
     px_g = ((
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i-1) & 0x0000FF00) >> 8) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i+1) & 0x0000FF00) >> 8) >> 0) ) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i  ) & 0x0000FF00) >> 8) >> 0);
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i-1) & 0x0000FF00) >> 8) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i+1) & 0x0000FF00) >> 8) >> 0) ) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i  ) & 0x0000FF00) >> 8) >> 0);
 
     px_b = ((
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i-1) & 0x000000FF) >> 0) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i+1) & 0x000000FF) >> 0) >> 0) ) >> 1) +
-            (((Adafruit_NeoPixelFastLED::getPixelColor(i  ) & 0x000000FF) >> 0) >> 0);
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i-1) & 0x000000FF) >> 0) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i+1) & 0x000000FF) >> 0) >> 0) ) >> 1) +
+            (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(i  ) & 0x000000FF) >> 0) >> 0);
 
-    Adafruit_NeoPixelFastLED::setPixelColor(i, px_r, px_g, px_b);
+    Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, px_r, px_g, px_b);
   }
 
   // last LED has only one neighbour
-  px_r = (((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-2) & 0x00FF0000) >> 16) >> 2) + ((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-1) & 0x00FF0000) >> 16);
-  px_g = (((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-2) & 0x0000FF00) >>  8) >> 2) + ((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-1) & 0x0000FF00) >>  8);
-  px_b = (((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-2) & 0x000000FF) >>  0) >> 2) + ((Adafruit_NeoPixelFastLED::getPixelColor(_led_count-1) & 0x000000FF) >>  0);
-  Adafruit_NeoPixelFastLED::setPixelColor(_led_count-1, px_r, px_g, px_b);
+  px_r = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-2) & 0x00FF0000) >> 16) >> 2) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-1) & 0x00FF0000) >> 16);
+  px_g = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-2) & 0x0000FF00) >>  8) >> 2) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-1) & 0x0000FF00) >>  8);
+  px_b = (((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-2) & 0x000000FF) >>  0) >> 2) + ((Adafruit_NeoPixelBusEsp8266DMA::getPixelColor(_led_count-1) & 0x000000FF) >>  0);
+  Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(_led_count-1, px_r, px_g, px_b);
 
   if(!_triggered) {
     for(uint16_t i=0; i<max(1,_led_count/20); i++) {
       if(random(10) == 0) {
-        Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), _mode_color);
+        Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), _mode_color);
       }
     }
   } else {
     for(uint16_t i=0; i<max(1,_led_count/10); i++) {
-      Adafruit_NeoPixelFastLED::setPixelColor(random(_led_count), _mode_color);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(random(_led_count), _mode_color);
     }
   }
 
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _mode_delay = 20 + ((20 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
 }
@@ -1175,12 +1171,12 @@ void WS2812FX::mode_fireworks_random(void) {
 void WS2812FX::mode_merry_christmas(void) {
   for(uint16_t i=0; i < _led_count; i++) {
     if((i + _counter_mode_step) % 4 < 2) {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 255, 0, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 255, 0, 0);
     } else {
-      Adafruit_NeoPixelFastLED::setPixelColor(i, 0, 255, 0);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i, 0, 255, 0);
     }
   }
-  Adafruit_NeoPixelFastLED::show();
+  Adafruit_NeoPixelBusEsp8266DMA::show();
 
   _counter_mode_step = (_counter_mode_step + 1) % 4;
   _mode_delay = 100 + ((100 * (uint32_t)(SPEED_MAX - _speed)) / _led_count);
@@ -1215,8 +1211,8 @@ void WS2812FX::mode_fire_flicker_int(int rev_intensity)
       if(g1<0) g1=0;
       if(r1<0) r1=0;
       if(b1<0) b1=0;
-      Adafruit_NeoPixelFastLED::setPixelColor(i,r1,g1, b1);
+      Adafruit_NeoPixelBusEsp8266DMA::setPixelColor(i,r1,g1, b1);
     }
-    Adafruit_NeoPixelFastLED::show();
+    Adafruit_NeoPixelBusEsp8266DMA::show();
     _mode_delay = 10 + ((500 * (uint32_t)(SPEED_MAX - _speed)) / SPEED_MAX);
 }
