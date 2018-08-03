@@ -34,7 +34,7 @@ ADC_MODE(ADC_VCC);
 #define AP_PASSWD "test1234"
 #endif
 #ifndef CFG_PORTAL_TIMEOUT_S
-#define CFG_PORTAL_TIMEOUT_S 180UL  // 3 minutes timeout for configuration portal
+#define CFG_PORTAL_TIMEOUT_S 300UL  // 5 minutes timeout for configuration portal
 #endif
 #define CONFIG_FILE "/config.json"
 
@@ -443,7 +443,7 @@ void saveConfigCallback() {
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
   // custom parameters
-  AsyncWiFiManagerParameter  mqtt_header_text("<br/><b>MQTT</b><br/><br/>");
+  AsyncWiFiManagerParameter  mqtt_header_text("<br/><b>MQTT</b><br/>");
   AsyncWiFiManagerParameter  custom_mqtt_server(
     "broker",
     "Broker",
@@ -482,7 +482,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
     MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
   );
 
-  AsyncWiFiManagerParameter  mys_header_text("<br/><br/><b>MySensors</b><br/><br/>");
+  AsyncWiFiManagerParameter  mys_header_text("<br/><br/><b>MySensors</b><br/>");
   AsyncWiFiManagerParameter  custom_mys_node_id(
     "node_id",
     "ID",
@@ -537,7 +537,6 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
 #endif
   wifiManager.setTimeout(CFG_PORTAL_TIMEOUT_S);
   //wifiManager.setConnectTimeout(60);
-  wifiManager.setBreakAfterConfig(true); // we want settings saved even if connection to new AP was unsuccessful
   if (!wifiManager.autoConnect(AP_SSID, AP_PASSWD)) {
 #ifdef DEBUG
     DEBUG_OUTPUT.println(
@@ -546,7 +545,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
 #endif
     delay(1000);
     // reset and try again, or maybe put it to deep sleep
-    //ESP.restart();
+    ESP.restart();
   }
 
   if (needToSaveConfig) {
@@ -601,7 +600,7 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
 
       // save new cfg data
       saveConfig(CONFIG_FILE, cfgData);
-      ESP.restart();
+      ledStripInit(cfgData);
   }
 }
 
