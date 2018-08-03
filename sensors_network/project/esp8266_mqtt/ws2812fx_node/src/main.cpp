@@ -151,7 +151,7 @@ Ticker sensorStateReportTicker;
 
 #define INVERSE_LED_LOGIC
 #ifndef LED_SIGNAL_PIN
-#define LED_SIGNAL_PIN  BUILTIN_LED
+#define LED_SIGNAL_PIN  LED_BUILTIN
 #endif
 const float NOT_CONNECTED_SIGNALING_INTERVAL_S = 0.3; // 300 ms
 
