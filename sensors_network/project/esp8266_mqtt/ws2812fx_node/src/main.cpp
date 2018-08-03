@@ -197,52 +197,26 @@ void saveRGBLedStripCurrentSettings(uint8_t brightness, uint8_t speed,
   saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID, brightness);
   saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID, speed);
   saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID, mode);
-  saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID,
-            (color & 0x00FF0000) >> 16);
-  saveState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID,
-            (color & 0x0000FF00) >> 8);
-  saveState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID,
-            (color & 0x000000FF) >> 0);
+  saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x00FF0000) >> 16);
+  saveState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x0000FF00) >> 8);
+  saveState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x000000FF) >> 0);
 }
 
 void loadRGBLedStripSavedSettings() {
-  uint8_t brightnessSetting =
-      loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID);
-  ws2812fx.setBrightness(((brightnessSetting >= BRIGHTNESS_MIN_VALUE) &&
-                          (brightnessSetting <= BRIGHTNESS_MAX_VALUE))
-                             ? brightnessSetting
-                             : BRIGHTNESS_DEFAULT_VALUE);
-
-  uint8_t speedSetting = loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID);
+  ws2812fx.setBrightness(
+    constrain(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID), BRIGHTNESS_MIN_VALUE, BRIGHTNESS_MAX_VALUE)
+  );
   ws2812fx.setSpeed(
-      ((speedSetting >= SPEED_MIN_VALUE) && (speedSetting <= SPEED_MAX_VALUE))
-          ? speedSetting
-          : SPEED_DEFAULT_VALUE);
-
-  uint8_t modeSetting = loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID);
-  ws2812fx.setMode(((modeSetting >= MODE_MIN_VALUE) &&
-                    (modeSetting <= ws2812fx.getModeCount()))
-                       ? modeSetting
-                       : MODE_DEFAULT_VALUE);
-
-  uint8_t R_FieldColorSetting =
-      loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID);
-  uint8_t G_FieldColorSetting =
-      loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID);
-  uint8_t B_FieldColorSetting =
-      loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID);
-  ws2812fx.setColor(((R_FieldColorSetting >= R_COLOR_FIELD_MIN_VALUE) &&
-                     (R_FieldColorSetting <= R_COLOR_FIELD_MAX_VALUE))
-                        ? R_FieldColorSetting
-                        : R_COLOR_FIELD_DEFAULT_VALUE,
-                    ((G_FieldColorSetting >= G_COLOR_FIELD_MIN_VALUE) &&
-                     (G_FieldColorSetting <= G_COLOR_FIELD_MAX_VALUE))
-                        ? G_FieldColorSetting
-                        : G_COLOR_FIELD_DEFAULT_VALUE,
-                    ((B_FieldColorSetting >= B_COLOR_FIELD_MIN_VALUE) &&
-                     (B_FieldColorSetting <= B_COLOR_FIELD_MAX_VALUE))
-                        ? B_FieldColorSetting
-                        : B_COLOR_FIELD_DEFAULT_VALUE);
+    constrain(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID), SPEED_MIN_VALUE, SPEED_MAX_VALUE)
+  );
+  ws2812fx.setMode(
+    constrain(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID), MODE_MIN_VALUE, MODE_DEFAULT_VALUE)
+  );
+  ws2812fx.setColor(
+    constrain(loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID), R_COLOR_FIELD_MIN_VALUE, R_COLOR_FIELD_MAX_VALUE),
+    constrain(loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID), G_COLOR_FIELD_MIN_VALUE, G_COLOR_FIELD_MAX_VALUE),
+    constrain(loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID), B_COLOR_FIELD_MIN_VALUE, B_COLOR_FIELD_MAX_VALUE)
+  );
   ws2812fx.trigger();
 }
 
@@ -298,7 +272,6 @@ void ledStripStop() {
 
 void ledStripInit(CfgData& cfgData, bool start = false) {
   // led strip init
-  // very important - set led count and pixel buffer first
   uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
 #ifdef DEBUG
   DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
@@ -595,7 +568,8 @@ void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
 
       // save new cfg data
       saveConfig(CONFIG_FILE, cfgData);
-      ledStripInit(cfgData);
+      delay(1000);
+      ESP.restart();
   }
 }
 
