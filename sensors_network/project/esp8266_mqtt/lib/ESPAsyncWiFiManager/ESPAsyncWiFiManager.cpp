@@ -419,7 +419,7 @@ void AsyncWiFiManager::criticalLoop(){
  * Anything that doesn't access WiFi, ESP or EEPROM can go here
  */
 void AsyncWiFiManager::safeLoop(){
-  #ifndef USE_EADNS	
+  #ifndef USE_EADNS
   dnsServer->processNextRequest();
   #endif
 }
@@ -548,12 +548,13 @@ int AsyncWiFiManager::connectWifi(String ssid, String pass) {
   DEBUG_WM ("Connection result: ");
   DEBUG_WM ( connRes );
   //not connected, WPS enabled, no pass - first attempt
+#ifdef NO_EXTRA_4K_HEAP
   if (_tryWPS && connRes != WL_CONNECTED && pass == "") {
     startWPS();
     //should be connected at the end of WPS
     connRes = waitForConnectResult();
   }
-
+#endif
   needInfo = true;
   setInfo();
   return connRes;
@@ -591,10 +592,10 @@ void AsyncWiFiManager::startWPS() {
   esp_wps_config_t config = {};
   config.wps_type = ESP_WPS_MODE;
   config.crypto_funcs = &g_wifi_default_wps_crypto_funcs;
-  strcpy(config.factory_info.manufacturer,"ESPRESSIF");  
-  strcpy(config.factory_info.model_number, "ESP32");  
-  strcpy(config.factory_info.model_name, "ESPRESSIF IOT");  
-  strcpy(config.factory_info.device_name,"ESP STATION");  
+  strcpy(config.factory_info.manufacturer,"ESPRESSIF");
+  strcpy(config.factory_info.model_number, "ESP32");
+  strcpy(config.factory_info.model_name, "ESPRESSIF IOT");
+  strcpy(config.factory_info.device_name,"ESP STATION");
 
   esp_wifi_wps_enable(&config);
   esp_wifi_wps_start(0);
