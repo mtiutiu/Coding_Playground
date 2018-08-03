@@ -60,7 +60,7 @@ typedef struct {
   char mys_node_led_count[MYS_NODE_LED_COUNT_FIELD_MAX_LEN];
 } CfgData;
 
-typedef void (*cb)(CfgData& cfgData);
+CfgData cfgData;
 bool needToSaveConfig = false;
 // ------------------------ END Module CONFIG ----------------------------------
 
@@ -83,8 +83,7 @@ MySensors mysNode;
 #include <WS2812FX.h>
 
 //#define INVERSE_SENSOR_LOGIC
-// max led count that this node can take - this doesn't reflect the real number
-// using this approach to avoid dynamic allocations
+// max led count that this node can take
 #define MAX_LED_COUNT 300
 
 #ifndef LED_STRIP_DATA_PIN
@@ -318,9 +317,7 @@ void ledStripInit(CfgData& cfgData, bool start = false) {
   }
 }
 
-CfgData& loadConfig(const char *cfgFilePath) {
-  static CfgData data;
-
+void loadConfig(const char *cfgFilePath, CfgData& data) {
   if (SPIFFS.begin()) {
     if (SPIFFS.exists(cfgFilePath)) {
       File configFile = SPIFFS.open(cfgFilePath, "r");
@@ -386,8 +383,6 @@ CfgData& loadConfig(const char *cfgFilePath) {
     DEBUG_OUTPUT.println("SPIFFS mount failed!");
   #endif
   }
-
-  return data;
 }
 
 void saveConfig(const char *cfgFilePath, CfgData &data) {
@@ -812,6 +807,23 @@ void portsConfig() {
   );
 }
 
+void mySensorsInit(CfgData& cfgData) {
+  mysNode.begin(
+    atoi(cfgData.mys_node_id),
+    cfgData.mys_node_alias,
+    CHILD_TYPES,
+    CHILD_ALIASES,
+    SENSOR_COUNT,
+    cfgData.mqtt_server,
+    cfgData.mqtt_user,
+    cfgData.mqtt_passwd,
+    atoi(cfgData.mqtt_port),
+    cfgData.mqtt_in_topic_prefix,
+    cfgData.mqtt_out_topic_prefix
+  );
+  mysNode.on_message(onMessage);
+}
+
 void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
   // enabling this before AsyncWiFiManager in order to have visual feedback ASAP
@@ -845,23 +857,8 @@ void nodeConfig(CfgData& cfgData) {
     isExternalReset && !digitalRead(ERASE_CONFIG_BTN_PIN)
   #endif
   );
-}
 
-void mySensorsInit(CfgData& cfgData) {
-  mysNode.begin(
-    atoi(cfgData.mys_node_id),
-    cfgData.mys_node_alias,
-    CHILD_TYPES,
-    CHILD_ALIASES,
-    SENSOR_COUNT,
-    cfgData.mqtt_server,
-    cfgData.mqtt_user,
-    cfgData.mqtt_passwd,
-    atoi(cfgData.mqtt_port),
-    cfgData.mqtt_in_topic_prefix,
-    cfgData.mqtt_out_topic_prefix
-  );
-  mysNode.on_message(onMessage);
+  mySensorsInit(cfgData);
 }
 
 void reportersInit() {
@@ -949,13 +946,13 @@ void setup() {
 #endif
 
   // pre inits
-  MySensorsEEPROM::hwInit();
-  CfgData& cfgData = loadConfig(CONFIG_FILE);
-
   portsConfig();
+  MySensorsEEPROM::hwInit();
+  loadConfig(CONFIG_FILE, cfgData);
+
   ledStripInit(cfgData);
   nodeConfig(cfgData);
-  mySensorsInit(cfgData);
+
   reportersInit();
   otaInit();
 
