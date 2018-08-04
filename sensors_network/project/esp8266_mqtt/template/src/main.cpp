@@ -14,14 +14,12 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <ESPAsyncWebServer.h>
-#include <ESPAsyncWiFiManager.h>
+#include <WiFiManager.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
 
-AsyncWebServer server(80);
-DNSServer dns;
+WiFiManager wifiManager;
 
 // enable reading of Vcc
 ADC_MODE(ADC_VCC);
@@ -253,61 +251,60 @@ void saveConfigCallback() {
 
 void startWiFiConfig(CfgData &cfgData, bool forciblyStart = false) {
   // custom parameters
-  AsyncWiFiManagerParameter  mqtt_header_text("<br/><b>MQTT</b><br/>");
-  AsyncWiFiManagerParameter  custom_mqtt_server(
+  WiFiManagerParameter  mqtt_header_text("<br/><b>MQTT</b><br/>");
+  WiFiManagerParameter  custom_mqtt_server(
     "broker",
     "Broker",
     cfgData.mqtt_server,
     MQTT_SERVER_FIELD_MAX_LEN
   );
-  AsyncWiFiManagerParameter  custom_mqtt_server_user(
+  WiFiManagerParameter  custom_mqtt_server_user(
     "user",
     "User",
     cfgData.mqtt_user,
     MQTT_USER_FIELD_MAX_LEN
   );
-  AsyncWiFiManagerParameter  custom_mqtt_server_passwd(
+  WiFiManagerParameter  custom_mqtt_server_passwd(
     "password",
     "Password",
     cfgData.mqtt_passwd,
     MQTT_PASS_FIELD_MAX_LEN
   );
-  AsyncWiFiManagerParameter  custom_mqtt_port(
+  WiFiManagerParameter  custom_mqtt_port(
     "port",
     "Port",
     cfgData.mqtt_port,
     MQTT_PORT_FIELD_MAX_LEN,
     "min=\"1\" max=\"65535\""
   );
-  AsyncWiFiManagerParameter  custom_mqtt_in_topic_prefix(
+  WiFiManagerParameter  custom_mqtt_in_topic_prefix(
     "in_topic_prefix",
     "IN Topic Prefix",
     cfgData.mqtt_in_topic_prefix,
     MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN
   );
-  AsyncWiFiManagerParameter  custom_mqtt_out_topic_prefix(
+  WiFiManagerParameter  custom_mqtt_out_topic_prefix(
     "out_topic_prefix",
     "OUT Topic Prefix",
     cfgData.mqtt_out_topic_prefix,
     MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN
   );
 
-  AsyncWiFiManagerParameter  mys_header_text("<br/><br/><b>MySensors</b><br/>");
-  AsyncWiFiManagerParameter  custom_mys_node_id(
+  WiFiManagerParameter  mys_header_text("<br/><br/><b>MySensors</b><br/>");
+  WiFiManagerParameter  custom_mys_node_id(
     "node_id",
     "ID",
     cfgData.mys_node_id,
     MYS_NODE_ID_FIELD_MAX_LEN,
     "min=\"1\" max=\"254\""
   );
-  AsyncWiFiManagerParameter  custom_mys_node_alias(
+  WiFiManagerParameter  custom_mys_node_alias(
     "node_alias",
     "Alias",
     cfgData.mys_node_alias,
     MYS_NODE_ALIAS_FIELD_MAX_LEN
   );
 
-  AsyncWiFiManager wifiManager(&server, &dns);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   wifiManager.addParameter(&mqtt_header_text);
@@ -485,7 +482,7 @@ void mySensorsInit(CfgData& cfgData) {
 
 void nodeConfig(CfgData& cfgData) {
   // transport connection signaling
-  // enabling this before AsyncWiFiManager in order to have visual feedback ASAP
+  // enabling this before WiFiManager in order to have visual feedback ASAP
   noTransportLedTicker.detach();
   noTransportLedTicker.attach(
     NOT_CONNECTED_SIGNALING_INTERVAL_S,
