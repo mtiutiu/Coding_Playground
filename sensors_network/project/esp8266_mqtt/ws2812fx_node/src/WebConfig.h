@@ -9,7 +9,7 @@
 #define CONFIG_FILE "/config.json"
 
 #ifndef HTTP_PORT
-#define HTTP_PORT 80
+#define HTTP_PORT 8080
 #endif
 
 #define MQTT_SERVER_FIELD_MAX_LEN 40
