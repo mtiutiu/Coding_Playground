@@ -3,15 +3,15 @@
 
 #include <Arduino.h>
 #include <MTypes.h>
-#include <PubSubClient.h>
-
-void* mqtt_cb_obj;
-WiFiClient espClient;
-PubSubClient mqtt(espClient);
+#include <MQTT.h>
 
 #define MQTT_CLIENT_ID_PREFIX  "ESP"
 #define MQTT_MAX_PAYLOAD_LENGTH  64
 #define MAX_MQTT_SPLIT_COUNT  6
+
+void* mqtt_cb_obj;
+WiFiClient espClient;
+MQTTClient mqtt(MQTT_MAX_PAYLOAD_LENGTH);
 
 typedef struct {
   uint8_t node_id;
@@ -22,41 +22,45 @@ typedef struct {
   char payload[MQTT_MAX_PAYLOAD_LENGTH];
 } MySensorMsg;
 
+typedef struct {
+  char* mqtt_server;
+  char* mqtt_user;
+  char* mqtt_passwd;
+  uint16_t mqtt_port;
+  char* mqtt_in_topic_prefix;
+  char* mqtt_out_topic_prefix;
+} MqttCfg;
+
 typedef void (*mys_msg_cb)(MySensorMsg& msg);
 
 class MySensors {
   public:
     MySensors(){}
 
-    void begin(const uint8_t node_id,
+    void begin( const uint8_t node_id,
                 const char* node_alias,
                 const uint8_t* node_childs_subtype,
                 const char** node_childs_alias,
                 const uint8_t child_count,
-                const char* mqtt_server,
-                const char* mqtt_user,
-                const char* mqtt_passwd,
-                const uint16_t mqtt_port,
-                const char* mqtt_in_topic_prefix,
-                const char* mqtt_out_topic_prefix) {
+                const MqttCfg& mqtt_cfg) {
       this->node_id = node_id;
       this->node_alias = node_alias;
       this->node_childs_subtype = node_childs_subtype;
       this->node_childs_alias = node_childs_alias;
       this->child_count = child_count;
-      this->mqtt_server = mqtt_server;
-      this->mqtt_user = mqtt_user;
-      this->mqtt_passwd = mqtt_passwd;
-      this->mqtt_port = mqtt_port;
-      this->mqtt_in_topic_prefix = mqtt_in_topic_prefix;
-      this->mqtt_out_topic_prefix = mqtt_out_topic_prefix;
+      this->mqtt_server = mqtt_cfg.mqtt_server;
+      this->mqtt_user = mqtt_cfg.mqtt_user;
+      this->mqtt_passwd = mqtt_cfg.mqtt_passwd;
+      this->mqtt_port = mqtt_cfg.mqtt_port;
+      this->mqtt_in_topic_prefix = mqtt_cfg.mqtt_in_topic_prefix;
+      this->mqtt_out_topic_prefix = mqtt_cfg.mqtt_out_topic_prefix;
 
       // dirty hack to allow callbacks to member functions using a global pointer variable
       // http://www.newty.de/fpt/callback.html#static
       mqtt_cb_obj = (void*) this;
-      mqtt.setCallback(MySensors::_mqtt_callback_wrapper);
+      mqtt.onMessageAdvanced(MySensors::_mqtt_callback_wrapper);
 
-      mqtt.setServer(mqtt_server, mqtt_port);
+      mqtt.begin(mqtt_server, mqtt_port, espClient);
     }
 
     void on_message(mys_msg_cb cb) {
@@ -168,10 +172,9 @@ class MySensors {
 
           needToSubscribeMqtt = false;
         }
-
-        mqtt.loop();
-        delay(10);  // for stability after mqtt loop
       }
+      mqtt.loop();
+      delay(10);  // for stability after mqtt loop
     }
 
   private:
@@ -207,13 +210,13 @@ class MySensors {
       return  split_count;
     }
 
-    static void _mqtt_callback_wrapper(char* topic, uint8_t* payload, uint16_t length) {
+    static void _mqtt_callback_wrapper(MQTTClient *client, char* topic, char* payload, int length) {
       // use global variable to access member function by casting it first
       // http://www.newty.de/fpt/callback.html#static
       ((MySensors*)mqtt_cb_obj)->_mqtt_callback(topic, payload, length);
     }
 
-    void _mqtt_callback(char* topic, uint8_t* payload, uint16_t length) {
+    void _mqtt_callback(char* topic, char* payload, int length) {
       _split_message(topic, "/");
       uint8_t node_id = atoi(mqtt_split_buff[1]);
       uint8_t child_id = atoi(mqtt_split_buff[2]);

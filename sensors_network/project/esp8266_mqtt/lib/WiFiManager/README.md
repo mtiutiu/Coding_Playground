@@ -3,13 +3,25 @@
 # WiFiManager
 ESP8266 WiFi Connection manager with fallback web configuration portal
 
-[![Build Status](https://travis-ci.org/tzapu/WiFiManager.svg?branch=master)](https://travis-ci.org/tzapu/WiFiManager)
+[![Build Status](https://travis-ci.org/tzapu/WiFiManager.svg?branch=development)](https://travis-ci.org/tzapu/WiFiManager)
+
+![ESP8266](https://img.shields.io/badge/ESP-8266-000000.svg?longCache=true&style=flat&colorA=CC101F)
+![ESP32](https://img.shields.io/badge/ESP-32-000000.svg?longCache=true&style=flat&colorA=CC101F)
 
 The configuration portal is of the captive variety, so on various devices it will present the configuration dialogue as soon as you connect to the created access point.
 
 First attempt at a library. Lots more changes and fixes to do. Contributions are welcome.
 
-#### This works with the ESP8266 Arduino platform with a recent stable release(2.0.0 or newer) https://github.com/esp8266/Arduino
+**This works with the ESP8266 Arduino platform with a recent stable release(2.0.0 or newer)**
+
+[https://github.com/esp8266/Arduino](https://github.com/esp8266/Arduino)
+
+**This works with the ESP32 Arduino platform with staging** 
+
+[https://github.com/espressif/arduino-esp32](https://github.com/espressif/arduino-esp32)
+
+### Known Issues
+* Documentation needs to be updated, see [https://github.com/tzapu/WiFiManager/issues/500](https://github.com/tzapu/WiFiManager/issues/500)
 
 ## Contents
  - [How it works](#how-it-works)
@@ -65,7 +77,7 @@ First attempt at a library. Lots more changes and fixes to do. Contributions are
 You can either install through the Arduino Library Manager or checkout the latest changes or a release from github
 
 #### Install through Library Manager
-__Currently version 0.8+ works with release 2.0.0 or newer of the [ESP8266 core for Arduino](https://github.com/esp8266/Arduino)__
+__Currently version 0.8+ works with release 2.4.0 or newer of the [ESP8266 core for Arduino](https://github.com/esp8266/Arduino)__
  - in Arduino IDE got to Sketch/Include Library/Manage Libraries
   ![Manage Libraries](http://i.imgur.com/9BkEBkR.png)
 
@@ -75,7 +87,7 @@ __Currently version 0.8+ works with release 2.0.0 or newer of the [ESP8266 core 
  - click Install and start [using it](#using)
 
 ####  Checkout from github
-__Github version works with release 2.0.0 or newer of the [ESP8266 core for Arduino](https://github.com/esp8266/Arduino)__
+__Github version works with release 2.4.0 or newer of the [ESP8266 core for Arduino](https://github.com/esp8266/Arduino)__
 - Checkout library to your Arduino libraries folder
 
 ### Using
@@ -184,6 +196,12 @@ void loop() {
 ```
 See example for a more complex version. [OnDemandConfigPortal](https://github.com/tzapu/WiFiManager/tree/master/examples/OnDemandConfigPortal)
 
+#### Exiting from the Configuration Portal
+Normally, once entered, the configuration portal will continue to loop until WiFi credentials have been successfully entered or a timeout is reached.
+If you'd prefer to exit without joining a WiFi network, say becuase you're going to put the ESP into AP mode, then press the "Exit" button
+on the main webpage.
+If started via `autoConnect` or `startConfigPortal` then it will return `false (portalAbortResult)`
+
 #### Custom Parameters
 You can use WiFiManager to collect more parameters than just SSID and password.
 This could be helpful for configuring stuff like MQTT host and port, [blynk](http://www.blynk.cc) or [emoncms](http://emoncms.org) tokens, just to name a few.
@@ -191,18 +209,18 @@ This could be helpful for configuring stuff like MQTT host and port, [blynk](htt
 Usage scenario would be:
 - load values from somewhere (EEPROM/FS) or generate some defaults
 - add the custom parameters to WiFiManager using
- ```cpp
+```cpp
  // id/name, placeholder/prompt, default, length
  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
  wifiManager.addParameter(&custom_mqtt_server);
 
- ```
+```
 - if connection to AP fails, configuration portal starts and you can set /change the values (or use on demand configuration portal)
 - once configuration is done and connection is established [save config callback]() is called
 - once WiFiManager returns control to your application, read and save the new values using the `WiFiManagerParameter` object.
- ```cpp
+```cpp
  mqtt_server = custom_mqtt_server.getValue();
- ```  
+```  
 This feature is a lot more involved than all the others, so here are some examples to fully show how it is done.
 You should also take a look at adding custom HTML to your form.
 
@@ -344,6 +362,10 @@ __THANK YOU__
 
 [Shawn A](https://github.com/tablatronix)
 
+[bbx10](https://github.com/bbx10)
+
+[kentaylor](https://github.com/kentaylor)
+
 [Maximiliano Duarte](https://github.com/domonetic)
 
 [alltheblinkythings](https://github.com/alltheblinkythings)
@@ -368,7 +390,10 @@ __THANK YOU__
 
 [walthercarsten](https://github.com/walthercarsten)
 
-Sorry if i have missed anyone.
+And countless others
 
 #### Inspiration
-- http://www.esp8266.com/viewtopic.php?f=29&t=2520
+ * http://www.esp8266.com/viewtopic.php?f=29&t=2520
+ * https://github.com/chriscook8/esp-arduino-apboot
+ * https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer/examples/CaptivePortalAdvanced
+ * Built by AlexT https://github.com/tzapu
