@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <MTypes.h>
 #include <MQTT.h>
+#include <Preferences.h>
 
 #define MQTT_CLIENT_ID_PREFIX  "ESP"
 #define MQTT_MAX_PAYLOAD_LENGTH  64
@@ -54,6 +55,8 @@ class MySensors {
       this->mqtt_port = mqtt_cfg.mqtt_port;
       this->mqtt_in_topic_prefix = mqtt_cfg.mqtt_in_topic_prefix;
       this->mqtt_out_topic_prefix = mqtt_cfg.mqtt_out_topic_prefix;
+
+      //Preferences::hwInit();
 
       // dirty hack to allow callbacks to member functions using a global pointer variable
       // http://www.newty.de/fpt/callback.html#static

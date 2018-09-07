@@ -5,6 +5,7 @@
 #include <ESP8266WebServer.h>
 #include <FS.h>
 #include <ArduinoJson.h>
+#include "utils.h"
 
 #define CONFIG_FILE "/config.json"
 
@@ -37,10 +38,6 @@ typedef struct {
 namespace WebConfig {
   CfgData cfgData;
   ESP8266WebServer server(HTTP_PORT);
-
-  String index_html = R"=====(
-    <!DOCTYPE html><html lang="en"> <head> <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/> <title>Config</title> <style>div, input{padding: 5px; font-size: 1em;}input{width: 95%;}body{text-align: center; font-family: verdana;}button{border: 0; border-radius: 0.3rem; background-color: #1fa3ec; color: #fff; line-height: 2.4rem; font-size: 1.2rem; width: 100%;}</style> </head> <body> <div> <form method='get' action='save'> <p>MySensors</p><input id='mys_node_id' name='mys_node_id' length=4 placeholder='<your node id here>' value='{mys_node_id}'><br/> <input id='mys_node_alias' name='mys_node_alias' length=32 placeholder='<your node alias here>' value='{mys_node_alias}'><br/> <input id='mys_node_led_count' name='mys_node_led_count' length=4 placeholder='<number of leds>' value='{mys_node_led_count}'><br/> <p>MQTT</p><input id='mqtt_server' name='mqtt_server' length=16 placeholder='<broker ip here>' value='{mqtt_server}'><br/> <input id='mqtt_port' name='mqtt_port' length=5 placeholder='<broker port here>' value='{mqtt_port}'><br/> <input id='mqtt_user' name='mqtt_user' length=32 placeholder='<broker user here>' value='{mqtt_user}'><br/> <input id='mqtt_passwd' name='mqtt_passwd' length=32 type='password' placeholder='<broker password here>' value='{mqtt_passwd}'><br/> <input id='mqtt_in_topic_prefix' name='mqtt_in_topic_prefix' length=128 placeholder='<mqtt in topic prefix here>' value='{mqtt_in_topic_prefix}'><br/> <input id='mqtt_out_topic_prefix' name='mqtt_out_topic_prefix' length=128 placeholder='<mqtt out topic prefix here>' value='{mqtt_out_topic_prefix}'><br/><br/> <button type='submit'>save</button> </form> </div></body></html>
-  )=====";
 
   void loadConfig(const char *cfgFilePath, CfgData& data) {
     if (SPIFFS.begin()) {
@@ -173,6 +170,10 @@ namespace WebConfig {
     #endif
 
     server.on("/", []() {
+      String index_html = R"=====(
+        <!DOCTYPE html><html lang="en"> <head> <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/> <title>Config</title> <style>div, input{padding: 5px; font-size: 1em;}input{width: 95%;}body{text-align: center; font-family: verdana;}button{border: 0; border-radius: 0.3rem; background-color: #1fa3ec; color: #fff; line-height: 2.4rem; font-size: 1.2rem; width: 100%;}</style> </head> <body> <div> <form method='get' action='save'> <p>MySensors</p><input id='mys_node_id' name='mys_node_id' length=4 placeholder='<your node id here>' value='{mys_node_id}'><br/> <input id='mys_node_alias' name='mys_node_alias' length=32 placeholder='<your node alias here>' value='{mys_node_alias}'><br/> <input id='mys_node_led_count' name='mys_node_led_count' length=4 placeholder='<number of leds>' value='{mys_node_led_count}'><br/> <p>MQTT</p><input id='mqtt_server' name='mqtt_server' length=16 placeholder='<broker ip here>' value='{mqtt_server}'><br/> <input id='mqtt_port' name='mqtt_port' length=5 placeholder='<broker port here>' value='{mqtt_port}'><br/> <input id='mqtt_user' name='mqtt_user' length=32 placeholder='<broker user here>' value='{mqtt_user}'><br/> <input id='mqtt_passwd' name='mqtt_passwd' length=32 type='password' placeholder='<broker password here>' value='{mqtt_passwd}'><br/> <input id='mqtt_in_topic_prefix' name='mqtt_in_topic_prefix' length=128 placeholder='<mqtt in topic prefix here>' value='{mqtt_in_topic_prefix}'><br/> <input id='mqtt_out_topic_prefix' name='mqtt_out_topic_prefix' length=128 placeholder='<mqtt out topic prefix here>' value='{mqtt_out_topic_prefix}'><br/><br/> <button type='submit'>save</button> </form> <div><h4>Uptime:{uptime}</h4></div></div></body></html>
+      )=====";
+
       index_html.replace("{mys_node_id}", cfgData.mys_node_id);
       index_html.replace("{mys_node_alias}", cfgData.mys_node_alias);
       index_html.replace("{mys_node_led_count}", cfgData.mys_node_led_count);
@@ -183,6 +184,10 @@ namespace WebConfig {
       index_html.replace("{mqtt_passwd}", cfgData.mqtt_passwd);
       index_html.replace("{mqtt_in_topic_prefix}", cfgData.mqtt_in_topic_prefix);
       index_html.replace("{mqtt_out_topic_prefix}", cfgData.mqtt_out_topic_prefix);
+
+      char uptime_buff[128];
+      memset(uptime_buff, '\0', sizeof(uptime_buff));
+      index_html.replace("{uptime}", Utils::timeToString(uptime_buff, sizeof(uptime_buff)));
       server.send(200, "text/html", index_html);
     });
 
@@ -229,7 +234,7 @@ namespace WebConfig {
 
       saveConfig(CONFIG_FILE, cfgData);
 
-      server.send_P(200, "text/html", PSTR("<h3>Settings saved! Restarting ...</h3>"));
+      server.send_P(200, "text/html", "<h3>Settings saved! Restarting ...</h3>");
       delay(1000);
       ESP.restart();
     });

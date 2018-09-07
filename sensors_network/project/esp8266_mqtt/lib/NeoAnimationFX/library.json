@@ -1,0 +1,14 @@
+{
+  "name": "NeoAnimationFX",
+  "keywords": "NeoPixel, WS2811, WS2812, WS2813, SK6812, DotStar, APA102, RGB, RGBW",
+  "description": "An animation wrapper around NeoPixelBus",
+  "homepage": "https://github.com/debsahu/NeoAnimationFX",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/debsahu/NeoAnimationFX"
+  },
+  "version": "0.2",
+  "frameworks": "arduino",
+  "platforms": "esp8266"
+}

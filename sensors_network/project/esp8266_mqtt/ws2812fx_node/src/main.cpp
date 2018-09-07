@@ -13,7 +13,6 @@
 #define str(a) #a
 
 #include <Arduino.h>
-#include <ArduinoOTA.h>
 #include <Ticker.h>
 
 
@@ -28,7 +27,6 @@ ADC_MODE(ADC_VCC);
 // ------------------------ MySensors-------------------------------------------
 #include <MTypes.h>
 #include <MySensors.h>
-#include <MySensorsEEPROM.h>
 
 const uint8_t RGB_SENSOR_ID = 1;
 const uint8_t SENSOR_COUNT = 1;
@@ -40,50 +38,7 @@ MySensors mysNode;
 // ------------------------ END MySensors---------------------------------------
 
 // ------------------------ SENSORS/ACTUATORS ----------------------------------
-#include <Adafruit_NeoPixelBusEsp8266DMA.h>
-#include <WS2812FX.h>
-
-//#define INVERSE_SENSOR_LOGIC
-// max led count that this node can take
-#define MAX_LED_COUNT 300
-
-#ifndef LED_STRIP_DATA_PIN
-#define LED_STRIP_DATA_PIN  D3
-#endif
-
-const bool OFF = false;
-const bool ON = true;
-
-const uint8_t BRIGHTNESS_MIN_VALUE = 0;
-const uint8_t BRIGHTNESS_MAX_VALUE = 255;
-const uint8_t BRIGHTNESS_DEFAULT_VALUE = 100;
-const uint8_t SPEED_MIN_VALUE = 0;
-const uint8_t SPEED_MAX_VALUE = 255;
-const uint8_t SPEED_DEFAULT_VALUE = 100;
-const uint8_t MODE_MIN_VALUE = 0;
-const uint8_t MODE_DEFAULT_VALUE = 0;
-const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
-const uint8_t G_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t G_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t G_COLOR_FIELD_DEFAULT_VALUE = 100;
-const uint8_t B_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t B_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t B_COLOR_FIELD_DEFAULT_VALUE = 100;
-
-const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
-const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
-const uint8_t RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID = 3;
-const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
-const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
-const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
-
-const float LED_STRIP_UPDATE_INTERVAL_S = 0.04; // 40ms
-
-Ticker ledStripUpdateTicker;
-
-WS2812FX ws2812fx(MAX_LED_COUNT, LED_STRIP_DATA_PIN);
+#include "LedStrip.h"
 // -----------------------------------------------------------------------------
 
 // -------------------------- BATTERY LEVEL REPORTING --------------------------
@@ -129,51 +84,8 @@ Ticker ledStripCtrlBtnCheckTicker;
 // -----------------------------------------------------------------------------
 
 // ----------------------------- OTA -------------------------------------------
-#ifndef HOSTNAME
-#define HOSTNAME  AP_SSID
-#endif
-#ifndef OTA_PORT
-#define OTA_PORT 8266
-#endif
-static bool otaInProgress = false;
+#include "Ota.h"
 // -----------------------------------------------------------------------------
-
-uint8_t loadState(uint8_t index) {
-  return MySensorsEEPROM::hwReadConfig(index);
-}
-
-void saveState(uint8_t index, uint8_t value) {
-  MySensorsEEPROM::hwWriteConfig(index, value);
-}
-
-void saveRGBLedStripCurrentSettings(uint8_t brightness, uint8_t speed,
-                                    uint8_t mode, uint32_t color) {
-
-  saveState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID, brightness);
-  saveState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID, speed);
-  saveState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID, mode);
-  saveState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x00FF0000) >> 16);
-  saveState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x0000FF00) >> 8);
-  saveState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID, (color & 0x000000FF) >> 0);
-}
-
-void loadRGBLedStripSavedSettings() {
-  ws2812fx.setBrightness(
-    constrain(loadState(RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID), BRIGHTNESS_MIN_VALUE, BRIGHTNESS_MAX_VALUE)
-  );
-  ws2812fx.setSpeed(
-    constrain(loadState(RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID), SPEED_MIN_VALUE, SPEED_MAX_VALUE)
-  );
-  ws2812fx.setMode(
-    constrain(loadState(RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID), MODE_MIN_VALUE, MODE_DEFAULT_VALUE)
-  );
-  ws2812fx.setColor(
-    constrain(loadState(RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID), R_COLOR_FIELD_MIN_VALUE, R_COLOR_FIELD_MAX_VALUE),
-    constrain(loadState(RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID), G_COLOR_FIELD_MIN_VALUE, G_COLOR_FIELD_MAX_VALUE),
-    constrain(loadState(RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID), B_COLOR_FIELD_MIN_VALUE, B_COLOR_FIELD_MAX_VALUE)
-  );
-  ws2812fx.trigger();
-}
 
 void sendLedStripState() {
   char reply[MQTT_MAX_PAYLOAD_LENGTH];
@@ -182,67 +94,29 @@ void sendLedStripState() {
     reply,
     MQTT_MAX_PAYLOAD_LENGTH,
     "%02x%02x%02x",
-    (uint8_t)((ws2812fx.getColor() & 0x00FF0000) >> 16),
-    (uint8_t)((ws2812fx.getColor() & 0x0000FF00) >> 8),
-    (uint8_t)((ws2812fx.getColor() & 0x000000FF) >> 0)
+    (uint8_t)((LedStrip::getInstance().getColor() & 0x00FF0000) >> 16),
+    (uint8_t)((LedStrip::getInstance().getColor() & 0x0000FF00) >> 8),
+    (uint8_t)((LedStrip::getInstance().getColor() & 0x000000FF) >> 0)
   );
   mysNode.send(RGB_SENSOR_ID, V_RGB, reply);
 
   uint8_t currentLedStripBrightness =
-    round((ws2812fx.getBrightness() * 100.0) / BRIGHTNESS_MAX_VALUE);
+    round((LedStrip::getInstance().getBrightness() * 100.0) / BRIGHTNESS_MAX_VALUE);
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripBrightness);
   mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
 
   uint8_t currentLedStripSpeed =
-    round((ws2812fx.getSpeed() * 100.0) / SPEED_MAX_VALUE);
+    round((LedStrip::getInstance().getSpeed() * 100.0) / SPEED_MAX_VALUE);
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripSpeed);
   mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
 
-  uint8_t currentLedStripMode = ws2812fx.getMode();
+  uint8_t currentLedStripMode = LedStrip::getInstance().getMode();
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripMode);
   mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
 
-  uint8_t currentLedStripState = ws2812fx.isRunning();
+  uint8_t currentLedStripState = LedStrip::getInstance().isRunning();
   snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripState);
   mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
-}
-
-void ledStripUpdate() {
-  if (ws2812fx.isRunning()) {
-    ws2812fx.service();
-  }
-}
-
-void ledStripStart() {
-  ws2812fx.start();
-  ledStripUpdateTicker.detach();
-  ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, ledStripUpdate);
-}
-
-void ledStripStop() {
-  ledStripUpdateTicker.detach();
-  ws2812fx.stop();
-  digitalWrite(LED_STRIP_DATA_PIN, LOW);
-}
-
-void ledStripInit(CfgData& cfgData, bool start = false) {
-  // led strip init
-  uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
-#ifdef DEBUG
-  DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
-#endif
-  ws2812fx.setLedCount(ledCount);
-  ws2812fx.init();
-
-  // load rgb led strip saved settings
-  loadRGBLedStripSavedSettings();
-
-  if(!start) {
-    // start led strip in OFF state
-    ledStripStop();
-  } else {
-    ledStripStart();
-  }
 }
 
 void onMessage(MySensorMsg &message) {
@@ -257,77 +131,68 @@ void onMessage(MySensorMsg &message) {
       );
     #endif
       if (message.sub_type == V_RGB) {
-        if (!ws2812fx.isRunning()) {
+        if (!LedStrip::getInstance().isRunning()) {
           return;
         }
 
-        ws2812fx.setColor(strtoul(message.payload, NULL, 16));
-        ws2812fx.trigger();
+        LedStrip::getInstance().setColor(strtoul(message.payload, NULL, 16));
+        LedStrip::getInstance().trigger();
         mysNode.send(RGB_SENSOR_ID, V_RGB, message.payload);
       } else if (message.sub_type == V_LIGHT_LEVEL) {
-        if (!ws2812fx.isRunning()) {
+        if (!LedStrip::getInstance().isRunning()) {
           return;
         }
 
         uint16_t brightnessPercentage = (uint16_t)atoi(message.payload);
         if ((brightnessPercentage >= 0) && (brightnessPercentage <= 100)) {
-          ws2812fx.setBrightness(
+          LedStrip::getInstance().setBrightness(
             round((brightnessPercentage * BRIGHTNESS_MAX_VALUE) / 100.0)
           );
-          ws2812fx.trigger();
+          LedStrip::getInstance().trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", brightnessPercentage);
           mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
         }
       } else if (message.sub_type == V_PERCENTAGE) {
-        if (!ws2812fx.isRunning()) {
+        if (!LedStrip::getInstance().isRunning()) {
           return;
         }
 
         uint16_t speedPercentage = (uint16_t)atoi(message.payload);
         if ((speedPercentage >= 0) && (speedPercentage <= 100)) {
-          ws2812fx.setSpeed(round((speedPercentage * SPEED_MAX_VALUE) / 100.0));
-          ws2812fx.trigger();
+          LedStrip::getInstance().setSpeed(round((speedPercentage * SPEED_MAX_VALUE) / 100.0));
+          LedStrip::getInstance().trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", speedPercentage);
           mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
         }
       } else if (message.sub_type == V_CUSTOM) {
-        if (!ws2812fx.isRunning()) {
+        if (!LedStrip::getInstance().isRunning()) {
           return;
         }
 
         uint16_t modeSetting = (uint16_t)atoi(message.payload);
         if ((modeSetting >= MODE_MIN_VALUE) &&
-            (modeSetting < ws2812fx.getModeCount())) {
-          ws2812fx.setMode(modeSetting);
-          ws2812fx.trigger();
+            (modeSetting < LedStrip::getInstance().getModeCount())) {
+          LedStrip::getInstance().setMode(modeSetting);
+          LedStrip::getInstance().trigger();
           snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", modeSetting);
           mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
         }
       } else if (message.sub_type == V_STATUS) {
         uint16_t newLedStripState = (uint16_t)atoi(message.payload);
-        if ((newLedStripState == OFF) && (ws2812fx.isRunning())) {
-          // get current brightness/color settings for saving them later
-          uint8_t previousLedStripBrightness = ws2812fx.getBrightness();
-          uint32_t previousLedStripColor = ws2812fx.getColor();
+        if ((newLedStripState == OFF) && (LedStrip::getInstance().isRunning())) {
+          LedStrip::saveSettings(); // save current settings
 
           // turn OFF rgb led strip
-          ledStripStop();
+          LedStrip::stop();
     		  #ifdef HAS_BTN_LED
     		  digitalWrite(BTN_LED_PIN, HIGH);
     		  #endif
-
-          saveRGBLedStripCurrentSettings(
-            previousLedStripBrightness,
-            ws2812fx.getSpeed(),
-            ws2812fx.getMode(),
-            previousLedStripColor
-          );
         }
 
-        if ((newLedStripState == ON) && (!ws2812fx.isRunning())) {
+        if ((newLedStripState == ON) && (!LedStrip::getInstance().isRunning())) {
           // load rgb led strip saved settings
-          loadRGBLedStripSavedSettings();
-          ledStripStart();
+          LedStrip::loadSettings();
+          LedStrip::start();
     		  #ifdef HAS_BTN_LED
     		  digitalWrite(BTN_LED_PIN, LOW);
     		  #endif
@@ -410,14 +275,14 @@ void checkLedStripBtn() {
     if(stillPressedCounter++ > 0) {
       return;
     }
-    if(ws2812fx.isRunning()) {
+    if(LedStrip::getInstance().isRunning()) {
       // turn OFF rgb led strip if it was running before
-      ledStripStop();
+      LedStrip::stop();
 	  #ifdef HAS_BTN_LED
 	  digitalWrite(BTN_LED_PIN, HIGH);
 	  #endif
     } else {
-      ledStripStart();
+      LedStrip::start();
 	  #ifdef HAS_BTN_LED
 	  digitalWrite(BTN_LED_PIN, LOW);
 	  #endif
@@ -512,55 +377,9 @@ void nodeConfig(CfgData& cfgData) {
   mySensorsInit(cfgData);
 }
 
-void disableLedStripControlTickers() {
-  ledStripUpdateTicker.detach();
+void disableTickers() {
+  LedStrip::getUpdateTicker().detach();
   ledStripCtrlBtnCheckTicker.detach();
-}
-
-void otaInit() {
-  ArduinoOTA.setHostname(HOSTNAME);
-  ArduinoOTA.setPort(OTA_PORT);
-  ArduinoOTA.setRebootOnSuccess(true);
-
-  ArduinoOTA.onStart([]() {
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-  #ifdef DEBUG
-      DEBUG_OUTPUT.println("Start updating flash ...");
-  #endif
-    } else {
-  #ifdef DEBUG
-      DEBUG_OUTPUT.println("Start updating filesystem (SPIFFS) ...");
-  #endif
-      // Unmount SPIFFS using SPIFFS.end() first
-      SPIFFS.end();
-    }
-    otaInProgress = true;
-  });
-  ArduinoOTA.onEnd([]() {
-  #ifdef DEBUG
-    DEBUG_OUTPUT.println("\nOTA finished.");
-  #endif
-    otaInProgress = false;
-  });
-  ArduinoOTA.onProgress([](uint16_t progress, uint16_t total) {
-  #ifdef DEBUG
-    DEBUG_OUTPUT.printf("Progress: %u%%\r", (progress / (total / 100)));
-  #endif
-    otaInProgress = true;
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-  #ifdef DEBUG
-    DEBUG_OUTPUT.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) DEBUG_OUTPUT.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) DEBUG_OUTPUT.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) DEBUG_OUTPUT.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) DEBUG_OUTPUT.println("Receive Failed");
-    else if (error == OTA_END_ERROR) DEBUG_OUTPUT.println("End Failed");
-  #endif
-    ESP.restart();
-  });
-
-  ArduinoOTA.begin();
 }
 
 void setup() {
@@ -570,13 +389,11 @@ void setup() {
 
   // pre inits
   portsConfig();
-  MySensorsEEPROM::hwInit();
-
   WebConfig::begin(); // start web config and load configs
-  ledStripInit(WebConfig::getConfig());
+  LedStrip::init(WebConfig::getConfig());
   nodeConfig(WebConfig::getConfig());  // this blocks untill networking is configured and active
 
-  otaInit();
+  Ota::init();
 
   // send initial reports on node startup
   if (mysNode.connected()) {
@@ -587,10 +404,11 @@ void setup() {
 }
 
 void loop() {
-  ArduinoOTA.handle();
-  if(otaInProgress) {
-    disableLedStripControlTickers();
-    ledStripStop();
+  Ota::getInstance().handle();
+
+  if(Ota::inProgress()) {
+    disableTickers();
+    LedStrip::stop();
   } else {
     WebConfig::loop();
     mysNode.loop();

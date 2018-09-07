@@ -1,12 +1,12 @@
-#ifndef MYSENSORS_EEPROM_H
-#define MYSENSORS_EEPROM_H
+#ifndef PREFERENCES_H
+#define PREFERENCES_H
 
 #include <Arduino.h>
 #include <EEPROM.h>
 
 #define EEPROM_size (1024)
 
-namespace MySensorsEEPROM {
+namespace Preferences {
   bool hwInit(void) {
   	EEPROM.begin(EEPROM_size);
   	return true;
