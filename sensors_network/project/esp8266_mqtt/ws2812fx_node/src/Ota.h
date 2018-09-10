@@ -3,13 +3,8 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-
-#ifndef HOSTNAME
-#define HOSTNAME  AP_SSID
-#endif
-#ifndef OTA_PORT
-#define OTA_PORT 8266
-#endif
+#include <FS.h>
+#include "common.h"
 
 namespace Ota {
   bool otaInProgress = false;

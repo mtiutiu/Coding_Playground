@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+#define STRINGIFY(a) str(a)
+#define str(a) #a
+
 namespace Utils {
   char* timeToString(char* string, size_t size) {
     uint32_t days = 0;

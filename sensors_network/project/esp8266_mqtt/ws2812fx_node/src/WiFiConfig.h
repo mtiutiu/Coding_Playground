@@ -3,13 +3,7 @@
 
 #include <Arduino.h>
 #include <WiFiManager.h>
-
-#ifndef AP_SSID
-#define AP_SSID "WS2812FXController"
-#endif
-#ifndef AP_PASSWD
-#define AP_PASSWD "test1234"
-#endif
+#include "common.h"
 
 namespace WiFiConfig {
   WiFiManager wifiManager;

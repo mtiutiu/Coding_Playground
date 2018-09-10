@@ -6,22 +6,7 @@
 #include <FS.h>
 #include <ArduinoJson.h>
 #include "utils.h"
-
-#define CONFIG_FILE "/config.json"
-
-#ifndef HTTP_PORT
-#define HTTP_PORT 8080
-#endif
-
-#define MQTT_SERVER_FIELD_MAX_LEN 40
-#define MQTT_USER_FIELD_MAX_LEN 40
-#define MQTT_PASS_FIELD_MAX_LEN 40
-#define MQTT_PORT_FIELD_MAX_LEN 6
-#define MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN 40
-#define MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN 40
-#define MYS_NODE_ID_FIELD_MAX_LEN 4
-#define MYS_NODE_ALIAS_FIELD_MAX_LEN 40
-#define MYS_NODE_LED_COUNT_FIELD_MAX_LEN 20
+#include "common.h"
 
 typedef struct {
   char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
@@ -37,7 +22,7 @@ typedef struct {
 
 namespace WebConfig {
   CfgData cfgData;
-  ESP8266WebServer server(HTTP_PORT);
+  ESP8266WebServer server(HTTP_CFG_SERVER_PORT);
 
   void loadConfig(const char *cfgFilePath, CfgData& data) {
     if (SPIFFS.begin()) {

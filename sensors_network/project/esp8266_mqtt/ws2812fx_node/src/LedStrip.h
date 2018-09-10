@@ -7,46 +7,39 @@
 
 #include <MySensors.h>
 #include <Preferences.h>
+#include "common.h"
 
-//#define INVERSE_SENSOR_LOGIC
-// max led count that this node can take
-#define MAX_LED_COUNT 300
-
-#ifndef LED_STRIP_DATA_PIN
-#define LED_STRIP_DATA_PIN  D3
-#endif
-
-const bool OFF = false;
-const bool ON = true;
-
-const uint8_t BRIGHTNESS_MIN_VALUE = 0;
-const uint8_t BRIGHTNESS_MAX_VALUE = 255;
-const uint8_t BRIGHTNESS_DEFAULT_VALUE = 100;
-const uint8_t SPEED_MIN_VALUE = 0;
-const uint8_t SPEED_MAX_VALUE = 255;
-const uint8_t SPEED_DEFAULT_VALUE = 100;
-const uint8_t MODE_MIN_VALUE = 0;
-const uint8_t MODE_DEFAULT_VALUE = 0;
-const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
-const uint8_t G_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t G_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t G_COLOR_FIELD_DEFAULT_VALUE = 100;
-const uint8_t B_COLOR_FIELD_MIN_VALUE = 0;
-const uint8_t B_COLOR_FIELD_MAX_VALUE = 255;
-const uint8_t B_COLOR_FIELD_DEFAULT_VALUE = 100;
-
-const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
-const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
-const uint8_t RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID = 3;
-const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
-const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
-const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
-
-const float LED_STRIP_UPDATE_INTERVAL_S = 0.04; // 40ms
 
 namespace LedStrip {
+  const bool ON = true;
+  const bool OFF = false;
+  const uint8_t BRIGHTNESS_MIN_VALUE = 0;
+  const uint8_t BRIGHTNESS_MAX_VALUE = 255;
+  const uint8_t BRIGHTNESS_DEFAULT_VALUE = 100;
+  const uint8_t SPEED_MIN_VALUE = 0;
+  const uint8_t SPEED_MAX_VALUE = 255;
+  const uint8_t SPEED_DEFAULT_VALUE = 100;
+  const uint8_t MODE_MIN_VALUE = 0;
+  const uint8_t MODE_DEFAULT_VALUE = 0;
+  const uint8_t R_COLOR_FIELD_MIN_VALUE = 0;
+  const uint8_t R_COLOR_FIELD_MAX_VALUE = 255;
+  const uint8_t R_COLOR_FIELD_DEFAULT_VALUE = 100;
+  const uint8_t G_COLOR_FIELD_MIN_VALUE = 0;
+  const uint8_t G_COLOR_FIELD_MAX_VALUE = 255;
+  const uint8_t G_COLOR_FIELD_DEFAULT_VALUE = 100;
+  const uint8_t B_COLOR_FIELD_MIN_VALUE = 0;
+  const uint8_t B_COLOR_FIELD_MAX_VALUE = 255;
+  const uint8_t B_COLOR_FIELD_DEFAULT_VALUE = 100;
+
+  const uint8_t RGB_STRIP_BRIGHTNESS_EEPROM_SAVE_LOCATION_ID = 1;
+  const uint8_t RGB_STRIP_SPEED_EEPROM_SAVE_LOCATION_ID = 2;
+  const uint8_t RGB_STRIP_MODE_EEPROM_SAVE_LOCATION_ID = 3;
+  const uint8_t RGB_STRIP_R_COLOR_EEPROM_SAVE_LOCATION_ID = 4;
+  const uint8_t RGB_STRIP_G_COLOR_EEPROM_SAVE_LOCATION_ID = 5;
+  const uint8_t RGB_STRIP_B_COLOR_EEPROM_SAVE_LOCATION_ID = 6;
+
+  const uint32_t LED_STRIP_UPDATE_INTERVAL_MS = 20; // 20ms
+
   Ticker ledStripUpdateTicker;
 
   NeoPBBGRB800 strip(MAX_LED_COUNT);
@@ -99,7 +92,7 @@ namespace LedStrip {
   void start() {
     ws2812fx.start();
     ledStripUpdateTicker.detach();
-    ledStripUpdateTicker.attach(LED_STRIP_UPDATE_INTERVAL_S, update);
+    ledStripUpdateTicker.attach_ms(LED_STRIP_UPDATE_INTERVAL_MS, update);
   }
 
   void stop() {
