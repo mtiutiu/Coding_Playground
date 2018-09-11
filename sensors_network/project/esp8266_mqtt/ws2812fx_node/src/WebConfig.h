@@ -88,7 +88,7 @@ namespace WebConfig {
 
       Configs::save(CONFIG_FILE, _cfgData);
 
-      server.send_P(200, "text/html", "<h3>Settings saved! Restarting ...</h3>");
+      server.send(200, "text/html", "<h3>Settings saved! Restarting ...</h3>");
       delay(1000);
       ESP.restart();
     });
