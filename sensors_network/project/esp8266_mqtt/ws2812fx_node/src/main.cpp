@@ -17,7 +17,7 @@
 // -----------------------------------------------------------------------------
 
 // ------------------------ Module CONFIG --------------------------------------
-#include "Configs.h"
+#include "AppConfig.h"
 #include "WiFiConfig.h"
 #include "WebConfig.h"
 // ------------------------ END Module CONFIG ----------------------------------
@@ -177,11 +177,11 @@ void setup() {
 
   // pre inits
   portsConfig();
-  Configs::init();
-  LedStrip::init(Configs::getConfiguration());
+  AppConfig::init();
+  LedStrip::init(AppConfig::get());
   nodeWiFiConfig();  // this blocks untill networking is configured and active
-  WebConfig::begin(Configs::getConfiguration()); // start web config server
-  MySensorsApp::init(Configs::getConfiguration());
+  WebConfig::begin(AppConfig::get()); // start web config server
+  MySensorsApp::init(AppConfig::get());
   Ota::init();
 }
 

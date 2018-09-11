@@ -1,9 +1,19 @@
-#ifndef CONFIGS_H
-#define CONFIGS_H
+#ifndef APPCONFIG_H
+#define APPCONFIG_H
 
 #include <Arduino.h>
 #include <FS.h>
 #include <ArduinoJson.h>
+
+#define MQTT_SERVER_FIELD_MAX_LEN 40
+#define MQTT_USER_FIELD_MAX_LEN 40
+#define MQTT_PASS_FIELD_MAX_LEN 40
+#define MQTT_PORT_FIELD_MAX_LEN 6
+#define MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN 40
+#define MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN 40
+#define MYS_NODE_ID_FIELD_MAX_LEN 4
+#define MYS_NODE_ALIAS_FIELD_MAX_LEN 40
+#define MYS_NODE_LED_COUNT_FIELD_MAX_LEN 20
 
 typedef struct {
   char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
@@ -15,10 +25,10 @@ typedef struct {
   char mys_node_id[MYS_NODE_ID_FIELD_MAX_LEN];
   char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
   char mys_node_led_count[MYS_NODE_LED_COUNT_FIELD_MAX_LEN];
-} CfgData;
+} AppCfg;
 
-namespace Configs {
-  CfgData _cfgData = {0};
+namespace AppConfig {
+  AppCfg _cfgData = {0};
   bool _initialized = false;
 
   bool load(const char *cfgFilePath) {
@@ -98,7 +108,7 @@ namespace Configs {
     return success;
   }
 
-  bool save(const char *cfgFilePath, CfgData* cfgData) {
+  bool save(const char *cfgFilePath, AppCfg* cfgData) {
     if(!cfgData) {
       return false;
     }
@@ -157,7 +167,7 @@ namespace Configs {
   }
 
 
-  CfgData* getConfiguration() {
+  AppCfg* get() {
     return &_cfgData;
   }
 

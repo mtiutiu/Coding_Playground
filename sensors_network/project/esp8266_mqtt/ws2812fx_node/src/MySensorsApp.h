@@ -26,7 +26,7 @@ namespace MySensorsApp {
   const uint8_t RGB_SENSOR_ID = 1;
 
   MySensors mysNode;
-  CfgData* _cfgData;
+  AppCfg* _appCfg;
   MqttCfg _mqtt_cfg;
 
   void sendBatteryLevel() {
@@ -108,7 +108,7 @@ namespace MySensorsApp {
   }
 
   void onPresentation() {
-    mysNode.send_sketch_name(_cfgData->mys_node_alias);
+    mysNode.send_sketch_name(_appCfg->mys_node_alias);
     mysNode.send_sketch_version();
     mysNode.present(RGB_SENSOR_ID, S_RGB_LIGHT, "RGB");
   }
@@ -205,10 +205,10 @@ namespace MySensorsApp {
     mysNode.loop();
   }
 
-  void init(CfgData* cfgData) {
-    _cfgData = cfgData;
+  void init(AppCfg* appCfg) {
+    _appCfg = appCfg;
 
-    if (!_cfgData) {
+    if (!_appCfg) {
       #ifdef DEBUG
         DEBUG_OUTPUT.printf(
           "[MySensorsApp] Received invalid configuration data, delaying for 3s!\r\n");
@@ -218,12 +218,12 @@ namespace MySensorsApp {
     }
 
     _mqtt_cfg = {
-      _cfgData->mqtt_server,
-      _cfgData->mqtt_user,
-      _cfgData->mqtt_passwd,
-      (uint16_t)atoi(_cfgData->mqtt_port),
-      _cfgData->mqtt_in_topic_prefix,
-      _cfgData->mqtt_out_topic_prefix
+      _appCfg->mqtt_server,
+      _appCfg->mqtt_user,
+      _appCfg->mqtt_passwd,
+      (uint16_t)atoi(_appCfg->mqtt_port),
+      _appCfg->mqtt_in_topic_prefix,
+      _appCfg->mqtt_out_topic_prefix
     };
 
     #ifdef DEBUG
@@ -239,7 +239,7 @@ namespace MySensorsApp {
       DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_port);
     #endif
 
-    mysNode.begin((uint8_t)atoi(_cfgData->mys_node_id), &_mqtt_cfg);
+    mysNode.begin((uint8_t)atoi(_appCfg->mys_node_id), &_mqtt_cfg);
     mysNode.register_on_message_cb(onMessage);
     mysNode.register_presentation_cb(onPresentation);
 

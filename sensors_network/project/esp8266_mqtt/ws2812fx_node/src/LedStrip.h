@@ -117,10 +117,10 @@ namespace LedStrip {
     ledStripUpdateTicker.detach();
   }
 
-  void init(CfgData* cfgData, bool start = false) {
+  void init(AppCfg* appCfg, bool start = false) {
     Preferences::hwInit();
 
-    if (!cfgData) {
+    if (!appCfg) {
       #ifdef DEBUG
         DEBUG_OUTPUT.printf(
           "[LedStrip] Received invalid configuration data, delaying for 3s!\r\n");
@@ -130,7 +130,7 @@ namespace LedStrip {
     }
 
     // led strip init
-    uint16_t ledCount = (uint16_t)atoi(cfgData->mys_node_led_count);
+    uint16_t ledCount = (uint16_t)atoi(appCfg->mys_node_led_count);
   #ifdef DEBUG
     DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
   #endif
