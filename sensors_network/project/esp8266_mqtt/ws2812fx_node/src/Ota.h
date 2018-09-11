@@ -13,6 +13,10 @@ namespace Ota {
     return otaInProgress;
   }
 
+  void handle() {
+    ArduinoOTA.handle();
+  }
+
   ArduinoOTAClass& getInstance() {
     return ArduinoOTA;
   }

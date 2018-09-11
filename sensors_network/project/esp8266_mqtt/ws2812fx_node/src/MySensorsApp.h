@@ -24,12 +24,10 @@ namespace MySensorsApp {
   // -----------------------------------------------------------------------------
 
   const uint8_t RGB_SENSOR_ID = 1;
-  const uint8_t SENSOR_COUNT = 1;
-  const uint8_t CHILD_TYPES[SENSOR_COUNT] = {S_RGB_LIGHT};
-  const uint8_t CHILD_SUBTYPES[SENSOR_COUNT] = {V_RGB};
-  const char *CHILD_ALIASES[SENSOR_COUNT] = {"RGB"};
 
   MySensors mysNode;
+  CfgData* _cfgData;
+  MqttCfg _mqtt_cfg;
 
   void sendBatteryLevel() {
     uint8_t vccPercent = constrain(
@@ -80,7 +78,7 @@ namespace MySensorsApp {
     snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripMode);
     mysNode.send(RGB_SENSOR_ID, V_CUSTOM, reply);
 
-    uint8_t currentLedStripState = LedStrip::getInstance().isRunning();
+    uint8_t currentLedStripState = LedStrip::isRunning();
     snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", currentLedStripState);
     mysNode.send(RGB_SENSOR_ID, V_STATUS, reply);
   }
@@ -109,7 +107,13 @@ namespace MySensorsApp {
     }
   }
 
-  void onMessage(MySensorMsg &message) {
+  void onPresentation() {
+    mysNode.send_sketch_name(_cfgData->mys_node_alias);
+    mysNode.send_sketch_version();
+    mysNode.present(RGB_SENSOR_ID, S_RGB_LIGHT, "RGB");
+  }
+
+  void onMessage(MySensorsMsg &message) {
     char reply[MQTT_MAX_PAYLOAD_LENGTH];
 
     if (message.cmd_type == M_SET) {
@@ -121,7 +125,7 @@ namespace MySensorsApp {
         );
       #endif
         if (message.sub_type == V_RGB) {
-          if (!LedStrip::getInstance().isRunning()) {
+          if (!LedStrip::isRunning()) {
             return;
           }
 
@@ -129,7 +133,7 @@ namespace MySensorsApp {
           LedStrip::getInstance().trigger();
           mysNode.send(RGB_SENSOR_ID, V_RGB, message.payload);
         } else if (message.sub_type == V_LIGHT_LEVEL) {
-          if (!LedStrip::getInstance().isRunning()) {
+          if (!LedStrip::isRunning()) {
             return;
           }
 
@@ -143,7 +147,7 @@ namespace MySensorsApp {
             mysNode.send(RGB_SENSOR_ID, V_LIGHT_LEVEL, reply);
           }
         } else if (message.sub_type == V_PERCENTAGE) {
-          if (!LedStrip::getInstance().isRunning()) {
+          if (!LedStrip::isRunning()) {
             return;
           }
 
@@ -155,7 +159,7 @@ namespace MySensorsApp {
             mysNode.send(RGB_SENSOR_ID, V_PERCENTAGE, reply);
           }
         } else if (message.sub_type == V_CUSTOM) {
-          if (!LedStrip::getInstance().isRunning()) {
+          if (!LedStrip::isRunning()) {
             return;
           }
 
@@ -169,7 +173,7 @@ namespace MySensorsApp {
           }
         } else if (message.sub_type == V_STATUS) {
           uint16_t newLedStripState = (uint16_t)atoi(message.payload);
-          if ((newLedStripState == LedStrip::OFF) && (LedStrip::getInstance().isRunning())) {
+          if ((newLedStripState == LedStrip::OFF) && (LedStrip::isRunning())) {
             LedStrip::saveSettings(); // save current settings
 
             // turn OFF rgb led strip
@@ -179,7 +183,7 @@ namespace MySensorsApp {
       		  #endif
           }
 
-          if ((newLedStripState == LedStrip::ON) && (!LedStrip::getInstance().isRunning())) {
+          if ((newLedStripState == LedStrip::ON) && (!LedStrip::isRunning())) {
             // load rgb led strip saved settings
             LedStrip::loadSettings();
             LedStrip::start();
@@ -201,25 +205,43 @@ namespace MySensorsApp {
     mysNode.loop();
   }
 
-  void init(CfgData& cfgData) {
-    MqttCfg mqtt_cfg = {
-      cfgData.mqtt_server,
-      cfgData.mqtt_user,
-      cfgData.mqtt_passwd,
-      atoi(cfgData.mqtt_port),
-      cfgData.mqtt_in_topic_prefix,
-      cfgData.mqtt_out_topic_prefix
+  void init(CfgData* cfgData) {
+    _cfgData = cfgData;
+
+    if (!_cfgData) {
+      #ifdef DEBUG
+        DEBUG_OUTPUT.printf(
+          "[MySensorsApp] Received invalid configuration data, delaying for 3s!\r\n");
+        delay(3000);
+      #endif
+      return;
+    }
+
+    _mqtt_cfg = {
+      _cfgData->mqtt_server,
+      _cfgData->mqtt_user,
+      _cfgData->mqtt_passwd,
+      (uint16_t)atoi(_cfgData->mqtt_port),
+      _cfgData->mqtt_in_topic_prefix,
+      _cfgData->mqtt_out_topic_prefix
     };
 
-    mysNode.begin(
-      atoi(cfgData.mys_node_id),
-      cfgData.mys_node_alias,
-      CHILD_TYPES,
-      CHILD_ALIASES,
-      SENSOR_COUNT,
-      mqtt_cfg
-    );
-    mysNode.on_message(onMessage);
+    #ifdef DEBUG
+      DEBUG_OUTPUT.println();
+      DEBUG_OUTPUT.println("=== MQTT CONFIG ===");
+      DEBUG_OUTPUT.print("MQTT SERVER: ");
+      DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_server);
+      DEBUG_OUTPUT.print("MQTT USER: ");
+      DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_user);
+      DEBUG_OUTPUT.print("MQTT PASSWORD: ");
+      DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_passwd);
+      DEBUG_OUTPUT.print("MQTT PORT: ");
+      DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_port);
+    #endif
+
+    mysNode.begin((uint8_t)atoi(_cfgData->mys_node_id), &_mqtt_cfg);
+    mysNode.register_on_message_cb(onMessage);
+    mysNode.register_presentation_cb(onPresentation);
 
     // send initial reports on node startup
     if (mysNode.connected()) {

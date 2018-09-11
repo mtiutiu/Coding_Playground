@@ -85,7 +85,7 @@ void checkLedStripBtn() {
     if(stillPressedCounter++ > 0) {
       return;
     }
-    if(LedStrip::getInstance().isRunning()) {
+    if(LedStrip::isRunning()) {
       // turn OFF rgb led strip if it was running before
       LedStrip::stop();
 	  #ifdef HAS_BTN_LED
@@ -106,7 +106,7 @@ void checkLedStripBtn() {
 }
 
 void disableTickers() {
-  LedStrip::getUpdateTicker().detach();
+  LedStrip::disableTickers();
   ledStripCtrlBtnCheckTicker.detach();
 }
 
@@ -176,15 +176,16 @@ void setup() {
 
   // pre inits
   portsConfig();
-  WebConfig::begin(); // start web config and load configs
-  LedStrip::init(WebConfig::getConfig());
+  Utils::init();
+  LedStrip::init(Utils::getConfiguration());
   nodeWiFiConfig();  // this blocks untill networking is configured and active
-  MySensorsApp::init(WebConfig::getConfig());
+  WebConfig::begin(Utils::getConfiguration()); // start web config server
+  MySensorsApp::init(Utils::getConfiguration());
   Ota::init();
 }
 
 void loop() {
-  Ota::getInstance().handle();
+  Ota::handle();
 
   if(Ota::inProgress()) {
     disableTickers();

@@ -109,15 +109,28 @@ namespace LedStrip {
     return ws2812fx;
   }
 
-  Ticker& getUpdateTicker() {
+  Ticker& getTicker() {
     return ledStripUpdateTicker;
   }
 
-  void init(CfgData& cfgData, bool start = false) {
+  void disableTickers() {
+    ledStripUpdateTicker.detach();
+  }
+
+  void init(CfgData* cfgData, bool start = false) {
     Preferences::hwInit();
 
+    if (!cfgData) {
+      #ifdef DEBUG
+        DEBUG_OUTPUT.printf(
+          "[LedStrip] Received invalid configuration data, delaying for 3s!\r\n");
+        delay(3000);
+      #endif
+      return;
+    }
+
     // led strip init
-    uint16_t ledCount = (uint16_t)atoi(cfgData.mys_node_led_count);
+    uint16_t ledCount = (uint16_t)atoi(cfgData->mys_node_led_count);
   #ifdef DEBUG
     DEBUG_OUTPUT.printf("We have %d leds ...\r\n", ledCount);
   #endif
