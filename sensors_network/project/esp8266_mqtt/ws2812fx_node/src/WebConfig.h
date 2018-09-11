@@ -3,9 +3,7 @@
 
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
-#include <FS.h>
-#include <ArduinoJson.h>
-#include "utils.h"
+#include "Utils.h"
 #include "common.h"
 
 namespace WebConfig {
@@ -88,7 +86,7 @@ namespace WebConfig {
         strncpy(_cfgData->mqtt_out_topic_prefix, server.arg("mqtt_out_topic_prefix").c_str(), MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
       }
 
-      Utils::saveConfig();
+      Configs::save(CONFIG_FILE, _cfgData);
 
       server.send_P(200, "text/html", "<h3>Settings saved! Restarting ...</h3>");
       delay(1000);

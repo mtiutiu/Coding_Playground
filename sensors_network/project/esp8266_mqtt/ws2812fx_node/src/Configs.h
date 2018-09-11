@@ -1,11 +1,9 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef CONFIGS_H
+#define CONFIGS_H
 
 #include <Arduino.h>
-#include "common.h"
-
-#define STRINGIFY(a) str(a)
-#define str(a) #a
+#include <FS.h>
+#include <ArduinoJson.h>
 
 typedef struct {
   char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
@@ -19,10 +17,13 @@ typedef struct {
   char mys_node_led_count[MYS_NODE_LED_COUNT_FIELD_MAX_LEN];
 } CfgData;
 
-namespace Utils {
+namespace Configs {
   CfgData _cfgData = {0};
+  bool _initialized = false;
 
-  void loadConfig(const char *cfgFilePath = CONFIG_FILE) {
+  bool load(const char *cfgFilePath) {
+    bool success = false;
+
     if (SPIFFS.begin()) {
       if (SPIFFS.exists(cfgFilePath)) {
         File configFile = SPIFFS.open(cfgFilePath, "r");
@@ -74,12 +75,14 @@ namespace Utils {
         #ifdef DEBUG
           DEBUG_OUTPUT.println("Config file couldn't be opened!");
         #endif
+          success = false;
         }
       } else {
       // config file not found start portal
       #ifdef DEBUG
         DEBUG_OUTPUT.println("Config file wasn't found!");
       #endif
+        success = false;
       }
       SPIFFS.end();
     } else {
@@ -87,10 +90,21 @@ namespace Utils {
     #ifdef DEBUG
       DEBUG_OUTPUT.println("SPIFFS mount failed!");
     #endif
+      success = false;
     }
+
+    success = true;
+
+    return success;
   }
 
-  void saveConfig(const char *cfgFilePath = CONFIG_FILE) {
+  bool save(const char *cfgFilePath, CfgData* cfgData) {
+    if(!cfgData) {
+      return false;
+    }
+
+    bool success = false;
+
     if (SPIFFS.begin()) {
       if (SPIFFS.exists(cfgFilePath)) {
         File configFile = SPIFFS.open(cfgFilePath, "w");
@@ -103,15 +117,15 @@ namespace Utils {
           DynamicJsonBuffer jsonBuffer;
           JsonObject &json = jsonBuffer.createObject();
 
-          json["mqtt_server"] = _cfgData.mqtt_server;
-          json["mqtt_user"] = _cfgData.mqtt_user;
-          json["mqtt_passwd"] = _cfgData.mqtt_passwd;
-          json["mqtt_port"] = _cfgData.mqtt_port;
-          json["mqtt_in_topic_prefix"] = _cfgData.mqtt_in_topic_prefix;
-          json["mqtt_out_topic_prefix"] = _cfgData.mqtt_out_topic_prefix;
-          json["mys_node_id"] = _cfgData.mys_node_id;
-          json["mys_node_alias"] = _cfgData.mys_node_alias;
-          json["mys_node_led_count"] = _cfgData.mys_node_led_count;
+          json["mqtt_server"] = cfgData->mqtt_server;
+          json["mqtt_user"] = cfgData->mqtt_user;
+          json["mqtt_passwd"] = cfgData->mqtt_passwd;
+          json["mqtt_port"] = cfgData->mqtt_port;
+          json["mqtt_in_topic_prefix"] = cfgData->mqtt_in_topic_prefix;
+          json["mqtt_out_topic_prefix"] = cfgData->mqtt_out_topic_prefix;
+          json["mys_node_id"] = cfgData->mys_node_id;
+          json["mys_node_alias"] = cfgData->mys_node_alias;
+          json["mys_node_led_count"] = cfgData->mys_node_led_count;
 
           json.printTo(configFile);
           configFile.close();
@@ -120,12 +134,14 @@ namespace Utils {
         #ifdef DEBUG
           DEBUG_OUTPUT.println("Config file couldn't be opened!");
         #endif
+          success = false;
         }
       } else {
       // config file not found start portal
       #ifdef DEBUG
         DEBUG_OUTPUT.println("Config file wasn't found!");
       #endif
+        success = false;
       }
       SPIFFS.end();
     } else {
@@ -133,7 +149,11 @@ namespace Utils {
     #ifdef DEBUG
       DEBUG_OUTPUT.println("SPIFFS mount failed!");
     #endif
+      success = false;
     }
+    success = true;
+
+    return success;
   }
 
 
@@ -141,26 +161,13 @@ namespace Utils {
     return &_cfgData;
   }
 
-  char* timeToString(char* string, size_t size) {
-    uint32_t days = 0;
-    uint32_t hours = 0;
-    uint32_t mins = 0;
-    uint32_t secs = 0;
-
-    secs = millis() / 1000; // set the seconds remaining
-    mins = secs / 60; //convert seconds to minutes
-    hours = mins / 60; //convert minutes to hours
-    days = hours / 24; //convert hours to days
-    secs = secs - (mins * 60); //subtract the coverted seconds to minutes in order to display 59 secs max
-    mins = mins - (hours * 60); //subtract the coverted minutes to hours in order to display 59 minutes max
-    hours = hours - (days * 24); //subtract the coverted hours to days in order to display 23 hours max
-
-    snprintf(string, size, "%dd, %dh, %dm, %ds", days, hours, mins, secs);
-    return string;
+  bool initialized() {
+    return _initialized;
   }
 
-  void init() {
-    loadConfig(CONFIG_FILE);
+  bool init() {
+    _initialized = load(CONFIG_FILE);
+    return _initialized;
   }
 }
 
