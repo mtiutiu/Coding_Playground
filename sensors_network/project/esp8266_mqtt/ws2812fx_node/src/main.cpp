@@ -186,7 +186,7 @@ void setup() {
 }
 
 void loop() {
-  Ota::handle();
+  Ota::loop();
 
   if(Ota::inProgress()) {
     disableTickers();
@@ -194,6 +194,5 @@ void loop() {
   } else {
     WebConfig::loop();
     MySensorsApp::loop();
-    MySensorsApp::sendReports();
   }
 }

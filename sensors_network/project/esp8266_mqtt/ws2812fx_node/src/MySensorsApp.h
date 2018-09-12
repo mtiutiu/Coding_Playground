@@ -201,10 +201,6 @@ namespace MySensorsApp {
     return mysNode.connected();
   }
 
-  void loop() {
-    mysNode.loop();
-  }
-
   void init(AppCfg* appCfg) {
     _appCfg = appCfg;
 
@@ -249,6 +245,11 @@ namespace MySensorsApp {
       sendBatteryLevel();
       sendRSSILevel();
     }
+  }
+
+  void loop() {
+    mysNode.loop();
+    MySensorsApp::sendReports();
   }
 }
 #endif
