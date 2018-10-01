@@ -350,7 +350,7 @@ def setup():
     logging.basicConfig(
       level=logging.DEBUG,
       format="[%(asctime)s][%(module)s][%(levelname)s] => %(message)s",
-      handlers=[logging.FileHandler('/var/log/livolo_ble.log')]
+      handlers=[logging.handlers.RotatingFileHandler('/var/log/livolo_ble.log', maxBytes=500000, backupCount=5)]
     )
   else:
     logging.basicConfig(

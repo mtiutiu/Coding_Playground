@@ -4,7 +4,7 @@ After=networking.target,bluetooth.target
 
 [Service]
 User=pi
-#Restart=on-failure
+Restart=on-failure
 WorkingDirectory=/home/pi/livolo/
 ExecStart=/usr/bin/sudo /home/pi/livolo/livolo_ble.py --config /home/pi/livolo/configs/mys_ble.conf --log syslog
 
