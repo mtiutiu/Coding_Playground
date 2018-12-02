@@ -20,7 +20,7 @@
 *
 * DESCRIPTION
 * The ArduinoGateway prints data received from sensors on the serial link.
-* The gateway accepts input on seral which will be sent out on radio network.
+* The gateway accepts input on serial which will be sent out on radio network.
 *
 * The GW code is designed for Arduino Nano 328p / 16MHz
 *
@@ -30,38 +30,42 @@
 *
 * LEDs (OPTIONAL):
 * - To use the feature, uncomment any of the MY_DEFAULT_xx_LED_PINs
-* - RX (green) - blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+* - RX (green) - blink fast on radio message received. In inclusion mode will blink fast only on presentation received
 * - TX (yellow) - blink fast on radio message transmitted. In inclusion mode will blink slowly
-* - ERR (red) - fast blink on error during transmission error or recieve crc error
+* - ERR (red) - fast blink on error during transmission error or receive crc error
+*
+* OTA DEBUG MESSAGES
+* - Add the OTADebugReceive(message) into receive(const MyMessage &message) on a serial connected node
+* - Add '#define MY_DEBUG_OTA (0)' to your Node sketch by replacing (0) with the node id of your serial connected node
 *
 */
 
 // Enable debug prints to serial monitor
-//#define MY_DEBUG
+#define MY_DEBUG
 
+// Enable OTA log display
+#define MY_OTA_LOG_RECEIVER_FEATURE
 
 // Enable and select radio type attached
-//#define MY_RADIO_NRF24
-//#define MY_RFM69_NEW_DRIVER
-#define MY_RADIO_RFM69
-#define MY_RFM69_FREQUENCY RFM69_868MHZ
+#define MY_RADIO_NRF24
+//#define MY_RADIO_NRF5_ESB
+//#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 // Set LOW transmit power level as default, if you have an amplified NRF-module and
 // power your radio separately with a good regulator you can turn up PA level.
-//#define MY_RF24_PA_LEVEL RF24_PA_LOW
+#define MY_RF24_PA_LEVEL RF24_PA_LOW
 
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
 
-#define MY_TRANSPORT_DISCOVERY_INTERVAL_MS 86400000UL // 24h network discovery interval
-
-// Define a lower baud rate for Arduino's running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
+// Define a lower baud rate for Arduinos running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
 #if F_CPU == 8000000L
 #define MY_BAUD_RATE 38400
 #endif
 
 // Enable inclusion mode
-//#define MY_INCLUSION_MODE_FEATURE
+#define MY_INCLUSION_MODE_FEATURE
 // Enable Inclusion mode button on gateway
 //#define MY_INCLUSION_BUTTON_FEATURE
 
@@ -69,7 +73,7 @@
 //#define MY_INCLUSION_BUTTON_EXTERNAL_PULLUP
 
 // Set inclusion mode duration (in seconds)
-//#define MY_INCLUSION_MODE_DURATION 60
+#define MY_INCLUSION_MODE_DURATION 60
 // Digital pin used for inclusion mode button
 //#define MY_INCLUSION_MODE_BUTTON_PIN  3
 
@@ -77,33 +81,27 @@
 #define MY_DEFAULT_LED_BLINK_PERIOD 300
 
 // Inverses the behavior of leds
-#define MY_WITH_LEDS_BLINKING_INVERSE
+//#define MY_WITH_LEDS_BLINKING_INVERSE
 
 // Flash leds on rx/tx/err
 // Uncomment to override default HW configurations
-#define MY_DEFAULT_ERR_LED_PIN A2  // Error led pin
-#define MY_DEFAULT_RX_LED_PIN  A0  // Receive led pin
-#define MY_DEFAULT_TX_LED_PIN  A1  // the PCB, on board LED
+//#define MY_DEFAULT_ERR_LED_PIN 4  // Error led pin
+//#define MY_DEFAULT_RX_LED_PIN  6  // Receive led pin
+//#define MY_DEFAULT_TX_LED_PIN  5  // the PCB, on board LED
 
-#include <Arduino.h>
-#include <SPI.h>
 #include <MySensors.h>
-#include <avr/wdt.h>
 
-void before() {
-  wdt_disable();
-  wdt_enable(WDTO_8S);
+void setup()
+{
+	// Setup locally attached sensors
 }
 
-void setup() {
-// Setup locally attached sensors
+void presentation()
+{
+	// Present locally attached sensors
 }
 
-void presentation() {
-// Present locally attached sensors
-}
-
-void loop() {
-  wdt_reset();
-// Send locally attached sensor data here
+void loop()
+{
+	// Send locally attached sensor data here
 }

@@ -1,7 +1,6 @@
 //#pragma GCC optimize ("-O2")
 
 #include <Arduino.h>
-#include <SPI.h>
 #include <EEPROM.h>
 
 // -------------------------------- NODE CUSTOM FEATURES ----------------------------
@@ -15,19 +14,19 @@
 #define HAS_NODE_ID_SET_SWITCH
 #define WANT_TX_FAILURES_MONITORING
 //#define WANT_SMART_SLEEP      // this is consuming too much power for now so it's disabled
-//#define USE_SI7021_SENSOR
-#define USE_HTU21D_SENSOR
+#define USE_SI7021_SENSOR
+//#define USE_HTU21D_SENSOR
 // -------------------------------------------------------------------------------------------------------------
 
 // ----------------------------------------- MYSENSORS SECTION ---------------------------------------
 // NRF24 radio
-#define MY_RADIO_RF24
+//#define MY_RADIO_RF24
 
 // RFM69 radio
-//#define MY_RADIO_RFM69
+#define MY_RADIO_RFM69
 
 #ifdef MY_RADIO_RFM69
-#define MY_RFM69_NEW_DRIVER
+//#define MY_RFM69_NEW_DRIVER
 #define MY_RFM69_FREQUENCY RFM69_868MHZ
 #endif
 
@@ -37,7 +36,9 @@
 #define MY_RF24_PA_LEVEL	RF24_PA_MAX
 #endif
 
-#define MY_NODE_ID 1  // this needs to be set explicitly
+#ifndef HAS_NODE_ID_SET_SWITCH
+#define MY_NODE_ID 1
+#endif
 
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
@@ -49,10 +50,17 @@
 
 #define MY_DISABLED_SERIAL
 
-#define MY_SENSOR_NODE_SKETCH_VERSION "2.2"
+#define MY_SENSOR_NODE_SKETCH_VERSION "2.3"
+
+const uint32_t SENSOR_SLEEP_INTERVAL_MS = 20000;
 
 #include <MySensors.h>
 // --------------------------------------------------------------------------------------------------------------
+
+// ------------------------------------ RSSI -------------------------------------------------
+const uint32_t RSSI_LVL_CHECK_INTERVAL_MS = 40000;
+const uint32_t RSSI_LVL_REPORT_COUNTER = RSSI_LVL_CHECK_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+// -------------------------------------------------------------------------------------------
 
 // ---------------------------- EXTERNAL PORTS/PLUGS -----------------------------------------
 //const uint8_t P2_PLUG_PINS[] = {A4, A5}; // I2C interface
@@ -132,7 +140,6 @@ HTU21D tempHumSensor;
 #endif
 #endif
 
-const uint32_t SENSOR_SLEEP_INTERVAL_MS = 20000;
 const uint32_t SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS = 1000;
 
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
@@ -142,10 +149,8 @@ const uint32_t SENSOR_DATA_REGULAR_REPORT_INTERVAL_MS = 180000;  // 3min interva
 const uint8_t NODE_SENSORS_COUNT = 2;
 const uint8_t TEMPERATURE_SENSOR_ID = 1;
 const uint8_t HUMIDITY_SENSOR_ID = 2;
-const uint32_t SENSOR_DATA_CHECK_COUNTER =
-SENSOR_DATA_CHECK_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
-const uint32_t SENSOR_DATA_REGULAR_REPORT_COUNTER =
-SENSOR_DATA_REGULAR_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t SENSOR_DATA_CHECK_COUNTER = SENSOR_DATA_CHECK_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t SENSOR_DATA_REGULAR_REPORT_COUNTER = SENSOR_DATA_REGULAR_REPORT_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 
 const uint32_t KNOCK_MSG_WAIT_INTERVAL_MS = 3000;
 
@@ -167,8 +172,7 @@ HEARTBEAT_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // --------------------------------------- NODE PRESENTATION CONFIG ------------------------------------------
 //  this MUST be a multiple of SENSOR_SLEEP_INTERVAL_MS
 const uint32_t PRESENTATION_SEND_INTERVAL_MS = 600000;  // 10min interval
-const uint32_t PRESENTATION_SEND_CYCLES =
-PRESENTATION_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
+const uint32_t PRESENTATION_SEND_CYCLES = PRESENTATION_SEND_INTERVAL_MS / SENSOR_SLEEP_INTERVAL_MS;
 // -------------------------------------------------------------------------------------------------------------
 
 // ------------------------------------------ BATTERY STATUS SECTION ---------------------------------
@@ -361,16 +365,12 @@ void sendKnockSyncMsg() {
   wait(KNOCK_MSG_WAIT_INTERVAL_MS);
 }
 
-// called by mysensors to set node id internally
-// this is useful to set node id at runtime and
-//  not at compile time with MY_NODE_ID preprocesor define
-// needs mysensors core patched
-uint8_t setNodeId() {
-  #ifdef HAS_NODE_ID_SET_SWITCH
-  return readNodeIdSwitch();
-  #else
-  return MY_NODE_ID;
-  #endif
+void sendRSSILevel() {
+  MyMessage rssiMsg(1, V_VAR5);
+  char reply[MAX_NODE_PAYLOAD_LENGTH];
+  // mycontroller supports this for now
+  snprintf(reply, MAX_NODE_PAYLOAD_LENGTH, "rssi:%d dBm", transportGetReceivingRSSI());
+  send(rssiMsg.set(reply), false);
 }
 
 // called automatically by mysensors core for doing node presentation
@@ -482,16 +482,23 @@ void before() {
   tempHumSensor.setHumidityRes(12); // Humidity = 12-bit / Temperature = 14-bit
 #endif
 #endif
+
+//setNodeId();
 }
 
 void setup() {
-
+#ifdef HAS_NODE_ID_SET_SWITCH
+  transportAssignNodeID(readNodeIdSwitch());
+#else
+  transportAssignNodeID(MY_NODE_ID);
+#endif
 }
 
 void loop() {
   static bool firstInit = false;
   if(!firstInit) {
     sendKnockSyncMsg();
+    sendRSSILevel();
     sendHeartbeat();
     sleep(SUCCESSIVE_SENSOR_DATA_SEND_DELAY_MS);    // don't send next data too fast
     sendBatteryLevel(getBatteryLvlPcnt(BATTERY_STATE_ANALOG_READ_PIN, VBATT_THRESHOLD_SAMPLES));
@@ -563,6 +570,13 @@ void loop() {
   if (presentationCounter++ >= PRESENTATION_SEND_CYCLES) {
     presentNodeMetadata();
     presentationCounter = 0;
+  }
+
+  // send rssi on a regular interval
+  static uint32_t rssiLvlReportCounter = 0;
+  if (rssiLvlReportCounter++ >= RSSI_LVL_REPORT_COUNTER) {
+    sendRSSILevel();
+    rssiLvlReportCounter = 0;
   }
 
 #ifdef WANT_SMART_SLEEP
