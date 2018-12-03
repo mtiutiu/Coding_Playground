@@ -198,6 +198,7 @@ const uint8_t CHANNEL_LED_TOGGLE_COUNT = 3;
 #endif
 
 #define BLE_TX_POWER  4 // 4dBm
+#define BLE_ADVERTISING_INTERVAL_MS 320 //in multiples of 0.625ms
 
 BLEPeripheral blePeripheral = BLEPeripheral();
 BLEService livoloService = BLEService(LIVOLO_BLE_SERVICE_UUID);
@@ -465,7 +466,9 @@ void setup() {
   blePeripheral.begin();
 
   // set TX power - must be called after begin
-  blePeripheral.setTxPower(BLE_TX_POWER);
+  sd_ble_gap_tx_power_set(BLE_TX_POWER);
+
+  blePeripheral.setAdvertisingInterval(BLE_ADVERTISING_INTERVAL_MS);
 
   //sd_power_mode_set(NRF_POWER_MODE_LOWPWR);
 #ifdef HAS_DC_DC_POWER_MODE_SUPPORT
@@ -481,5 +484,5 @@ void loop() {
   // poll peripheral
   blePeripheral.poll();
 
-  //sd_app_evt_wait();
+  sd_app_evt_wait();
 }
