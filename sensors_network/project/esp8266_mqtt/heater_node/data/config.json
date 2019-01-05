@@ -1,10 +1,10 @@
 {
-	"mqtt_server":"192.168.1.123",
-	"mqtt_user":"",
-	"mqtt_passwd":"",
-	"mqtt_port":"1883",
+  "mys_node_id":"200",
+  "mys_node_alias":"Heater",
+  "mqtt_server":"192.168.1.123",
+  "mqtt_user":"",
+  "mqtt_passwd":"",
+  "mqtt_port":"1883",
   "mqtt_in_topic_prefix":"mys-in",
-  "mqtt_out_topic_prefix":"mys-out",
-  "mys_node_id":"201",
-  "mys_node_alias":"HeaterActuator"
+  "mqtt_out_topic_prefix":"mys-out"
 }

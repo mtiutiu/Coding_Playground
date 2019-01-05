@@ -84,10 +84,18 @@ namespace MySensorsApp {
   }
 
   void sendSensorState() {
+    if( !mysNode.connected() ) {
+      return;
+    }
+    
     sendLedStripState();
   }
 
   void sendReports() {
+    if( !mysNode.connected() ) {
+      return;
+    }
+
     static uint32_t lastSensorStateReportTimestamp = millis();
     if ((millis() - lastSensorStateReportTimestamp) >= SENSOR_STATE_REPORT_INTERVAL_MS) {
       sendSensorState();
