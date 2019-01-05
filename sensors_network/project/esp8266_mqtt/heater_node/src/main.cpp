@@ -85,8 +85,10 @@ void checkHeaterCtrlBtn() {
       return;
     }
     // toggle relay
+    TOGGLE_HEATER_RELAY();
     if(MySensorsApp::connected()) {
       // send relay state to gw
+      MySensorsApp::sendHeaterState();
     }
   } else {
     stillPressedCounter = 0;
