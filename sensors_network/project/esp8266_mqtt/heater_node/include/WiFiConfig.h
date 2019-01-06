@@ -8,17 +8,19 @@
 namespace WiFiConfig {
   WiFiManager wifiManager;
 
-  void startWiFiConfig(bool resetCredentials = false) {
-    if (resetCredentials) {
-  #ifdef DEBUG
-      DEBUG_OUTPUT.println(
-        "Resetting settings and forcing WiFi config portal to start ..."
-      );
-  #endif
-      wifiManager.resetSettings();
-    }
-
+  void startWiFiConfig() {
     wifiManager.autoConnect(AP_SSID, AP_PASSWD);
+  }
+
+  void resetSettings() {
+    #ifdef DEBUG
+        DEBUG_OUTPUT.println(
+          "Resetting settings and forcing WiFi config portal to start ..."
+        );
+    #endif
+        wifiManager.resetSettings();
+        delay(3000);
+        ESP.restart();
   }
 }
 

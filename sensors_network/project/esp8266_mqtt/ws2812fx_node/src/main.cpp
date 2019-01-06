@@ -109,6 +109,7 @@ void checkLedStripBtn() {
 void disableTickers() {
   LedStrip::disableTickers();
   ledStripCtrlBtnCheckTicker.detach();
+  noTransportLedTicker.detach();
 }
 
 void portsConfig() {

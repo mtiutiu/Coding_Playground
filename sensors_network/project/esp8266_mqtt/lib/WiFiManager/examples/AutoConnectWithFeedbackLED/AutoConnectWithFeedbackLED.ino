@@ -1,16 +1,19 @@
-// LED will blink when in config mode
+#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+//needed for library
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 
 //for LED status
 #include <Ticker.h>
 Ticker ticker;
-int LED = BUILTIN_LED;
 
 void tick()
 {
   //toggle state
-  digitalWrite(LED, !digitalRead(LED));     // set pin to the opposite state
+  int state = digitalRead(BUILTIN_LED);  // get the current state of GPIO1 pin
+  digitalWrite(BUILTIN_LED, !state);     // set pin to the opposite state
 }
 
 //gets called when WiFiManager enters configuration mode
@@ -28,27 +31,27 @@ void setup() {
   Serial.begin(115200);
   
   //set led pin as output
-  pinMode(LED, OUTPUT);
+  pinMode(BUILTIN_LED, OUTPUT);
   // start ticker with 0.5 because we start in AP mode and try to connect
   ticker.attach(0.6, tick);
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wm;
+  WiFiManager wifiManager;
   //reset settings - for testing
-  // wm.resetSettings();
+  //wifiManager.resetSettings();
 
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  wm.setAPCallback(configModeCallback);
+  wifiManager.setAPCallback(configModeCallback);
 
   //fetches ssid and pass and tries to connect
   //if it does not connect it starts an access point with the specified name
   //here  "AutoConnectAP"
   //and goes into a blocking loop awaiting configuration
-  if (!wm.autoConnect()) {
+  if (!wifiManager.autoConnect()) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
-    ESP.restart();
+    ESP.reset();
     delay(1000);
   }
 
@@ -56,7 +59,7 @@ void setup() {
   Serial.println("connected...yeey :)");
   ticker.detach();
   //keep LED on
-  digitalWrite(LED, LOW);
+  digitalWrite(BUILTIN_LED, LOW);
 }
 
 void loop() {

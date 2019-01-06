@@ -74,29 +74,49 @@ void checkTransportConnection() {
 }
 
 void checkHeaterCtrlBtn() {
-  static uint32_t stillPressedCounter = 0;
+  static bool triggered = false;
+  static uint32_t triggerTimestamp = 0;
 
 #ifdef HEATER_CTRL_BTN_INVERSE_LOGIC
-  if(digitalRead(ERASE_CONFIG_BTN_PIN)) {
+  if(!triggered && digitalRead(ERASE_CONFIG_BTN_PIN)) {
 #else
-  if(!digitalRead(ERASE_CONFIG_BTN_PIN)) {
+  if(!triggered && !digitalRead(ERASE_CONFIG_BTN_PIN)) {
 #endif
-    if(stillPressedCounter++ > 0) {
-      return;
+    triggerTimestamp = millis();
+    triggered = true;
+  }
+
+  if (triggered && digitalRead(ERASE_CONFIG_BTN_PIN)) {
+    uint32_t duration = millis() - triggerTimestamp;
+    #ifdef DEBUG
+      DEBUG_OUTPUT.printf("Heater ctrl btn released!\r\n");
+    #endif
+
+    if (duration >= 100 && duration <= 1000) {
+      #ifdef DEBUG
+        DEBUG_OUTPUT.printf("Short press!\r\n");
+      #endif
+      // toggle relay
+      TOGGLE_HEATER_RELAY();
+      if(MySensorsApp::connected()) {
+        // send relay state to gw
+        MySensorsApp::sendHeaterState();
+      }
     }
-    // toggle relay
-    TOGGLE_HEATER_RELAY();
-    if(MySensorsApp::connected()) {
-      // send relay state to gw
-      MySensorsApp::sendHeaterState();
+
+    if (duration >= 3000) {
+      #ifdef DEBUG
+        DEBUG_OUTPUT.printf("Long press!\r\n");
+      #endif
+      WiFiConfig::resetSettings();
     }
-  } else {
-    stillPressedCounter = 0;
+    triggered = false;
   }
 }
 
 void disableTickers() {
   heaterCtrlBtnCheckTicker.detach();
+  noTransportLedTicker.detach();
 }
 
 void portsConfig() {
@@ -145,17 +165,7 @@ void nodeWiFiConfig() {
     checkTransportConnection
   );
 
-  // pressing erase config button and then pressing-releasing the reset button
-  //  will erase wifi data and starts on demand portal
-  // get reset cause first
-  bool isExternalReset = (ESP.getResetInfoPtr()->reason == REASON_EXT_SYS_RST);
-  WiFiConfig::startWiFiConfig(
-  #ifdef ERASE_CFG_BTN_INVERSE_LOGIC
-    isExternalReset && digitalRead(ERASE_CONFIG_BTN_PIN),
-  #else
-    isExternalReset && !digitalRead(ERASE_CONFIG_BTN_PIN)
-  #endif
-  );
+  WiFiConfig::startWiFiConfig();
 }
 
 void setup() {
