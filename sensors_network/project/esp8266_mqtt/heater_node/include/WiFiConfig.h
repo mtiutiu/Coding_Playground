@@ -12,15 +12,14 @@ namespace WiFiConfig {
     wifiManager.autoConnect(AP_SSID, AP_PASSWD);
   }
 
-  void resetSettings() {
+  void reset() {
     #ifdef DEBUG
         DEBUG_OUTPUT.println(
           "Resetting settings and forcing WiFi config portal to start ..."
         );
     #endif
-        wifiManager.resetSettings();
-        delay(3000);
-        ESP.restart();
+        wifiManager.erase();
+        wifiManager.reboot();
   }
 }
 

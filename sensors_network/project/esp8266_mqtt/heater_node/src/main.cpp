@@ -98,8 +98,8 @@ void checkHeaterCtrlBtn() {
       #endif
       // toggle relay
       TOGGLE_HEATER_RELAY();
+      // send relay state to gw
       if(MySensorsApp::connected()) {
-        // send relay state to gw
         MySensorsApp::sendHeaterState();
       }
     }
@@ -108,7 +108,7 @@ void checkHeaterCtrlBtn() {
       #ifdef DEBUG
         DEBUG_OUTPUT.printf("Long press!\r\n");
       #endif
-      WiFiConfig::resetSettings();
+      WiFiConfig::reset();
     }
     triggered = false;
   }
