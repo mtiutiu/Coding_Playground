@@ -50,7 +50,7 @@ namespace MySensorsApp {
   void sendHeaterState() {
     char reply[MQTT_MAX_PAYLOAD_LENGTH];
 
-    snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", GET_HEATER_RELAY_STATE());
+    snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "%d", GET_HEATER_STATE());
     mysNode.send(RELAY_SENSOR_ID, V_STATUS, reply);
   }
 
@@ -103,10 +103,13 @@ namespace MySensorsApp {
         );
       #endif
         if (message.sub_type == V_STATUS) {
-          uint16_t newState = (uint16_t)atoi(message.payload);
-          SET_HEATER_RELAY_STATE(newState);
+          uint8_t newState = (uint8_t)atoi(message.payload);
+          // check if received data is valid
+          if(newState == ON || newState == OFF) {
+            SET_HEATER_STATE(newState);
+            sendHeaterState();
+          }
         }
-        sendHeaterState();
       }
     }
 

@@ -54,14 +54,22 @@ Ticker noTransportLedTicker;
 const uint8_t HEATER_CTRL_BTN = ERASE_CONFIG_BTN_PIN;
 const uint32_t HEATER_CTRL_BTN_CHECK_INTERVAL_MS = 100; // 100 ms
 
+uint8_t relaySafetyCounter = 0;
+const uint8_t RELAY_SAFETY_TICKS = 30;
+
 Ticker heaterCtrlBtnCheckTicker;
 // -----------------------------------------------------------------------------
-
 
 void checkTransportConnection() {
   if (!MySensorsApp::connected()) {
     digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+    // make sure relay turns off for safety when there's no remote control over it
+    if ((GET_HEATER_STATE() == ON) && (relaySafetyCounter++ >= RELAY_SAFETY_TICKS)) {
+      HEATER_OFF();
+      relaySafetyCounter = 0;
+    }
   } else {
+    relaySafetyCounter = 0;
     // make sure led is off when connected
     digitalWrite(LED_SIGNAL_PIN,
   #ifdef INVERSE_LED_LOGIC
@@ -97,7 +105,8 @@ void checkHeaterCtrlBtn() {
         DEBUG_OUTPUT.printf("Short press!\r\n");
       #endif
       // toggle relay
-      TOGGLE_HEATER_RELAY();
+      TOGGLE_HEATER();
+      relaySafetyCounter = 0;
       // send relay state to gw
       if(MySensorsApp::connected()) {
         MySensorsApp::sendHeaterState();
@@ -150,7 +159,7 @@ void portsConfig() {
   );
 
   pinMode(HEATER_CTRL_RELAY_PIN, OUTPUT);
-  HEATER_RELAY_OFF();
+  HEATER_OFF();
 
   heaterCtrlBtnCheckTicker.detach();
   heaterCtrlBtnCheckTicker.attach_ms(HEATER_CTRL_BTN_CHECK_INTERVAL_MS, checkHeaterCtrlBtn);

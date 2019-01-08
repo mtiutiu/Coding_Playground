@@ -30,11 +30,14 @@
 #define HEATER_CTRL_RELAY_PIN D2
 #endif
 
-#define HEATER_RELAY_ON()               digitalWrite(HEATER_CTRL_RELAY_PIN, HIGH)
-#define HEATER_RELAY_OFF()              digitalWrite(HEATER_CTRL_RELAY_PIN, LOW)
-#define TOGGLE_HEATER_RELAY()           digitalWrite(HEATER_CTRL_RELAY_PIN, !digitalRead(HEATER_CTRL_RELAY_PIN))
-#define GET_HEATER_RELAY_STATE()        digitalRead(HEATER_CTRL_RELAY_PIN)
-#define SET_HEATER_RELAY_STATE(state)   digitalWrite(HEATER_CTRL_RELAY_PIN, state)
+#define OFF  0
+#define ON   1
+
+#define HEATER_ON()               digitalWrite(HEATER_CTRL_RELAY_PIN, HIGH)
+#define HEATER_OFF()              digitalWrite(HEATER_CTRL_RELAY_PIN, LOW)
+#define TOGGLE_HEATER()           digitalWrite(HEATER_CTRL_RELAY_PIN, !digitalRead(HEATER_CTRL_RELAY_PIN))
+#define GET_HEATER_STATE()        digitalRead(HEATER_CTRL_RELAY_PIN)
+#define SET_HEATER_STATE(state)   digitalWrite(HEATER_CTRL_RELAY_PIN, state)
 // -----------------------------------------------------------------------------
 
 #endif
