@@ -42,8 +42,16 @@ Remote remote;
 #define YELLOW_LED_PIN 11
 #endif
 
-#ifndef PWM_LEVEL
-#define PWM_LEVEL 220
+#ifndef RED_PWM_LEVEL
+#define RED_PWM_LEVEL 50
+#endif
+
+#ifndef GREEN_PWM_LEVEL
+#define GREEN_PWM_LEVEL 250
+#endif
+
+#ifndef YELLOW_PWM_LEVEL
+#define YELLOW_PWM_LEVEL 150
 #endif
 
 #ifndef LIGHT_SWITCH_DELAY_MS
@@ -64,13 +72,13 @@ typedef enum {
   YELLOW
 } light_state;
 
-light_state current_state = RED;
-light_state next_state = GREEN;
+light_state current_state;
+light_state next_state;
 // -------------------- END LIGHTS STUFF -------------------------------
 
 
-void fade_out(uint8_t pwm_pin) {
-  for (uint8_t level = PWM_LEVEL; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
+void fade_out(uint8_t pwm_pin, uint8_t current_level) {
+  for (uint8_t level = current_level; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
     analogWrite(pwm_pin, level);
     delay(FADE_OUT_STEP_DELAY_MS);
   }
@@ -83,20 +91,20 @@ void lights_task() {
   }
 
   if (next_state == RED) {
-    fade_out(GREEN_LED_PIN);
-    analogWrite(YELLOW_LED_PIN, PWM_LEVEL);
+    fade_out(GREEN_LED_PIN, GREEN_PWM_LEVEL);
+    analogWrite(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     delay(LIGHT_SWITCH_DELAY_MS);
-    fade_out(YELLOW_LED_PIN);
-    analogWrite(RED_LED_PIN, PWM_LEVEL);
+    fade_out(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
+    analogWrite(RED_LED_PIN, RED_PWM_LEVEL);
     current_state = RED;
   }
 
   if (next_state == GREEN) {
-    fade_out(RED_LED_PIN);
-    analogWrite(YELLOW_LED_PIN, PWM_LEVEL);
+    fade_out(RED_LED_PIN, RED_PWM_LEVEL);
+    analogWrite(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     delay(LIGHT_SWITCH_DELAY_MS);
-    fade_out(YELLOW_LED_PIN);
-    analogWrite(GREEN_LED_PIN, PWM_LEVEL);
+    fade_out(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
+    analogWrite(GREEN_LED_PIN, GREEN_PWM_LEVEL);
     current_state = GREEN;
   }
 }
@@ -131,7 +139,10 @@ void remote_task() {
 }
 
 void setup() {
-  analogWrite(RED_LED_PIN, PWM_LEVEL);
+  current_state = RED;
+  next_state = GREEN;
+
+  analogWrite(RED_LED_PIN, RED_PWM_LEVEL);
   analogWrite(GREEN_LED_PIN, 0);
   analogWrite(YELLOW_LED_PIN, 0);
   delay(STARTUP_DELAY_MS);
