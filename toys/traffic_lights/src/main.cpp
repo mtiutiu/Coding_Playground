@@ -55,7 +55,7 @@ Remote remote;
 #endif
 
 #ifndef FADE_OUT_STEP_DELAY_MS
-#define FADE_OUT_STEP_DELAY_MS  5
+#define FADE_OUT_STEP_DELAY_MS  1
 #endif
 
 typedef enum {
@@ -64,6 +64,7 @@ typedef enum {
   YELLOW
 } light_state;
 
+light_state current_state = RED;
 light_state next_state = GREEN;
 // -------------------- END LIGHTS STUFF -------------------------------
 
@@ -73,15 +74,21 @@ void fade_out(uint8_t pwm_pin) {
     analogWrite(pwm_pin, level);
     delay(FADE_OUT_STEP_DELAY_MS);
   }
+  analogWrite(pwm_pin, 0);
 }
 
 void lights_task() {
+  if(next_state == current_state) {
+    return;
+  }
+
   if (next_state == RED) {
     fade_out(GREEN_LED_PIN);
     analogWrite(YELLOW_LED_PIN, PWM_LEVEL);
     delay(LIGHT_SWITCH_DELAY_MS);
     fade_out(YELLOW_LED_PIN);
     analogWrite(RED_LED_PIN, PWM_LEVEL);
+    current_state = RED;
   }
 
   if (next_state == GREEN) {
@@ -90,6 +97,7 @@ void lights_task() {
     delay(LIGHT_SWITCH_DELAY_MS);
     fade_out(YELLOW_LED_PIN);
     analogWrite(GREEN_LED_PIN, PWM_LEVEL);
+    current_state = GREEN;
   }
 }
 
