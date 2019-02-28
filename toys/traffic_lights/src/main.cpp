@@ -55,7 +55,7 @@ Remote remote;
 #endif
 
 #ifndef FADE_OUT_STEP_DELAY_MS
-#define FADE_OUT_STEP_DELAY_MS  1
+#define FADE_OUT_STEP_DELAY_MS  5
 #endif
 
 typedef enum {
@@ -70,7 +70,7 @@ light_state next_state = GREEN;
 
 
 void fade_out(uint8_t pwm_pin) {
-  for (uint8_t level = PWM_LEVEL; level > 0; level--) {
+  for (uint8_t level = PWM_LEVEL; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
     analogWrite(pwm_pin, level);
     delay(FADE_OUT_STEP_DELAY_MS);
   }
