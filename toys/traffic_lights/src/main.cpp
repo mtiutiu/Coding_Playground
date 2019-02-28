@@ -43,21 +43,21 @@ Remote remote;
 #endif
 
 #ifndef RED_PWM_LEVEL
-#define RED_PWM_LEVEL 50
+#define RED_PWM_LEVEL 160
 #endif
 
 #ifndef GREEN_PWM_LEVEL
-#define GREEN_PWM_LEVEL 250
+#define GREEN_PWM_LEVEL 120
 #endif
 
 #ifndef YELLOW_PWM_LEVEL
-#define YELLOW_PWM_LEVEL 150
+#define YELLOW_PWM_LEVEL 120
 #endif
 
 #define PWM_OFF 0
 
 #ifndef LIGHT_SWITCH_DELAY_MS
-#define LIGHT_SWITCH_DELAY_MS 2000
+#define LIGHT_SWITCH_DELAY_MS 1500
 #endif
 
 #ifndef STARTUP_DELAY_MS
@@ -65,7 +65,11 @@ Remote remote;
 #endif
 
 #ifndef FADE_OUT_STEP_DELAY_MS
-#define FADE_OUT_STEP_DELAY_MS  5
+#define FADE_OUT_STEP_DELAY_MS  10
+#endif
+
+#ifndef FADE_OUT_STEP
+#define FADE_OUT_STEP  5
 #endif
 
 typedef enum {
@@ -80,7 +84,7 @@ light next_light_state;
 
 
 void fade_out(uint8_t pwm_pin, uint8_t current_pwm_level) {
-  for (uint8_t level = current_pwm_level; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
+  for (uint8_t level = current_pwm_level; level > 0; level -= FADE_OUT_STEP) {
     analogWrite(pwm_pin, level);
     delay(FADE_OUT_STEP_DELAY_MS);
   }
