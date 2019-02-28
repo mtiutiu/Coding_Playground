@@ -54,6 +54,8 @@ Remote remote;
 #define YELLOW_PWM_LEVEL 150
 #endif
 
+#define PWM_OFF 0
+
 #ifndef LIGHT_SWITCH_DELAY_MS
 #define LIGHT_SWITCH_DELAY_MS 2000
 #endif
@@ -70,49 +72,49 @@ typedef enum {
   RED,
   GREEN,
   YELLOW
-} light_state;
+} light;
 
-light_state current_state;
-light_state next_state;
+light current_light_state;
+light next_light_state;
 // -------------------- END LIGHTS STUFF -------------------------------
 
 
-void fade_out(uint8_t pwm_pin, uint8_t current_level) {
-  for (uint8_t level = current_level; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
+void fade_out(uint8_t pwm_pin, uint8_t current_pwm_level) {
+  for (uint8_t level = current_pwm_level; level > 0; level -= FADE_OUT_STEP_DELAY_MS) {
     analogWrite(pwm_pin, level);
     delay(FADE_OUT_STEP_DELAY_MS);
   }
-  analogWrite(pwm_pin, 0);
+  analogWrite(pwm_pin, PWM_OFF);
 }
 
 void lights_task() {
-  if(next_state == current_state) {
+  if(next_light_state == current_light_state) {
     return;
   }
 
-  if (next_state == RED) {
+  if (next_light_state == RED) {
     fade_out(GREEN_LED_PIN, GREEN_PWM_LEVEL);
     analogWrite(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     delay(LIGHT_SWITCH_DELAY_MS);
     fade_out(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     analogWrite(RED_LED_PIN, RED_PWM_LEVEL);
-    current_state = RED;
+    current_light_state = RED;
   }
 
-  if (next_state == GREEN) {
+  if (next_light_state == GREEN) {
     fade_out(RED_LED_PIN, RED_PWM_LEVEL);
     analogWrite(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     delay(LIGHT_SWITCH_DELAY_MS);
     fade_out(YELLOW_LED_PIN, YELLOW_PWM_LEVEL);
     analogWrite(GREEN_LED_PIN, GREEN_PWM_LEVEL);
-    current_state = GREEN;
+    current_light_state = GREEN;
   }
 }
 
 void remote_task() {
   static uint32_t last_remote_read_timestamp;
 
-  if(LivoloRX::decode(remote) && (millis() - last_remote_read_timestamp >= REMOTE_PROCESS_INTERVAL_MS)) {
+  if(LivoloRX::decode(remote) && ((millis() - last_remote_read_timestamp) >= REMOTE_PROCESS_INTERVAL_MS)) {
 #ifdef DEBUG
     SERIAL_DEBUG_PORT.print(F("remoteID: "));
     SERIAL_DEBUG_PORT.print(remote.id);
@@ -129,22 +131,22 @@ void remote_task() {
 
   switch (remote.key) {
     case RED_LIGHT_KEY:
-      next_state = RED;
+      next_light_state = RED;
       break;
     case GREEN_LIGHT_KEY:
-      next_state = GREEN;
+      next_light_state = GREEN;
       break;
     default:;
   }
 }
 
 void setup() {
-  current_state = RED;
-  next_state = GREEN;
+  current_light_state = RED;
+  next_light_state = GREEN;
 
   analogWrite(RED_LED_PIN, RED_PWM_LEVEL);
-  analogWrite(GREEN_LED_PIN, 0);
-  analogWrite(YELLOW_LED_PIN, 0);
+  analogWrite(GREEN_LED_PIN, PWM_OFF);
+  analogWrite(YELLOW_LED_PIN, PWM_OFF);
   delay(STARTUP_DELAY_MS);
 
 #ifdef DEBUG
