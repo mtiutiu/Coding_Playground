@@ -81,52 +81,6 @@
 #define MY_PARENT_NODE_ID 0
 #define MY_PARENT_NODE_IS_STATIC
 
-/**********************************
- * MySensors gateway configuration
- */
-
-// Common gateway settings
-//#define MY_REPEATER_FEATURE
-
-// Serial gateway settings
-//#define MY_GATEWAY_SERIAL
-
-// Ethernet gateway settings
-//#define MY_GATEWAY_W5100
-
-// ESP8266 gateway settings
-//#define MY_GATEWAY_ESP8266
-//#define MY_ESP8266_SSID ""
-//#define MY_ESP8266_PASSWORD ""
-
-// Gateway networking settings
-//#define MY_IP_ADDRESS 192,168,178,87
-//#define MY_IP_GATEWAY_ADDRESS 192,168,178,1
-//#define MY_IP_SUBNET_ADDRESS 255,255,255,0
-//#define MY_PORT 5003
-//#define MY_GATEWAY_MAX_CLIENTS 2
-//#define MY_USE_UDP
-
-// Gateway MQTT settings
-//#define MY_GATEWAY_MQTT_CLIENT
-//#define MY_CONTROLLER_IP_ADDRESS 192, 168, 178, 68
-//#define MY_PORT 1883
-//#define MY_MQTT_USER "username"
-//#define MY_MQTT_PASSWORD "password"
-//#define MY_MQTT_CLIENT_ID "mysensors-1"
-//#define MY_MQTT_PUBLISH_TOPIC_PREFIX "mygateway1-out"
-//#define MY_MQTT_SUBSCRIBE_TOPIC_PREFIX "mygateway1-in"
-
-// Gateway inclusion mode
-//#define MY_INCLUSION_MODE_FEATURE
-//#define MY_INCLUSION_BUTTON_FEATURE
-//#define MY_INCLUSION_MODE_DURATION 60
-//#define MY_DEFAULT_LED_BLINK_PERIOD 300
-
-// Gateway Leds settings
-//#define MY_DEFAULT_ERR_LED_PIN 4
-//#define MY_DEFAULT_RX_LED_PIN  5
-//#define MY_DEFAULT_TX_LED_PIN  6
 
 /***********************************
  * NodeManager configuration
@@ -158,7 +112,7 @@ SensorBattery battery;
 SensorSignal signal;
 
 #include <sensors/SensorRelay.h>
-SensorRelay relay(7);
+SensorRelay valve(4);
 
 
 void before() {
@@ -168,8 +122,10 @@ void before() {
   battery.setReportIntervalMinutes(10);
   battery.setBatteryInternalVcc(false);
   battery.setBatteryPin(A0);
-  battery.setMinVoltage(0.495);
-  battery.setMaxVoltage(1.125);
+  battery.setMinVoltage(3.3);
+  battery.setMaxVoltage(7.5);
+  battery.setBatteryVoltsPerBit(0.00732421875);
+  battery.setBatteryCalibrationFactor(0.9585185);
 
   nodeManager.before();
 }
@@ -187,12 +143,14 @@ void setup() {
 
 void loop() {
   nodeManager.loop();
+
+  if (!transportCheckUplink()) {
+    valve.setStatus(OFF);
+  }
 }
 
 #if NODEMANAGER_RECEIVE == ON
-// receive
 void receive(const MyMessage &message) {
-  // call NodeManager receive routine
   nodeManager.receive(message);
 }
 #endif
