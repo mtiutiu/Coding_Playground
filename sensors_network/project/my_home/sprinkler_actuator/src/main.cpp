@@ -92,7 +92,7 @@
 #define NODEMANAGER_RECEIVE ON
 #define NODEMANAGER_DEBUG_VERBOSE OFF
 #define NODEMANAGER_POWER_MANAGER OFF
-#define NODEMANAGER_CONDITIONAL_REPORT OFF
+#define NODEMANAGER_CONDITIONAL_REPORT ON
 #define NODEMANAGER_EEPROM OFF
 #define NODEMANAGER_TIME OFF
 #define NODEMANAGER_RTC OFF
@@ -116,7 +116,6 @@ SensorRelay valve(4);
 
 
 void before() {
-  nodeManager.setReportIntervalMinutes(5);
   nodeManager.setSleepSeconds(10);
 
   battery.setReportIntervalMinutes(10);
@@ -126,6 +125,9 @@ void before() {
   battery.setMaxVoltage(7.5);
   battery.setBatteryVoltsPerBit(0.00732421875);
   battery.setBatteryCalibrationFactor(0.9585185);
+
+  signal.setReportIntervalMinutes(30);
+  valve.setReportIntervalMinutes(5);
 
   nodeManager.before();
 }
