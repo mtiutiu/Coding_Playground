@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <avr/wdt.h>
 
 // Enable debug prints to serial monitor
 //#define MY_DEBUG
@@ -8,11 +7,16 @@
 #define MY_DISABLE_RAM_ROUTING_TABLE_FEATURE
 
 // Enable and select radio type attached
-#define MY_RADIO_RFM69
-#define MY_RFM69_FREQUENCY RFM69_868MHZ
-#define MY_RFM69_ENABLE_ENCRYPTION
-//#define MY_RFM69_NEW_DRIVER
-#define MY_RFM69_ATC_MODE_DISABLED
+// NRF24 radio settings
+#define MY_RADIO_RF24
+//#define MY_RF24_ENABLE_ENCRYPTION
+#define MY_RF24_CHANNEL 108
+#define MY_RF24_PA_LEVEL RF24_PA_MAX
+//#define MY_DEBUG_VERBOSE_RF24
+#define MY_RF24_DATARATE RF24_250KBPS
+// #define MY_RF24_CE_PIN  9
+// #define MY_RF24_CS_PIN  10
+// #define MY_RF24_IRQ_PIN 2
 
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
@@ -23,22 +27,20 @@
 #endif
 
 // Set blinking period
-#define MY_DEFAULT_LED_BLINK_PERIOD 300
+//#define MY_DEFAULT_LED_BLINK_PERIOD 300
 
 // Inverses the behavior of leds
-#define MY_WITH_LEDS_BLINKING_INVERSE
+//#define MY_WITH_LEDS_BLINKING_INVERSE
 
 // Flash leds on rx/tx/err
 // Uncomment to override default HW configurations
-#define MY_DEFAULT_ERR_LED_PIN 4  // Error led pin
-#define MY_DEFAULT_RX_LED_PIN  6  // Receive led pin
-#define MY_DEFAULT_TX_LED_PIN  5  // the PCB, on board LED
+// #define MY_DEFAULT_ERR_LED_PIN 4  // Error led pin
+// #define MY_DEFAULT_RX_LED_PIN  6  // Receive led pin
+// #define MY_DEFAULT_TX_LED_PIN  5  // the PCB, on board LED
 
 #include <MySensors.h>
 
 void before() {
-  wdt_disable();
-  wdt_enable(WDTO_8S);
 }
 
 void setup() {
@@ -50,6 +52,5 @@ void presentation() {
 }
 
 void loop() {
-  wdt_reset();
 // Send locally attached sensor data here
 }

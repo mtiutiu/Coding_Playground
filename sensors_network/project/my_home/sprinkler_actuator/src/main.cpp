@@ -11,25 +11,28 @@
 #define MY_NODE_ID 1
 
 // NRF24 radio settings
-//#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
 //#define MY_RF24_ENABLE_ENCRYPTION
-//#define MY_RF24_CHANNEL 125
-//#define MY_RF24_PA_LEVEL RF24_PA_HIGH
+#define MY_RF24_CHANNEL 108
+#define MY_RF24_PA_LEVEL RF24_PA_MAX
 //#define MY_DEBUG_VERBOSE_RF24
-//#define MY_RF24_DATARATE RF24_250KBPS
+#define MY_RF24_DATARATE RF24_250KBPS
+// #define MY_RF24_CE_PIN  9
+// #define MY_RF24_CS_PIN  10
+// #define MY_RF24_IRQ_PIN 2
 
 // RFM69 radio settings
-#define MY_RADIO_RFM69
-#define MY_RFM69_FREQUENCY RFM69_868MHZ
+//#define MY_RADIO_RFM69
+//#define MY_RFM69_FREQUENCY RFM69_868MHZ
 //#define MY_IS_RFM69HW
 //#define MY_RFM69_NEW_DRIVER
-#define MY_RFM69_ENABLE_ENCRYPTION
+//#define MY_RFM69_ENABLE_ENCRYPTION
 //#define MY_RFM69_NETWORKID 100
 //#define MY_DEBUG_VERBOSE_RFM69
 //#define MY_RF69_IRQ_PIN D1
 //#define MY_RF69_IRQ_NUM MY_RF69_IRQ_PIN
 //#define MY_RF69_SPI_CS D2
-#define MY_RFM69_ATC_MODE_DISABLED
+//#define MY_RFM69_ATC_MODE_DISABLED
 
 // RFM95 radio settings
 //#define MY_RADIO_RFM95
@@ -108,8 +111,8 @@
 #include <sensors/SensorBattery.h>
 SensorBattery battery;
 
-#include <sensors/SensorSignal.h>
-SensorSignal signal;
+// #include <sensors/SensorSignal.h>
+// SensorSignal signal;
 
 #include <sensors/SensorRelay.h>
 SensorRelay valve(4);
