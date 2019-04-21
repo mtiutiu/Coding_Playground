@@ -125,11 +125,11 @@ void before() {
   battery.setBatteryInternalVcc(false);
   battery.setBatteryPin(A0);
   battery.setMinVoltage(3.3);
-  battery.setMaxVoltage(7.5);
+  battery.setMaxVoltage(6.6);
   battery.setBatteryVoltsPerBit(0.00732421875);
   battery.setBatteryCalibrationFactor(0.9585185);
 
-  signal.setReportIntervalMinutes(30);
+  //signal.setReportIntervalMinutes(30);
   valve.setReportIntervalMinutes(5);
 
   nodeManager.before();
