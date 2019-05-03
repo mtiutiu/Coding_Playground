@@ -5,8 +5,8 @@
 #include <MTypes.h>
 #include <MQTT.h>
 
-#define MQTT_CLIENT_ID_PREFIX  "ESP"
-#define MQTT_MAX_PAYLOAD_LENGTH  64
+#define MQTT_CLIENT_ID_PREFIX  "MySensors"
+#define MQTT_MAX_PAYLOAD_LENGTH  128
 #define MAX_MQTT_SPLIT_COUNT  6
 
 void* mqtt_cb_obj;
@@ -122,7 +122,7 @@ class MySensors {
           #ifdef DEBUG
           DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Not connected to mqtt broker: %s:%d, retrying ...\r\n"), _mqtt_cfg->mqtt_server, _mqtt_cfg->mqtt_port);
           #endif
-          char mqttClientId[40];
+          char mqttClientId[sizeof(MQTT_CLIENT_ID_PREFIX)];
           snprintf(mqttClientId, sizeof(mqttClientId), "%s-%lu", MQTT_CLIENT_ID_PREFIX, random(0xFFFF));
           _mqtt.connect(mqttClientId, _mqtt_cfg->mqtt_user, _mqtt_cfg->mqtt_passwd);
           lastMqttBrokerConnectTimestamp = millis();
