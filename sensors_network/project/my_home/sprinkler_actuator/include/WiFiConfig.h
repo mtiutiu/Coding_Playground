@@ -11,34 +11,28 @@
 #endif
 
 namespace WiFiConfig {
-  const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 300; // 300 ms
-  Ticker noTransportLedTicker;
-
-  void checkTransportConnection() {
-    if (WiFi.status() != WL_CONNECTED) {
-      digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
-      // make sure relay turns off for safety when there's no remote control over it
-      SPRINKLER_OFF();
-    } else {
-      // make sure led is off when connected
-      digitalWrite(LED_SIGNAL_PIN,
-    #ifdef INVERSE_LED_LOGIC
-        HIGH
-    #else
-        LOW
-    #endif
-      );
-    }
-  }
+  const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 100; // 100 ms
+  Ticker noWiFiLedTicker;
 
   void init() {
-    // transport connection signaling
-    // enabling this before WiFiManager in order to have visual feedback ASAP
-    noTransportLedTicker.detach();
-    noTransportLedTicker.attach_ms(
-      NOT_CONNECTED_SIGNALING_INTERVAL_MS,
-      checkTransportConnection
-    );
+    // WiFi connection signaling
+    noWiFiLedTicker.detach();
+    noWiFiLedTicker.attach_ms(NOT_CONNECTED_SIGNALING_INTERVAL_MS, []() {
+      if (WiFi.status() != WL_CONNECTED) {
+        digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+        // make sure relay turns off for safety when there's no remote control over it
+        SPRINKLER_OFF();
+      } else {
+        // make sure led is off when connected
+        digitalWrite(LED_SIGNAL_PIN,
+      #ifdef INVERSE_LED_LOGIC
+          HIGH
+      #else
+          LOW
+      #endif
+        );
+      }
+    });
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(STASSID, STAPSK);
@@ -58,7 +52,7 @@ namespace WiFiConfig {
   }
 
   void disableTickers() {
-    noTransportLedTicker.detach();
+    noWiFiLedTicker.detach();
   }
 }
 

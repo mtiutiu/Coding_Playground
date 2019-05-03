@@ -2,6 +2,7 @@
 #define MYSENSORS_NODE_H
 
 #include <Arduino.h>
+#include <Ticker.h>
 #include <MTypes.h>
 #include <MySensors.h>
 #include "common.h"
@@ -10,6 +11,9 @@
 ADC_MODE(ADC_VCC);
 
 namespace MySensorsNode {
+  const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 1000; // 1000 ms
+  Ticker noTransportLedTicker;
+
   // -------------------------- BATTERY LEVEL REPORTING --------------------------
   const float VDD_VOLTAGE_MV = 3300.0;
   const uint32_t BATTER_LVL_REPORT_INTERVAL_MS = 300000; // 5 mins
@@ -129,6 +133,25 @@ namespace MySensorsNode {
 
   void init(AppCfg* appCfg) {
     _appCfg = appCfg;
+
+    // MQTT transport connection signaling
+    noTransportLedTicker.detach();
+    noTransportLedTicker.attach_ms(NOT_CONNECTED_SIGNALING_INTERVAL_MS, []() {
+      if (!mysNode.connected()) {
+        digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+        // make sure relay turns off for safety when there's no remote control over it
+        SPRINKLER_OFF();
+      } else {
+        // make sure led is off when connected
+        digitalWrite(LED_SIGNAL_PIN,
+      #ifdef INVERSE_LED_LOGIC
+          HIGH
+      #else
+          LOW
+      #endif
+        );
+      }
+    });
 
     if (!_appCfg) {
     #ifdef DEBUG
