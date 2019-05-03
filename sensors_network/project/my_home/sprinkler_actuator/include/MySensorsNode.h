@@ -195,6 +195,10 @@ namespace MySensorsNode {
     }
   }
 
+  void disableTickers() {
+    noTransportLedTicker.detach();
+  }
+
   void loop() {
     mysNode.loop();
     sendReports();

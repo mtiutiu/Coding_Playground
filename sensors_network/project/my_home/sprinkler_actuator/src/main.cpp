@@ -61,6 +61,7 @@ void loop() {
 
   if(Ota::inProgress()) {
     WiFiConfig::disableTickers();
+    MySensorsNode::disableTickers();
     return;
   }
 
