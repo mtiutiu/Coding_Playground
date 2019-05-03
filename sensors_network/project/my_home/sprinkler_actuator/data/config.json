@@ -1,0 +1,10 @@
+{
+  "mys_node_id":"1",
+  "mys_node_alias":"Sprinkler",
+  "mqtt_server":"192.168.0.11",
+  "mqtt_user":"",
+  "mqtt_passwd":"",
+  "mqtt_port":"1883",
+  "mqtt_in_topic_prefix":"mys-in",
+  "mqtt_out_topic_prefix":"mys-out"
+}
