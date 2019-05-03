@@ -24,7 +24,7 @@
 // ------------------------ END Module CONFIG ----------------------------------
 
 // ------------------------ MySensors-------------------------------------------
-#include "MySensorsApp.h"
+#include "MySensorsNode.h"
 // ------------------------ END MySensors---------------------------------------
 
 
@@ -52,7 +52,7 @@ void setup() {
   AppConfig::init();
   WiFiConfig::init();  // this blocks untill networking is configured and active
   WebConfig::init(AppConfig::getConfig()); // start web config server
-  MySensorsApp::init(AppConfig::getConfig());
+  MySensorsNode::init(AppConfig::getConfig());
   Ota::init();
 }
 
@@ -65,5 +65,5 @@ void loop() {
   }
 
   WebConfig::loop();
-  MySensorsApp::loop();
+  MySensorsNode::loop();
 }

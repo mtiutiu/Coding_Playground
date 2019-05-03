@@ -51,9 +51,7 @@ class MySensors {
 
       if (!_mqtt_cfg) {
         #ifdef DEBUG
-          DEBUG_OUTPUT.printf(
-            "[MySensors] MQTT configuration data is invalid, delaying for 3s!\r\n");
-          delay(3000);
+          DEBUG_OUTPUT.println(F("[MySensorsCore] MQTT configuration data is invalid, aborting!"));
         #endif
         return;
       }
@@ -122,7 +120,7 @@ class MySensors {
         static uint32_t lastMqttBrokerConnectTimestamp = millis();
         if(millis() - lastMqttBrokerConnectTimestamp >= MQTT_RECONNECT_INTERVAL_MS) {
           #ifdef DEBUG
-          DEBUG_OUTPUT.printf("Not connected to mqtt broker: %s:%d, retrying ...\r\n", _mqtt_cfg->mqtt_server, _mqtt_cfg->mqtt_port);
+          DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Not connected to mqtt broker: %s:%d, retrying ...\r\n"), _mqtt_cfg->mqtt_server, _mqtt_cfg->mqtt_port);
           #endif
           char mqttClientId[40];
           snprintf(mqttClientId, sizeof(mqttClientId), "%s-%lu", MQTT_CLIENT_ID_PREFIX, random(0xFFFF));
@@ -199,7 +197,7 @@ class MySensors {
         switch (sub_type) {
           case I_PRESENTATION:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Received I_PRESENTATION internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Received I_PRESENTATION internal command on topic: %s\r\n"), topic);
             #endif
             if (_send_presentation_cb) {
               _send_presentation_cb();
@@ -207,31 +205,31 @@ class MySensors {
             break;
           case I_DISCOVER_REQUEST:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Received I_DISCOVER_REQUEST internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Received I_DISCOVER_REQUEST internal command on topic: %s\r\n"), topic);
             #endif
             _send_discovery_response();
             break;
           case I_HEARTBEAT_REQUEST:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Received I_HEARTBEAT_REQUEST internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Received I_HEARTBEAT_REQUEST internal command on topic: %s\r\n"), topic);
             #endif
             _send_heartbeat();
             break;
           case I_REBOOT:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Received I_REBOOT internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Received I_REBOOT internal command on topic: %s\r\n"), topic);
             #endif
             ESP.restart();
             break;
           case I_SIGNAL_REPORT_REQUEST:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Received I_SIGNAL_REPORT_REQUEST internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Received I_SIGNAL_REPORT_REQUEST internal command on topic: %s\r\n"), topic);
             #endif
             send_signal_strength(WiFi.RSSI());
             break;
           default:
             #ifdef DEBUG
-            DEBUG_OUTPUT.printf("Unrecognized internal command on topic: %s\r\n", topic);
+            DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Unrecognized internal command on topic: %s\r\n"), topic);
             #endif
             ;
         }
@@ -264,7 +262,7 @@ class MySensors {
 
       if(_mqtt.connected()) {
         #ifdef DEBUG
-        DEBUG_OUTPUT.printf("Publishing: %s on topic: %s\r\n", data.payload, mqtt_topic);
+        DEBUG_OUTPUT.printf_P(PSTR("[MySensorsCore] Publishing: %s on topic: %s\r\n"), data.payload, mqtt_topic);
         #endif
         _mqtt.publish(mqtt_topic, data.payload);
       }
