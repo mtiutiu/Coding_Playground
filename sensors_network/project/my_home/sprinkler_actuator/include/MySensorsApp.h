@@ -32,7 +32,7 @@ namespace MySensorsApp {
   void sendBatteryLevel() {
     uint8_t vccPercent = constrain(round((ESP.getVcc() * 100.0) / VDD_VOLTAGE_MV), 0, 100);
   #ifdef DEBUG
-    DEBUG_OUTPUT.printf("Sending system voltage level: %d%%\r\n", vccPercent);
+    DEBUG_OUTPUT.printf_P(PSTR("[MySensors] Sending system voltage level: %d%%\r\n"), vccPercent);
   #endif
     mysNode.send_battery_level(vccPercent);
   }
@@ -41,9 +41,9 @@ namespace MySensorsApp {
     char reply[MQTT_MAX_PAYLOAD_LENGTH];
   // mycontroller supports this for now
   #ifdef DEBUG
-    DEBUG_OUTPUT.printf("Sending RSSI level: %d ...\r\n", WiFi.RSSI());
+    DEBUG_OUTPUT.printf_P(PSTR("[MySensors] Sending RSSI level: %d ...\r\n"), WiFi.RSSI());
   #endif
-    snprintf(reply, MQTT_MAX_PAYLOAD_LENGTH, "rssi:%d dBm", WiFi.RSSI());
+    snprintf_P(reply, MQTT_MAX_PAYLOAD_LENGTH, PSTR("rssi:%d dBm"), WiFi.RSSI());
     mysNode.send(1, V_VAR5, reply);
   }
 
@@ -98,9 +98,7 @@ namespace MySensorsApp {
     if (message.cmd_type == M_SET) {
       if (strlen(message.payload) > 0) {
       #ifdef DEBUG
-        DEBUG_OUTPUT.printf(
-          "Received M_SET command with value: %s\r\n", message.payload
-        );
+        DEBUG_OUTPUT.printf_P(PSTR("[MySensors] Received M_SET command with value: %s\r\n"), message.payload);
       #endif
         if (message.sub_type == V_STATUS) {
           uint8_t newState = (uint8_t)atoi(message.payload);
@@ -116,9 +114,7 @@ namespace MySensorsApp {
     if (message.cmd_type == M_REQ) {
       if (strlen(message.payload) > 0) {
       #ifdef DEBUG
-        DEBUG_OUTPUT.printf(
-          "Received M_GET command with value: %s\r\n", message.payload
-        );
+        DEBUG_OUTPUT.printf_P(PSTR("[MySensors] Received M_GET command with value: %s\r\n"), message.payload);
       #endif
         if (message.sub_type == V_STATUS) {
           sendSprinklerState();
@@ -135,11 +131,9 @@ namespace MySensorsApp {
     _appCfg = appCfg;
 
     if (!_appCfg) {
-      #ifdef DEBUG
-        DEBUG_OUTPUT.printf(
-          "[MySensorsApp] Received invalid configuration data, delaying for 3s!\r\n");
-        delay(3000);
-      #endif
+    #ifdef DEBUG
+      DEBUG_OUTPUT.println(F("[MySensors] Received invalid configuration data, aborting!"));
+    #endif
       return;
     }
 
@@ -153,16 +147,17 @@ namespace MySensorsApp {
     };
 
     #ifdef DEBUG
-      DEBUG_OUTPUT.println();
-      DEBUG_OUTPUT.println("=== MQTT CONFIG ===");
-      DEBUG_OUTPUT.print("MQTT SERVER: ");
+      DEBUG_OUTPUT.println(F("[MySensors] MQTT configuration"));
+      DEBUG_OUTPUT.println(F("=== MQTT CONFIG ==="));
+      DEBUG_OUTPUT.print(F("MQTT SERVER: "));
       DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_server);
-      DEBUG_OUTPUT.print("MQTT USER: ");
+      DEBUG_OUTPUT.print(F("MQTT USER: "));
       DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_user);
-      DEBUG_OUTPUT.print("MQTT PASSWORD: ");
+      DEBUG_OUTPUT.print(F("MQTT PASSWORD: "));
       DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_passwd);
-      DEBUG_OUTPUT.print("MQTT PORT: ");
+      DEBUG_OUTPUT.print(F("MQTT PORT: "));
       DEBUG_OUTPUT.println(_mqtt_cfg.mqtt_port);
+      DEBUG_OUTPUT.println(F("[MySensors] End MQTT configuration"));
     #endif
 
     mysNode.begin((uint8_t)atoi(_appCfg->mys_node_id), &_mqtt_cfg);

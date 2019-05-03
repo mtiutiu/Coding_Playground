@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <Ticker.h>
 #include "Utils.h"
 #include "AppConfig.h"
 #include "common.h"
@@ -11,15 +12,14 @@
 namespace WebConfig {
   AppCfg* _appCfg = NULL;
   AsyncWebServer server(HTTP_CFG_SERVER_PORT);
+  Ticker restartTicker;
 
   void init(AppCfg* appCfg) {
     _appCfg = appCfg;
 
     if (!_appCfg) {
       #ifdef DEBUG
-        DEBUG_OUTPUT.printf(
-          "[WebConfig] Received invalid configuration data, delaying for 3s!\r\n");
-        delay(3000);
+        DEBUG_OUTPUT.println(F("[WebConfig] Received invalid configuration data, aborting!"));
       #endif
       return;
     }
@@ -89,9 +89,13 @@ namespace WebConfig {
 
       AppConfig::save(CONFIG_FILE, _appCfg);
 
-      request->send(200, "text/html", "<h3>Settings saved! Restarting ...</h3>");
-      delay(3000);
-      ESP.restart();
+      request->send(200, "text/html", "<h3>Settings saved! System will restart in 3s ...</h3>");
+      restartTicker.once_ms(3000, []() {
+        #ifdef DEBUG
+          DEBUG_OUTPUT.println(F("[WebConfig] Restarting system ..."));
+        #endif
+        ESP.restart();
+      });
     });
 
     server.begin();

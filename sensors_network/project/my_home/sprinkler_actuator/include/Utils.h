@@ -19,7 +19,7 @@ namespace Utils {
     mins = mins - (hours * 60); //subtract the coverted minutes to hours in order to display 59 minutes max
     hours = hours - (days * 24); //subtract the coverted hours to days in order to display 23 hours max
 
-    snprintf(string, size, "%dd, %dh, %dm, %ds", days, hours, mins, secs);
+    snprintf_P(string, size, PSTR("%dd, %dh, %dm, %ds"), days, hours, mins, secs);
     return string;
   }
 }

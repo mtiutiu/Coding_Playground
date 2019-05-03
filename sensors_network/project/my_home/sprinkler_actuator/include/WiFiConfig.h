@@ -44,7 +44,7 @@ namespace WiFiConfig {
     WiFi.begin(STASSID, STAPSK);
 
     #ifdef DEBUG
-      DEBUG_OUTPUT.printf("Connecting to WiFi using SSID: %s\r\n", STASSID);
+      DEBUG_OUTPUT.printf_P(PSTR("[WiFiConfig] Connecting to WiFi using SSID: %s\r\n"), STASSID);
     #endif
     while (WiFi.status() != WL_CONNECTED) {
       delay(1000);
@@ -53,7 +53,7 @@ namespace WiFiConfig {
       #endif
     }
     #ifdef DEBUG
-      DEBUG_OUTPUT.printf("Connected to %s\r\n", STASSID);
+      DEBUG_OUTPUT.printf_P(PSTR("[WiFiConfig] Connected to %s\r\n"), STASSID);
     #endif
   }
 

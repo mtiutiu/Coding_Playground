@@ -37,14 +37,14 @@ namespace AppConfig {
 
     if (!SPIFFS.begin()) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("SPIFFS mount failed!");
+      DEBUG_OUTPUT.println(F("[AppConfig] SPIFFS mount failed!"));
     #endif
       return false;
     }
 
     if (!SPIFFS.exists(cfgFilePath)) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("Configuration file wasn't found!");
+      DEBUG_OUTPUT.println(F("[AppConfig] JSON configuration file wasn't found!"));
     #endif
       SPIFFS.end();
       return false;
@@ -53,21 +53,21 @@ namespace AppConfig {
     File configFile = SPIFFS.open(cfgFilePath, "r");
     if (!configFile) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("Config file couldn't be opened!");
+      DEBUG_OUTPUT.println(F("[AppConfig] JSON configuration file couldn't be opened!"));
     #endif
       SPIFFS.end();
       return false;
     }
 
   #ifdef DEBUG
-    DEBUG_OUTPUT.println("Configuration file found!");
+    DEBUG_OUTPUT.println(F("[AppConfig] Configuration file found!"));
   #endif
     StaticJsonDocument<JSON_FILE_BUFFER_SIZE> json;
     // Deserialize the JSON document
     DeserializationError deserializationError = deserializeJson(json, configFile);
     if (deserializationError) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("Failed to deserialize configuration file!");
+      DEBUG_OUTPUT.println(F("[AppConfig] Failed to deserialize JSON configuration file!"));
     #endif
       configFile.close();
       SPIFFS.end();
@@ -96,14 +96,14 @@ namespace AppConfig {
 
     if (!SPIFFS.begin()) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("SPIFFS mount failed!");
+      DEBUG_OUTPUT.println(F("[AppConfig] SPIFFS mount failed!"));
     #endif
       return false;
     }
 
     if (!SPIFFS.exists(cfgFilePath)) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("Configuration file wasn't found!");
+      DEBUG_OUTPUT.println(F("[AppConfig] JSON configuration file wasn't found!"));
     #endif
       SPIFFS.end();
       return false;
@@ -112,14 +112,14 @@ namespace AppConfig {
     File configFile = SPIFFS.open(cfgFilePath, "w");
     if (!configFile) {
     #ifdef DEBUG
-      DEBUG_OUTPUT.println("Config file couldn't be opened!");
+      DEBUG_OUTPUT.println(F("[AppConfig] JSON configuration file couldn't be opened!"));
     #endif
       SPIFFS.end();
       return false;
     }
 
   #ifdef DEBUG
-    DEBUG_OUTPUT.println("Configuration file found!");
+    DEBUG_OUTPUT.println(F("[AppConfig] JSON configuration file found!"));
   #endif
 
     StaticJsonDocument<JSON_FILE_BUFFER_SIZE> json;
@@ -136,7 +136,7 @@ namespace AppConfig {
     // Serialize JSON to file
    if (serializeJson(json, configFile) == 0) {
    #ifdef DEBUG
-    DEBUG_OUTPUT.println("Failed to serialize json to file!");
+    DEBUG_OUTPUT.println(F("[AppConfig] Failed to serialize JSON configuration file!"));
    #endif
      configFile.close();
      SPIFFS.end();
