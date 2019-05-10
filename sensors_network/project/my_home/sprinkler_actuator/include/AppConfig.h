@@ -26,6 +26,7 @@ typedef struct {
   char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
 } AppCfg;
 
+
 namespace AppConfig {
   AppCfg _cfgData = {0};
   bool _initialized = false;

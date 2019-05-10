@@ -7,8 +7,33 @@
 #include <MySensors.h>
 #include "common.h"
 
+
+// --------------------------- LED SIGNALING ----------------------------------
+#define INVERSE_LED_LOGIC
+
+#ifndef MQTT_STATUS_LED_PIN
+#define MQTT_STATUS_LED_PIN  LED_BUILTIN
+#endif
+// -----------------------------------------------------------------------------
+
+// ------------------------ SENSORS/ACTUATORS ----------------------------------
+#ifndef SPRINKLER_CTRL_RELAY_PIN
+#define SPRINKLER_CTRL_RELAY_PIN D2
+#endif
+
+#define OFF  0
+#define ON   1
+
+#define SPRINKLER_ON()                digitalWrite(SPRINKLER_CTRL_RELAY_PIN, HIGH)
+#define SPRINKLER_OFF()               digitalWrite(SPRINKLER_CTRL_RELAY_PIN, LOW)
+#define TOGGLE_HEATER()               digitalWrite(SPRINKLER_CTRL_RELAY_PIN, !digitalRead(SPRINKLER_CTRL_RELAY_PIN))
+#define GET_SPRINKLER_STATE()         digitalRead(SPRINKLER_CTRL_RELAY_PIN)
+#define SET_SPRINKLER_STATE(state)    digitalWrite(SPRINKLER_CTRL_RELAY_PIN, state)
+// -----------------------------------------------------------------------------
+
 // enable reading of Vcc
 ADC_MODE(ADC_VCC);
+
 
 namespace MySensorsNode {
   const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 1000; // 1000 ms
@@ -132,18 +157,32 @@ namespace MySensorsNode {
   }
 
   void init(AppCfg* appCfg) {
+    // signaling LED setup
+    pinMode(MQTT_STATUS_LED_PIN, OUTPUT);
+    digitalWrite(MQTT_STATUS_LED_PIN,
+  #ifdef INVERSE_LED_LOGIC
+      HIGH
+  #else
+      LOW
+  #endif
+    );
+
+    // relay setup
+    pinMode(SPRINKLER_CTRL_RELAY_PIN, OUTPUT);
+    SPRINKLER_OFF();
+
     _appCfg = appCfg;
 
     // MQTT transport connection signaling
     noTransportLedTicker.detach();
     noTransportLedTicker.attach_ms(NOT_CONNECTED_SIGNALING_INTERVAL_MS, []() {
       if (!mysNode.connected()) {
-        digitalWrite(LED_SIGNAL_PIN, !digitalRead(LED_SIGNAL_PIN));
+        digitalWrite(MQTT_STATUS_LED_PIN, !digitalRead(MQTT_STATUS_LED_PIN));
         // make sure relay turns off for safety when there's no remote control over it
         SPRINKLER_OFF();
       } else {
         // make sure led is off when connected
-        digitalWrite(LED_SIGNAL_PIN,
+        digitalWrite(MQTT_STATUS_LED_PIN,
       #ifdef INVERSE_LED_LOGIC
           HIGH
       #else
@@ -200,6 +239,10 @@ namespace MySensorsNode {
   }
 
   void loop() {
+    if (!connected()) {
+      // make sure relay turns off for safety when there's no remote control over it
+      SPRINKLER_OFF();
+    }
     mysNode.loop();
     sendReports();
   }

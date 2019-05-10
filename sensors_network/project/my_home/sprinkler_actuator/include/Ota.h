@@ -6,6 +6,7 @@
 #include <FS.h>
 #include "common.h"
 
+
 namespace Ota {
   bool otaInProgress = false;
 

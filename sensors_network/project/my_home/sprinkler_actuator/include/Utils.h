@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "common.h"
 
+
 namespace Utils {
   char* timeToString(char* string, size_t size) {
     uint32_t days = 0;

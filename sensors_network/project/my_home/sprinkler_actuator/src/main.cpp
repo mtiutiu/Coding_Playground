@@ -10,45 +10,29 @@
 #endif
 
 #include <Arduino.h>
-#include <Ticker.h>
-#include "common.h"
+
 
 // ----------------------------- OTA -------------------------------------------
 #include "Ota.h"
 // -----------------------------------------------------------------------------
 
+
 // ------------------------ Module CONFIG --------------------------------------
 #include "AppConfig.h"
 #include "WiFiConfig.h"
 #include "WebConfig.h"
-// ------------------------ END Module CONFIG ----------------------------------
+// -----------------------------------------------------------------------------
+
 
 // ------------------------ MySensors-------------------------------------------
 #include "MySensorsNode.h"
-// ------------------------ END MySensors---------------------------------------
+// -----------------------------------------------------------------------------
 
-
-void portsConfig() {
-  pinMode(LED_SIGNAL_PIN, OUTPUT);
-  digitalWrite(LED_SIGNAL_PIN,
-#ifdef INVERSE_LED_LOGIC
-    HIGH
-#else
-    LOW
-#endif
-  );
-
-  pinMode(SPRINKLER_CTRL_RELAY_PIN, OUTPUT);
-  SPRINKLER_OFF();
-}
 
 void setup() {
 #ifdef DEBUG
   DEBUG_OUTPUT.begin(SERIAL_DEBUG_BAUDRATE);
 #endif
-
-  // pre inits
-  portsConfig();
   AppConfig::init();
   WiFiConfig::init();  // this blocks untill networking is configured and active
   WebConfig::init(AppConfig::getConfig()); // start web config server
