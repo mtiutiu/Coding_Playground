@@ -1,10 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#ifndef STASSID
-#define STASSID "test"
-#define STAPSK  "test1234"
-#endif
 
 #ifndef HOSTNAME
 #define HOSTNAME  "sprinkler"

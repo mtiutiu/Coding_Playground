@@ -24,8 +24,8 @@
 // -----------------------------------------------------------------------------
 
 
-// ------------------------ MySensors-------------------------------------------
-#include "MySensorsNode.h"
+// ------------------------ MQTT -------------------------------------------
+#include "MqttNode.h"
 // -----------------------------------------------------------------------------
 
 
@@ -36,7 +36,7 @@ void setup() {
   AppConfig::init();
   WiFiConfig::init();  // this blocks untill networking is configured and active
   WebConfig::init(AppConfig::getConfig()); // start web config server
-  MySensorsNode::init(AppConfig::getConfig());
+  MqttNode::init(AppConfig::getConfig());
   Ota::init();
 }
 
@@ -45,10 +45,10 @@ void loop() {
 
   if(Ota::inProgress()) {
     WiFiConfig::disableTickers();
-    MySensorsNode::disableTickers();
+    MqttNode::disableTickers();
     return;
   }
 
   WebConfig::loop();
-  MySensorsNode::loop();
+  MqttNode::loop();
 }

@@ -10,20 +10,16 @@
 #define MQTT_USER_FIELD_MAX_LEN 40
 #define MQTT_PASS_FIELD_MAX_LEN 40
 #define MQTT_PORT_FIELD_MAX_LEN 6
-#define MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN 40
-#define MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN 40
-#define MYS_NODE_ID_FIELD_MAX_LEN 4
-#define MYS_NODE_ALIAS_FIELD_MAX_LEN 40
+#define MQTT_TOPIC_FIELD_MAX_LEN 40
+
 
 typedef struct {
   char mqtt_server[MQTT_SERVER_FIELD_MAX_LEN];
   char mqtt_user[MQTT_USER_FIELD_MAX_LEN];
   char mqtt_passwd[MQTT_PASS_FIELD_MAX_LEN];
   char mqtt_port[MQTT_PORT_FIELD_MAX_LEN];
-  char mqtt_in_topic_prefix[MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN];
-  char mqtt_out_topic_prefix[MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN];
-  char mys_node_id[MYS_NODE_ID_FIELD_MAX_LEN];
-  char mys_node_alias[MYS_NODE_ALIAS_FIELD_MAX_LEN];
+  char zone_1_mqtt_topic[MQTT_TOPIC_FIELD_MAX_LEN];
+  char zone_2_mqtt_topic[MQTT_TOPIC_FIELD_MAX_LEN];
 } AppCfg;
 
 
@@ -79,10 +75,8 @@ namespace AppConfig {
     strncpy(_cfgData.mqtt_user, json["mqtt_user"], MQTT_USER_FIELD_MAX_LEN);
     strncpy(_cfgData.mqtt_passwd, json["mqtt_passwd"], MQTT_PASS_FIELD_MAX_LEN);
     strncpy(_cfgData.mqtt_port, json["mqtt_port"], MQTT_PORT_FIELD_MAX_LEN);
-    strncpy(_cfgData.mqtt_in_topic_prefix, json["mqtt_in_topic_prefix"], MQTT_IN_TOPIC_PREFIX_FIELD_MAX_LEN);
-    strncpy(_cfgData.mqtt_out_topic_prefix, json["mqtt_out_topic_prefix"], MQTT_OUT_TOPIC_PREFIX_FIELD_MAX_LEN);
-    strncpy(_cfgData.mys_node_id, json["mys_node_id"], MYS_NODE_ID_FIELD_MAX_LEN);
-    strncpy(_cfgData.mys_node_alias, json["mys_node_alias"], MYS_NODE_ALIAS_FIELD_MAX_LEN);
+    strncpy(_cfgData.zone_1_mqtt_topic, json["zone_1_mqtt_topic"], MQTT_TOPIC_FIELD_MAX_LEN);
+    strncpy(_cfgData.zone_2_mqtt_topic, json["zone_2_mqtt_topic"], MQTT_TOPIC_FIELD_MAX_LEN);
 
     configFile.close();
     SPIFFS.end();
@@ -129,10 +123,8 @@ namespace AppConfig {
     json["mqtt_user"] = cfgData->mqtt_user;
     json["mqtt_passwd"] = cfgData->mqtt_passwd;
     json["mqtt_port"] = cfgData->mqtt_port;
-    json["mqtt_in_topic_prefix"] = cfgData->mqtt_in_topic_prefix;
-    json["mqtt_out_topic_prefix"] = cfgData->mqtt_out_topic_prefix;
-    json["mys_node_id"] = cfgData->mys_node_id;
-    json["mys_node_alias"] = cfgData->mys_node_alias;
+    json["zone_1_mqtt_topic"] = cfgData->zone_1_mqtt_topic;
+    json["zone_2_mqtt_topic"] = cfgData->zone_2_mqtt_topic;
 
     // Serialize JSON to file
    if (serializeJson(json, configFile) == 0) {
