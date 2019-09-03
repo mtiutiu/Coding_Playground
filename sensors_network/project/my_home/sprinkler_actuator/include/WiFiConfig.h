@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <Ticker.h>
 #include "common.h"
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 
 
 // --------------------------- LED SIGNALING ----------------------------------
@@ -18,6 +20,8 @@
 namespace WiFiConfig {
   const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 100; // 100 ms
   Ticker noWiFiLedTicker;
+  AsyncWebServer server(80);
+  DNSServer dns;
 
   void init() {
     pinMode(WIFI_STATUS_LED_PIN, OUTPUT);
@@ -46,21 +50,8 @@ namespace WiFiConfig {
       }
     });
 
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(STASSID, STAPSK);
-
-    #ifdef DEBUG
-      DEBUG_OUTPUT.printf_P(PSTR("[WiFiConfig] Connecting to WiFi using SSID: %s\r\n"), STASSID);
-    #endif
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(1000);
-      #ifdef DEBUG
-        DEBUG_OUTPUT.print(".");
-      #endif
-    }
-    #ifdef DEBUG
-      DEBUG_OUTPUT.printf_P(PSTR("[WiFiConfig] Connected to %s\r\n"), STASSID);
-    #endif
+    AsyncWiFiManager wifiManager(&server, &dns);
+    wifiManager.autoConnect("Sprinkler");
   }
 
   void disableTickers() {

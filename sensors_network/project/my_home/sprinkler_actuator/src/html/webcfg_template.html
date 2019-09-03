@@ -33,17 +33,17 @@
      <div>
          <form method='get' action='save'>
             <p>MQTT</p>
-            <input id='mqtt_server' name='mqtt_server' length=16 placeholder='<broker ip here>' value='{mqtt_server}'><br/>
-            <input id='mqtt_port' name='mqtt_port' length=5 placeholder='<broker port here>' value='{mqtt_port}'><br/>
-            <input id='mqtt_user' name='mqtt_user' length=32 placeholder='<broker user here>' value='{mqtt_user}'><br/>
-            <input id='mqtt_passwd' name='mqtt_passwd' length=32 type='password' placeholder='<broker password here>' value='{mqtt_passwd}'><br/>
-            <input id='mqtt_in_topic_prefix' name='mqtt_in_topic_prefix' length=128 placeholder='<mqtt in topic prefix here>' value='{mqtt_in_topic_prefix}'><br/>
-            <input id='mqtt_out_topic_prefix' name='mqtt_out_topic_prefix' length=128 placeholder='<mqtt out topic prefix here>' value='{mqtt_out_topic_prefix}'><br/><br/>
+            <input id='mqtt_server' name='mqtt_server' length=16 placeholder='<broker ip here>' value='%mqtt_server%'><br/>
+            <input id='mqtt_port' name='mqtt_port' length=5 placeholder='<broker port here>' value='%mqtt_port%'><br/>
+            <input id='mqtt_user' name='mqtt_user' length=32 placeholder='<broker user here>' value='%mqtt_user%'><br/>
+            <input id='mqtt_passwd' name='mqtt_passwd' length=32 type='password' placeholder='<broker password here>' value='%mqtt_passwd%'><br/>
+            <input id='zone_1_mqtt_topic' name='zone_1_mqtt_topic' length=128 placeholder='<z1 mqtt topic>' value='%zone_1_mqtt_topic%'><br/>
+            <input id='zone_2_mqtt_topic' name='zone_2_mqtt_topic' length=128 placeholder='<z2 mqtt topic>' value='%zone_2_mqtt_topic%'><br/><br/>
             <button type='submit'>save</button>
          </form>
          <div>
-           <h4>Uptime: {uptime}</h4>
-           <h4>Core version: {core_version}</h4>
+           <h4>Uptime: %uptime%</h4>
+           <h4>Core version: %core_version%</h4>
          </div>
       </div>
    </body>

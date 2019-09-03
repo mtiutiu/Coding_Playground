@@ -51,13 +51,20 @@ namespace WebConfig {
       return;
     }
 
+    if (!SPIFFS.begin()) {
+    #ifdef DEBUG
+      DEBUG_OUTPUT.println(F("[AppConfig] SPIFFS mount failed!"));
+    #endif
+      return;
+    }
+
     server.onNotFound([](AsyncWebServerRequest *request) {
       request->send(404, "text/plain", "Not found");
     });
 
 
     server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(SPIFFS, "/www/config.html", String(), false, htmlProcessor);
+      request->send(SPIFFS, "/www/config.html", "text/html", false, htmlProcessor);
     });
 
     server.on("/save", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -104,7 +111,6 @@ namespace WebConfig {
   }
 
   void loop() {
-    //server.handleClient();
   }
 }
 

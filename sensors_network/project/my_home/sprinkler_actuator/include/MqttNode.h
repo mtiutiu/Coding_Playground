@@ -1,5 +1,5 @@
-#ifndef MYSENSORS_NODE_H
-#define MYSENSORS_NODE_H
+#ifndef MQTT_NODE_H
+#define MQTT_NODE_H
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -12,6 +12,7 @@
 #define MQTT_RECONNECT_INTERVAL_MS 3000
 
 // --------------------------- LED SIGNALING ----------------------------------
+#define NOT_CONNECTED_SIGNALING_INTERVAL_MS  1000 // 1000 ms
 #define INVERSE_LED_LOGIC
 
 #ifndef MQTT_STATUS_LED_PIN
@@ -36,8 +37,7 @@
 
 
 namespace MqttNode {
-  const uint32_t NOT_CONNECTED_SIGNALING_INTERVAL_MS = 1000; // 1000 ms
-  Ticker noTransportLedTicker;
+  Ticker _noTransportLedTicker;
   AppCfg* _appCfg;
   WiFiClientSecure _net;
   MQTTClient _mqtt;
@@ -68,8 +68,8 @@ namespace MqttNode {
     _mqtt.onMessage(messageReceived);
 
     // MQTT transport connection signaling
-    noTransportLedTicker.detach();
-    noTransportLedTicker.attach_ms(NOT_CONNECTED_SIGNALING_INTERVAL_MS, []() {
+    _noTransportLedTicker.detach();
+    _noTransportLedTicker.attach_ms(NOT_CONNECTED_SIGNALING_INTERVAL_MS, []() {
       if (!_mqtt.connected()) {
         digitalWrite(MQTT_STATUS_LED_PIN, !digitalRead(MQTT_STATUS_LED_PIN));
         // make sure relay turns off for safety when there's no remote control over it
@@ -109,7 +109,7 @@ namespace MqttNode {
   }
 
   void disableTickers() {
-    noTransportLedTicker.detach();
+    _noTransportLedTicker.detach();
   }
 
   void loop() {
