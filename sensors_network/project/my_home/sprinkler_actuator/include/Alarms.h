@@ -3,19 +3,17 @@
 
 #include <TimeAlarms.h>
 
+
 namespace Alarms {
 
   void init() {
-    Alarm.alarmRepeat(1, 28, 0, []() {
+    Alarm.alarmRepeat(10, 25, 0, []() {
       DEBUG_OUTPUT.println(F("Test alarm ..."));
-    });
-    Alarm.timerRepeat(5, []() {
-      DEBUG_OUTPUT.println(F("Test 5s timer alarm ..."));
     });
   }
 
   void loop() {
-    Alarm.delay(1000);
+    Alarm.delay(0);
   }
 }
 

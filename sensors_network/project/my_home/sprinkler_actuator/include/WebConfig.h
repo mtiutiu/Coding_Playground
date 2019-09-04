@@ -5,6 +5,7 @@
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <Ticker.h>
+#include <NtpClientLib.h>
 #include "Utils.h"
 #include "AppConfig.h"
 #include "common.h"
@@ -16,11 +17,6 @@ namespace WebConfig {
   Ticker restartTicker;
 
   String htmlProcessor(const String& var) {
-    char uptime_buff[128];
-    memset(uptime_buff, '\0', sizeof(uptime_buff));
-
-    DEBUG_OUTPUT.print(var);
-
     if(var == "mqtt_server")
       return String(_appCfg->mqtt_server);
     if(var == "mqtt_port")
@@ -33,8 +29,10 @@ namespace WebConfig {
       return String(_appCfg->zone_1_mqtt_topic);
     if(var == "zone_2_mqtt_topic")
       return String(_appCfg->zone_2_mqtt_topic);
+    if(var == "current_time")
+      return NTP.getTimeDateString (NTP.getLastNTPSync());
     if(var == "uptime")
-      return String(Utils::timeToString(uptime_buff, sizeof(uptime_buff)));
+      return String(NTP.getUptimeString());
     if(var == "core_version")
       return ESP.getCoreVersion();
 
@@ -62,12 +60,29 @@ namespace WebConfig {
       request->send(404, "text/plain", "Not found");
     });
 
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(SPIFFS, "/www/index.html", "text/html");
+    });
+
+    server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/html", "<h3>System will restart in 3s ...</h3>");
+      restartTicker.once_ms(3000, []() {
+        #ifdef DEBUG
+          DEBUG_OUTPUT.println(F("[WebConfig] Restarting system ..."));
+        #endif
+        ESP.restart();
+      });
+    });
+
+    server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(SPIFFS, "/www/info.html", "text/html", false, htmlProcessor);
+    });
 
     server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(SPIFFS, "/www/config.html", "text/html", false, htmlProcessor);
     });
 
-    server.on("/save", HTTP_GET, [](AsyncWebServerRequest *request) {
+    server.on("/cfgsave", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (request->params() == 0) {
         return request->send(500, "text/plain", "BAD ARGS");
       }
