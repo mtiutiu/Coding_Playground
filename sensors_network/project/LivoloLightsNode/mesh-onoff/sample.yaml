@@ -1,0 +1,7 @@
+sample:
+  name: Bluetooth Mesh
+tests:
+  sample.bluetooth.mesh.onoff:
+    platform_whitelist: nrf52_blenano2
+    tags: bluetooth
+    harness: bluetooth
