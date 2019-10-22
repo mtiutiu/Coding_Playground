@@ -1,11 +1,10 @@
 {
     "env": {
-        "myZephyrSourcePath": "${env:HOME}/Work/zephyrproject/zephyr",
-        "myZephyrSDKPath": "${env:HOME}/Util/zephyr/sdk/sdk_0.10.3/"
+        "myZephyrSourcePath": "${env:HOME}/Work/zephyrproject/zephyr"
     },
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Zephyr",
             "includePath": [
                 "${myZephyrSourcePath}/include/",
                 "${myZephyrSourcePath}/build/zephyr/include/generated",
