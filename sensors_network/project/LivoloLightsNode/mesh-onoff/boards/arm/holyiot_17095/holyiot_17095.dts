@@ -9,7 +9,7 @@
 
 / {
 	model = "Holyiot 17095";
-	compatible = "holyiot,yj-16019", "nordic,nrf52832-qfaa",
+	compatible = "holyiot,17095", "nordic,nrf52832-qfaa",
 		     "nordic,nrf52832";
 
 	chosen {

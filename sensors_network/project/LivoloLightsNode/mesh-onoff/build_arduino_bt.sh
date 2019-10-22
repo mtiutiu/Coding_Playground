@@ -7,4 +7,4 @@ if [[ "${1}null" == "null" ]]; then
   exit 1
 fi
 
-west build --pristine -b holyiot_17095 -- -DBOARD_DIR=./boards/arm/holyiot_17095 -DCONF_FILE="$1"
+west build --pristine -b arduino_bt -- -DBOARD_DIR=./boards/arm/arduino_bt -DCONF_FILE="$1"
