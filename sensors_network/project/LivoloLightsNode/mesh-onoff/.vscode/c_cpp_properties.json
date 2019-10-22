@@ -7,12 +7,11 @@
             "name": "Zephyr",
             "includePath": [
                 "${myZephyrSourcePath}/include/",
-                "${myZephyrSourcePath}/build/zephyr/include/generated",
                 "${myZephyrSourcePath}/lib/libc/minimal/include/",
                 "${myZephyrSourcePath}/arch/arm/include/",
-                "${workspaceFolder}/build/zephyr/include"
+                "${workspaceFolder}/build/zephyr/include",
+                "${workspaceFolder}/build/zephyr/include/generated"
             ],
-            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x64"
