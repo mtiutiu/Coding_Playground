@@ -1,24 +1,6 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 #include <assert.h>
 #include "os/mynewt.h"
+#include "os/os.h"
 #include "mesh/mesh.h"
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
 #include "console/console.h"
@@ -65,6 +47,21 @@ static struct bt_mesh_model_pub health_pub;
 static struct bt_mesh_model_pub gen_onoff_pub;
 static uint8_t gen_on_off_state;
 
+// static struct os_callout led_code_blink_callout;
+
+
+// static void led_timer_ev_cb(struct os_event *ev) {
+//     assert(ev != NULL);
+
+//     hal_gpio_toggle(S1_LED_PIN);
+
+//     os_callout_reset(&led_code_blink_callout, OS_TICKS_PER_SEC);
+// }
+
+// void init_led_timer(void) {
+//     os_callout_init(&led_code_blink_callout, os_eventq_dflt_get(), led_timer_ev_cb, NULL);
+//     os_callout_reset(&led_code_blink_callout, OS_TICKS_PER_SEC);
+// }
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx) {
     struct os_mbuf *msg = NET_BUF_SIMPLE(3);
@@ -148,12 +145,10 @@ static void prov_complete(u16_t net_idx, u16_t addr) {
 #endif
 }
 
-static const uint8_t dev_uuid[16] = MYNEWT_VAL(BLE_MESH_DEV_UUID);
-
 static const struct bt_mesh_prov prov = {
-    .uuid = dev_uuid,
+    .uuid = MYNEWT_VAL(BLE_MESH_DEV_UUID),
     .output_size = 4,
-    .output_actions = BT_MESH_DISPLAY_NUMBER | BT_MESH_BEEP | BT_MESH_VIBRATE | BT_MESH_BLINK,
+    .output_actions = BT_MESH_DISPLAY_NUMBER,
     .output_number = output_number,
     .complete = prov_complete,
 };
@@ -197,11 +192,6 @@ static void blemesh_on_sync(void) {
 }
 
 int main(int argc, char **argv) {
-
-#ifdef ARCH_sim
-    mcu_sim_parse_args(argc, argv);
-#endif
-
     /* Initialize OS */
     sysinit();
 
@@ -211,6 +201,7 @@ int main(int argc, char **argv) {
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     hal_gpio_init_out(S1_LED_PIN, 0);
+    //init_led_timer();
 
     while (1) {
         os_eventq_run(os_eventq_dflt_get());
