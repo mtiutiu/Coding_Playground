@@ -1,0 +1,3 @@
+target.app: apps/blemesh_light
+target.bsp: hw/bsp/holyiot_17095
+target.build_profile: optimized

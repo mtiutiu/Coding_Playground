@@ -1,4 +1,4 @@
-pkg.name: targets/nrf52_boot
+pkg.name: targets/light_mesh_holyiot_17095
 pkg.type: target
 pkg.description: 
 pkg.author: 
