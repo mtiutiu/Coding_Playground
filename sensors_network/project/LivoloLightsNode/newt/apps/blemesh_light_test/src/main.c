@@ -116,12 +116,14 @@ static const struct bt_mesh_comp comp = {
     .elem_count = ARRAY_SIZE(elements),
 };
 
+#if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
 static int output_number(bt_mesh_output_action_t action, uint32_t number) {
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("OOB Number: %lu\n", number);
 #endif
     return 0;
 }
+#endif
 
 static void prov_complete(u16_t net_idx, u16_t addr) {
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
@@ -129,12 +131,23 @@ static void prov_complete(u16_t net_idx, u16_t addr) {
 #endif
 }
 
+static void prov_reset(void) {
+    bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
+}
+
 static const struct bt_mesh_prov prov = {
     .uuid = MYNEWT_VAL(BLE_MESH_DEV_UUID),
+#if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
     .output_size = 4,
     .output_actions = BT_MESH_DISPLAY_NUMBER,
     .output_number = output_number,
+#else
+    .output_size = 0,
+    .output_actions = 0,
+    .output_number = 0,
+#endif
     .complete = prov_complete,
+    .reset = prov_reset
 };
 
 static void blemesh_on_reset(int reason) {
