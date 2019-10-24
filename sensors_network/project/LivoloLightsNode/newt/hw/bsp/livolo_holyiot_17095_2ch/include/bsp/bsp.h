@@ -22,8 +22,6 @@
 
 #include <inttypes.h>
 
-#include "os/mynewt.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,12 +37,17 @@ extern "C" {
 extern uint8_t _ram_start;
 #define RAM_SIZE        0x10000
 
-/* LED pins */
-#define LED_1           (17)
-#define LED_2           (19)
-
-/* Buttons */
-#define BUTTON_1        (20)  /* Labelled DFU on the board */
+// Set default pins for peripherals
+#define S1_LED_PIN       18
+#define S2_LED_PIN        5
+#define TS1_PIN           1
+#define TS2_PIN           0
+#define MTSA_PIN         21
+#define MTPM_PIN         15
+#define RELAY1_SET_PIN    6
+#define RELAY1_RESET_PIN  8
+#define RELAY2_SET_PIN   30
+#define RELAY2_RESET_PIN 29
 
 #ifdef __cplusplus
 }

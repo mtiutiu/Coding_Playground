@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -21,22 +22,11 @@ syscfg.defs:
         description: 'Set to indicate that BSP has NRF52'
         value: 1
 
-    BSP_UART_CONSOLE:
-        description: 'Set to indicate that BSP has a debug UART console'
-        value: 1
-
 syscfg.vals:
     # Enable nRF52832 MCU
     MCU_TARGET: nRF52832
-    # Set default pins for peripherals
-    UART_0_PIN_TX: 6
-    UART_0_PIN_RX: 8
-    SPI_0_MASTER_PIN_SCK: 12
-    SPI_0_MASTER_PIN_MOSI: 13
-    SPI_0_MASTER_PIN_MISO: 14
-    I2C_0_PIN_SCL: 26
-    I2C_0_PIN_SDA: 25
-
+    UART_0: 0   # disable UART0 used for logging
+    PWM_0: 1    # this is needed for the MTSA pin
     CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
     REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
     NFFS_FLASH_AREA: FLASH_AREA_NFFS

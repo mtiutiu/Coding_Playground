@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,23 +16,28 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-pkg.name: apps/blemesh_light
-pkg.type: app
-pkg.description: Sample application for BLE Mesh node with on/off model
-pkg.author: "Łukasz Rymanowski <lukasz.rymanowski@codecoup.pl>"
+
+pkg.name: hw/bsp/livolo_holyiot_17095_1ch
+pkg.type: bsp
+pkg.description: BSP definition for the Livolo 1 channel board based on the Holyiot 17095 module.
+pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
+    - nrf52
+    - holyiot
+
+pkg.cflags:
+    - '-DNRF52'
+
+pkg.cflags.HARDFLOAT:
+    - -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 pkg.deps:
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/sys/console/full"
-    - "@apache-mynewt-core/sys/log/full"
-    - "@apache-mynewt-core/sys/log/modlog"
-    - "@apache-mynewt-core/sys/stats/full"
-    - "@apache-mynewt-core/sys/shell"
-    - "@apache-mynewt-nimble/nimble/controller"
-    - "@apache-mynewt-nimble/nimble/host"
-    - "@apache-mynewt-nimble/nimble/host/services/gap"
-    - "@apache-mynewt-nimble/nimble/host/services/gatt"
-    - "@apache-mynewt-nimble/nimble/host/store/config"
-    - "@apache-mynewt-nimble/nimble/transport/ram"
+    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
+    - "@apache-mynewt-core/libc/baselibc"
+    - "@apache-mynewt-core/hw/util/button"
+    - "@apache-mynewt-core/hw/drivers/pwm"
+    - "@apache-mynewt-core/sys/console/stub"
+    - "@apache-mynewt-core/sys/log/stub"
+    - "@apache-mynewt-core/sys/log/stub"
+    - "@apache-mynewt-core/sys/stats/stub"

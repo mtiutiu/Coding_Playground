@@ -37,9 +37,6 @@ extern "C" {
 extern uint8_t _ram_start;
 #define RAM_SIZE        0x10000
 
-/* LED */
-#define LED_BLINK_PIN   (11)
-
 #ifdef __cplusplus
 }
 #endif

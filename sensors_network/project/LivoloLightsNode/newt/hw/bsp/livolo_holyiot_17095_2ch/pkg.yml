@@ -17,15 +17,14 @@
 # under the License.
 #
 
-pkg.name: hw/bsp/arduino_bt
+pkg.name: hw/bsp/livolo_holyiot_17095_2ch
 pkg.type: bsp
-pkg.description: BSP definition for the Arduino BT.
+pkg.description: BSP definition for the Livolo 2 channels board based on the Holyiot 17095 module.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
-    - Arduino
-    - BT
     - nrf52
+    - holyiot
 
 pkg.cflags:
     - '-DNRF52'
@@ -36,9 +35,9 @@ pkg.cflags.HARDFLOAT:
 pkg.deps:
     - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
     - "@apache-mynewt-core/libc/baselibc"
-
-pkg.deps.BSP_UART_CONSOLE:
-    - "@apache-mynewt-core/sys/console/full"
-    - "@apache-mynewt-core/sys/log/full"
-    - "@apache-mynewt-core/sys/log/modlog"
-    - "@apache-mynewt-core/sys/stats/full"
+    - "@apache-mynewt-core/hw/util/button"
+    - "@apache-mynewt-core/hw/drivers/pwm"
+    - "@apache-mynewt-core/sys/console/stub"
+    - "@apache-mynewt-core/sys/log/stub"
+    - "@apache-mynewt-core/sys/log/stub"
+    - "@apache-mynewt-core/sys/stats/stub"

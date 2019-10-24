@@ -6,7 +6,7 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
@@ -17,15 +17,27 @@
 # under the License.
 #
 
-pkg.name: apps/blinky
-pkg.type: app
-pkg.description: Basic example application which blinks an LED.
-pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
-pkg.homepage: "http://mynewt.apache.org/"
-pkg.keywords:
+syscfg.defs:
+    BSP_NRF52:
+        description: 'Set to indicate that BSP has NRF52'
+        value: 1
 
-pkg.deps:
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/sys/console/stub"
-    - "@apache-mynewt-core/sys/log/stub"
+syscfg.vals:
+    # Enable nRF52832 MCU
+    MCU_TARGET: nRF52832
+    UART_0: 0   # disable UART0 used for logging
+    PWM_0: 1    # this is needed for the MTSA pin
+
+    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
+    REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
+    NFFS_FLASH_AREA: FLASH_AREA_NFFS
+    COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
+    MCU_DCDC_ENABLED: 1
+    MCU_LFCLK_SOURCE: LFXO
+
+syscfg.vals.BLE_CONTROLLER:
+    TIMER_0: 0
+    TIMER_5: 1
+    OS_CPUTIME_FREQ: 32768
+    OS_CPUTIME_TIMER_NUM: 5
+    BLE_XTAL_SETTLE_TIME: 1500
