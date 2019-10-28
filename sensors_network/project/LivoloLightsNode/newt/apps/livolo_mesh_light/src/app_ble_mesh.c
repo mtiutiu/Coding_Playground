@@ -57,9 +57,9 @@ static struct bt_mesh_health_srv health_srv = {
 };
 
 static const struct bt_mesh_model_op gen_onoff_op[] = {
-  {BT_MESH_MODEL_OP_2(0x82, 0x01), 0, gen_onoff_get},
-  {BT_MESH_MODEL_OP_2(0x82, 0x02), 2, gen_onoff_set},
-  {BT_MESH_MODEL_OP_2(0x82, 0x03), 2, gen_onoff_set_unack},
+  { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get},
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set},
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set_unack},
   BT_MESH_MODEL_OP_END,
 };
 
@@ -100,7 +100,7 @@ static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("#mesh-onoff STATUS\n");
 #endif
-  bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_2(0x82, 0x04));
+  bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   status = net_buf_simple_add(msg, 1);
   *status = gen_on_off_state;
 
@@ -120,17 +120,6 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   gen_onoff_status(model, ctx);
 }
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
-#if (MYNEWT_VAL(BSP_UART_CONSOLE))
-  console_printf("#mesh-onoff SET\n");
-#endif
-
-  gen_on_off_state = buf->om_data[0];
-  hal_gpio_write(S1_LED_PIN, gen_on_off_state);
-
-  gen_onoff_status(model, ctx);
-}
-
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("#mesh-onoff SET-UNACK\n");
@@ -138,6 +127,14 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
 
   gen_on_off_state = buf->om_data[0];
   hal_gpio_write(S1_LED_PIN, gen_on_off_state);
+}
+
+static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
+  console_printf("#mesh-onoff SET\n");
+#endif
+  gen_onoff_set_unack(model, ctx, buf);
+  gen_onoff_status(model, ctx);
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))

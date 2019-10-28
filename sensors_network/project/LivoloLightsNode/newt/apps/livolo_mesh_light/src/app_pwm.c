@@ -29,6 +29,6 @@ void init_app_pwm0_dev(void) {
 }
 
 void set_pwm0_duty_cycle_perc(uint8_t percent) {
-  uint16_t top_val = (uint16_t)pwm_get_top_value(pwm0);
-  pwm_set_duty_cycle(pwm0, 0, (uint16_t)(percent * top_val / 100));
+    uint16_t top_val = (uint16_t)pwm_get_top_value(pwm0);
+    pwm_set_duty_cycle(pwm0, 0, (uint16_t)(percent * top_val / 100));
 }
