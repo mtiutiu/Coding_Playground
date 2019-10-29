@@ -49,9 +49,9 @@ static struct bt_mesh_cfg_srv cfg_srv = {
 };
 
 static const struct bt_mesh_model_op gen_onoff_op[] = {
-  { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get},
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set},
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set_unack},
+  { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set_unack },
   BT_MESH_MODEL_OP_END,
 };
 

@@ -34,7 +34,7 @@
 CFG="-f interface/cmsis-dap.cfg -f target/nrf52.cfg"
 
 if [ "$MFG_IMAGE" ]; then
-    FLASH_OFFSET=0
+  FLASH_OFFSET=0
 fi
 
 # We write the config registers for BPROT so that NVMC write

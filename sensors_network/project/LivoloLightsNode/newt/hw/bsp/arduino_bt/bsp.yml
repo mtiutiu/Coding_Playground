@@ -23,11 +23,11 @@ bsp.maker: "TIU-TECH"
 bsp.arch: cortex_m4
 bsp.compiler: "@apache-mynewt-core/compiler/arm-none-eabi-m4"
 bsp.linkerscript:
-    - "hw/bsp/arduino_bt/nrf52xxaa.ld"
-    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
+  - "hw/bsp/arduino_bt/nrf52xxaa.ld"
+  - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
 bsp.linkerscript.BOOT_LOADER.OVERWRITE:
-    - "hw/bsp/arduino_bt/boot-nrf52xxaa.ld"
-    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
+  - "hw/bsp/arduino_bt/boot-nrf52xxaa.ld"
+  - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
 bsp.part2linkerscript: "hw/bsp/arduino_bt/split_arduino_bt_nrf52.ld"
 bsp.downloadscript: "hw/bsp/arduino_bt/arduino_bt_download.sh"
 bsp.debugscript: "hw/bsp/arduino_bt/arduino_bt_debug.sh"
@@ -35,33 +35,33 @@ bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/arduino_bt/arduino_bt_download.cmd
 bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/arduino_bt/arduino_bt_debug.cmd"
 
 bsp.flash_map:
-    areas:
-        # System areas.
-        FLASH_AREA_BOOTLOADER:
-            device: 0
-            offset: 0x00000000
-            size: 16kB
-        FLASH_AREA_IMAGE_0:
-            device: 0
-            offset: 0x00008000
-            size: 232kB
-        FLASH_AREA_IMAGE_1:
-            device: 0
-            offset: 0x00042000
-            size: 232kB
-        FLASH_AREA_IMAGE_SCRATCH:
-            device: 0
-            offset: 0x0007c000
-            size: 4kB
+  areas:
+    # System areas.
+    FLASH_AREA_BOOTLOADER:
+      device: 0
+      offset: 0x00000000
+      size: 16kB
+    FLASH_AREA_IMAGE_0:
+      device: 0
+      offset: 0x00008000
+      size: 232kB
+    FLASH_AREA_IMAGE_1:
+      device: 0
+      offset: 0x00042000
+      size: 232kB
+    FLASH_AREA_IMAGE_SCRATCH:
+      device: 0
+      offset: 0x0007c000
+      size: 4kB
 
-        # User areas.
-        FLASH_AREA_REBOOT_LOG:
-            user_id: 0
-            device: 0
-            offset: 0x00004000
-            size: 16kB
-        FLASH_AREA_NFFS:
-            user_id: 1
-            device: 0
-            offset: 0x0007d000
-            size: 12kB
+    # User areas.
+    FLASH_AREA_REBOOT_LOG:
+      user_id: 0
+      device: 0
+      offset: 0x00004000
+      size: 16kB
+    FLASH_AREA_NFFS:
+      user_id: 1
+      device: 0
+      offset: 0x0007d000
+      size: 12kB

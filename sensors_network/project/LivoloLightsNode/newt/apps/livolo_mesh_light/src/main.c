@@ -27,23 +27,23 @@
 // }
 
 int main(int argc, char **argv) {
-    /* Initialize OS */
-    sysinit();
+  /* Initialize OS */
+  sysinit();
 
-    /* Initialize the NimBLE host configuration. */
-    ble_hs_cfg.reset_cb = blemesh_on_reset;
-    ble_hs_cfg.sync_cb = blemesh_on_sync;
-    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+  /* Initialize the NimBLE host configuration. */
+  ble_hs_cfg.reset_cb = blemesh_on_reset;
+  ble_hs_cfg.sync_cb = blemesh_on_sync;
+  ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-    init_app_gpio();
-    //init_led_timer();
+  init_app_gpio();
+  //init_led_timer();
 #if MYNEWT_VAL(PWM_0)
-    // init pwm0 and set touch sensor sensitivity
-    init_app_pwm0_dev();
-    set_pwm0_duty_cycle_perc(MTSA_PERC_LVL);
+  // init pwm0 and set touch sensor sensitivity
+  init_app_pwm0_dev();
+  set_pwm0_duty_cycle_perc(MTSA_PERC_LVL);
 #endif
-    while (1) {
-        os_eventq_run(os_eventq_dflt_get());
-    }
+  while (1) {
+    os_eventq_run(os_eventq_dflt_get());
+  }
     return 0;
 }

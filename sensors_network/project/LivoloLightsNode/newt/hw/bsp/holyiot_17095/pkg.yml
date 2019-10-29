@@ -4,21 +4,21 @@ pkg.description: BSP definition for the Holyiot 17095 module.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
-    - nrf52
-    - holyiot
+  - nrf52
+  - holyiot
 
 pkg.cflags:
-    - '-DNRF52'
+  - "-DNRF52"
 
 pkg.cflags.HARDFLOAT:
-    - -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  - -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 pkg.deps:
-    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
-    - "@apache-mynewt-core/libc/baselibc"
+  - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
+  - "@apache-mynewt-core/libc/baselibc"
 
 pkg.deps.SOFT_PWM:
-    - "@apache-mynewt-core/hw/drivers/pwm/soft_pwm"
+  - "@apache-mynewt-core/hw/drivers/pwm/soft_pwm"
 
 pkg.deps.UARTBB_0:
-    - "@apache-mynewt-core/hw/drivers/uart/uart_bitbang"
+  - "@apache-mynewt-core/hw/drivers/uart/uart_bitbang"

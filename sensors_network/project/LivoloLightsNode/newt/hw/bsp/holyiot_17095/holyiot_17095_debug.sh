@@ -35,4 +35,3 @@ CFG="-f interface/cmsis-dap.cfg -f target/nrf52.cfg"
 EXTRA_JTAG_CMD="$EXTRA_JTAG_CMD; nrf52.cpu configure -event gdb-detach {if {[nrf52.cpu curstate] eq \"halted\"} resume;shutdown}"
 
 openocd_debug
-

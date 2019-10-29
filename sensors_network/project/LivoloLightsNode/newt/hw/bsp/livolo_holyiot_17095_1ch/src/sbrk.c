@@ -20,40 +20,37 @@
 #include <hal/hal_bsp.h>
 
 /* put these in the data section so they are not cleared by _start */
-static char *sbrkBase __attribute__ ((section (".data")));
-static char *sbrkLimit __attribute__ ((section (".data")));
-static char *brk __attribute__ ((section (".data")));
+static char *sbrkBase __attribute__((section(".data")));
+static char *sbrkLimit __attribute__((section(".data")));
+static char *brk __attribute__((section(".data")));
 
-void
-_sbrkInit(char *base, char *limit) {
-    sbrkBase = base;
-    sbrkLimit = limit;
-    brk = base;
+void _sbrkInit(char *base, char *limit) {
+  sbrkBase = base;
+  sbrkLimit = limit;
+  brk = base;
 }
 
-void *
-_sbrk(int incr)
-{
-    void *prev_brk;
+void *_sbrk(int incr) {
+  void *prev_brk;
 
-    if (incr < 0) {
-        /* Returning memory to the heap. */
-        incr = -incr;
-        if (brk - incr < sbrkBase) {
-            prev_brk = (void *)-1;
-        } else {
-            prev_brk = brk;
-            brk -= incr;
-        }
+  if (incr < 0) {
+    /* Returning memory to the heap. */
+    incr = -incr;
+    if (brk - incr < sbrkBase) {
+      prev_brk = (void *)-1;
     } else {
-        /* Allocating memory from the heap. */
-        if (sbrkLimit - brk >= incr) {
-            prev_brk = brk;
-            brk += incr;
-        } else {
-            prev_brk = (void *)-1;
-        }
+      prev_brk = brk;
+      brk -= incr;
     }
+  } else {
+    /* Allocating memory from the heap. */
+    if (sbrkLimit - brk >= incr) {
+      prev_brk = brk;
+      brk += incr;
+    } else {
+      prev_brk = (void *)-1;
+    }
+  }
 
-    return prev_brk;
+  return prev_brk;
 }

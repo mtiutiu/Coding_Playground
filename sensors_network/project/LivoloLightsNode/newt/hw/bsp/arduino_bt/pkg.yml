@@ -4,22 +4,22 @@ pkg.description: BSP definition for the Arduino BT.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
-    - Arduino
-    - BT
-    - nrf52
+  - Arduino
+  - BT
+  - nrf52
 
 pkg.cflags:
-    - '-DNRF52'
+  - "-DNRF52"
 
 pkg.cflags.HARDFLOAT:
-    - -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  - -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 pkg.deps:
-    - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
-    - "@apache-mynewt-core/libc/baselibc"
+  - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
+  - "@apache-mynewt-core/libc/baselibc"
 
 pkg.deps.BSP_UART_CONSOLE:
-    - "@apache-mynewt-core/sys/console/full"
-    - "@apache-mynewt-core/sys/log/full"
-    - "@apache-mynewt-core/sys/log/modlog"
-    - "@apache-mynewt-core/sys/stats/full"
+  - "@apache-mynewt-core/sys/console/full"
+  - "@apache-mynewt-core/sys/log/full"
+  - "@apache-mynewt-core/sys/log/modlog"
+  - "@apache-mynewt-core/sys/stats/full"
