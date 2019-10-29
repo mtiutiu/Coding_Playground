@@ -16,10 +16,6 @@
 #define CID_NUMBER 0x05C3
 
 static uint8_t gen_on_off_state;
-
-static struct bt_mesh_health_srv health_srv;
-static const struct bt_mesh_health_srv_cb health_srv_cb;
-static struct bt_mesh_model_pub health_pub;
 static struct bt_mesh_model_pub gen_onoff_pub;
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx);
@@ -33,7 +29,7 @@ static int output_number(bt_mesh_output_action_t action, uint32_t number);
 #endif
 
 static struct bt_mesh_cfg_srv cfg_srv = {
-  .relay = BT_MESH_RELAY_DISABLED,
+  .relay = BT_MESH_RELAY_ENABLED,
   .beacon = BT_MESH_BEACON_ENABLED,
 #if MYNEWT_VAL(BLE_MESH_FRIEND)
   .frnd = BT_MESH_FRIEND_ENABLED,
@@ -52,10 +48,6 @@ static struct bt_mesh_cfg_srv cfg_srv = {
   .relay_retransmit = BT_MESH_TRANSMIT(2, 20),
 };
 
-static struct bt_mesh_health_srv health_srv = {
-  .cb = &health_srv_cb,
-};
-
 static const struct bt_mesh_model_op gen_onoff_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get},
   { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set},
@@ -65,7 +57,6 @@ static const struct bt_mesh_model_op gen_onoff_op[] = {
 
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub),
   BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, NULL)
 };
 
