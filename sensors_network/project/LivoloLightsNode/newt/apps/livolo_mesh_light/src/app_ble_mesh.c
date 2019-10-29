@@ -11,11 +11,11 @@
 #endif
 #include "app_ble_mesh.h"
 
+static user_cb user_callbacks;
 
 /* Company ID */
 #define CID_NUMBER 0x05C3
 
-static uint8_t gen_on_off_state;
 static struct bt_mesh_model_pub gen_onoff_pub;
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx);
@@ -57,7 +57,7 @@ static const struct bt_mesh_model_op gen_onoff_op[] = {
 
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, NULL)
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, &user_callbacks)
 };
 
 static struct bt_mesh_elem elements[] = {
@@ -88,9 +88,15 @@ static const struct bt_mesh_prov prov = {
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(3);
   uint8_t *status;
+  uint8_t gen_on_off_state;
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("#mesh-onoff STATUS\n");
 #endif
+  user_cb *cb = model->user_data;
+  if (cb && cb->get_handler) {
+    cb->get_handler(&gen_on_off_state);
+  }
+
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   status = net_buf_simple_add(msg, 1);
   *status = gen_on_off_state;
@@ -115,9 +121,11 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("#mesh-onoff SET-UNACK\n");
 #endif
-
-  gen_on_off_state = buf->om_data[0];
-  hal_gpio_write(S1_LED_PIN, gen_on_off_state);
+  user_cb *cb =  model->user_data;
+  if (cb && cb->set_handler) {
+    uint8_t gen_on_off_state = buf->om_data[0];
+    cb->set_handler(gen_on_off_state);
+  }
 }
 
 static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
@@ -128,8 +136,12 @@ static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   gen_onoff_status(model, ctx);
 }
 
+void app_ble_mesh_register_user_onoff_cb(user_cb *cbs) {
+  user_callbacks = *cbs;
+}
+
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
-static int output_number(bt_mesh_output_action_t action, uint32_t number) {
+    static int output_number(bt_mesh_output_action_t action, uint32_t number) {
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("OOB Number: %lu\n", number);
 #endif

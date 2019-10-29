@@ -8,8 +8,21 @@
 #include "app_pwm.h"
 #define MTSA_PERC_LVL 50
 #endif
+#include "hal/hal_gpio.h"
 #include "host/ble_hs.h"
 
+void gen_onoff_get(uint8_t *data) {
+  *data = (uint8_t)hal_gpio_read(S1_LED_PIN);
+}
+
+void gen_onoff_set(uint8_t data) {
+  hal_gpio_write(S1_LED_PIN, (uint32_t)data);
+}
+
+user_cb user_callbacks = {
+  .get_handler = gen_onoff_get,
+  .set_handler = gen_onoff_set
+};
 
 // static struct os_callout led_code_blink_callout;
 
@@ -34,6 +47,8 @@ int main(int argc, char **argv) {
   ble_hs_cfg.reset_cb = blemesh_on_reset;
   ble_hs_cfg.sync_cb = blemesh_on_sync;
   ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+
+  app_ble_mesh_register_user_onoff_cb(&user_callbacks);
 
   init_app_gpio();
   //init_led_timer();
