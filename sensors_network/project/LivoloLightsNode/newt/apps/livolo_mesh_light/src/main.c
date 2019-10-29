@@ -12,7 +12,8 @@
 #include "host/ble_hs.h"
 
 void gen_onoff_get(uint8_t *data) {
-  *data = (uint8_t)hal_gpio_read(S1_LED_PIN);
+  uint8_t actual_state = (uint8_t)hal_gpio_read(S1_LED_PIN);
+  *data = actual_state;
 }
 
 void gen_onoff_set(uint8_t data) {

@@ -87,19 +87,18 @@ static const struct bt_mesh_prov prov = {
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(3);
-  uint8_t *status;
-  uint8_t gen_on_off_state;
+  uint8_t *state;
+  user_cb *cb = model->user_data;
+
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("#mesh-onoff STATUS\n");
 #endif
-  user_cb *cb = model->user_data;
-  if (cb && cb->get_handler) {
-    cb->get_handler(&gen_on_off_state);
-  }
-
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  status = net_buf_simple_add(msg, 1);
-  *status = gen_on_off_state;
+  state = net_buf_simple_add(msg, 1);
+
+  if (cb && cb->get_handler) {
+    cb->get_handler(state);
+  }
 
   if (bt_mesh_model_send(model, ctx, msg, NULL, NULL)) {
 #if (MYNEWT_VAL(BSP_UART_CONSOLE))
