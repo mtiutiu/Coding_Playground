@@ -6,13 +6,12 @@
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK  BT_MESH_MODEL_OP_2(0x82, 0x03)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_STATUS     BT_MESH_MODEL_OP_2(0x82, 0x04)
 
-
-typedef struct user_cb {
+typedef struct gen_onoff_mesh_srv_model_cb {
   void (*get_handler)(uint8_t *data);
   void (*set_handler)(uint8_t data);
-} user_cb;
+} gen_onoff_mesh_srv_model_cb;
 
-void app_ble_mesh_register_user_onoff_cb(user_cb *cbs);
+void app_ble_mesh_register_gen_onoff_cb(gen_onoff_mesh_srv_model_cb *cbs);
 void blemesh_on_reset(int reason);
 void blemesh_on_sync(void);
 

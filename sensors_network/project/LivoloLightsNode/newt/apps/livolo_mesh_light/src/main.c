@@ -11,16 +11,17 @@
 #include "hal/hal_gpio.h"
 #include "host/ble_hs.h"
 
+
 void gen_onoff_get(uint8_t *data) {
-  uint8_t actual_state = (uint8_t)hal_gpio_read(S1_LED_PIN);
-  *data = actual_state;
+  uint8_t current_state = (uint8_t)hal_gpio_read(S1_LED_PIN);
+  *data = current_state;
 }
 
 void gen_onoff_set(uint8_t data) {
   hal_gpio_write(S1_LED_PIN, (uint32_t)data);
 }
 
-user_cb user_callbacks = {
+gen_onoff_mesh_srv_model_cb gen_onoff_callbacks = {
   .get_handler = gen_onoff_get,
   .set_handler = gen_onoff_set
 };
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
   ble_hs_cfg.sync_cb = blemesh_on_sync;
   ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-  app_ble_mesh_register_user_onoff_cb(&user_callbacks);
+  app_ble_mesh_register_gen_onoff_cb(&gen_onoff_callbacks);
 
   init_app_gpio();
   //init_led_timer();
