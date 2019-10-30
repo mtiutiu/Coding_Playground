@@ -17,7 +17,10 @@ static gen_onoff_mesh_srv_model_cb gen_onoff_user_callbacks;
 #define CID_NUMBER 0x05C3
 
 static struct bt_mesh_model_pub gen_onoff_pub;
+static struct bt_mesh_model_pub gen_onoff_cli_pub;
+static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_cli_pub;
 
+static void gen_onoff_cli_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {}
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx);
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
 static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
@@ -55,9 +58,15 @@ static const struct bt_mesh_model_op gen_onoff_op[] = {
   BT_MESH_MODEL_OP_END,
 };
 
+static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
+  { BT_MESH_MODEL_OP_2(0x82, 0x04), 1, gen_onoff_cli_status },
+  BT_MESH_MODEL_OP_END,
+};
+
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, &gen_onoff_user_callbacks)
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, &gen_onoff_user_callbacks),
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_cli_pub, NULL)
 };
 
 static struct bt_mesh_elem elements[] = {
@@ -137,6 +146,20 @@ static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 
 void app_ble_mesh_register_gen_onoff_cb(gen_onoff_mesh_srv_model_cb *cbs) {
   gen_onoff_user_callbacks = *cbs;
+}
+
+void app_ble_mesh_init_publishers(void) {
+  bt_mesh_pub_msg_gen_onoff_cli_pub = NET_BUF_SIMPLE(2 + 1);
+  gen_onoff_cli_pub.msg = bt_mesh_pub_msg_gen_onoff_cli_pub;
+}
+
+void app_ble_mesh_publish_gen_onoff_state(uint8_t state) {
+  if(root_models[2].pub->addr == BT_MESH_ADDR_UNASSIGNED) {
+    return;
+  }
+  bt_mesh_model_msg_init(root_models[2].pub->msg, BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK);
+  net_buf_simple_add_u8(root_models[2].pub->msg, state);
+  bt_mesh_model_publish(&root_models[2]);
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))

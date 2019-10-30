@@ -11,6 +11,8 @@ typedef struct gen_onoff_mesh_srv_model_cb {
   void (*set_handler)(uint8_t data);
 } gen_onoff_mesh_srv_model_cb;
 
+void app_ble_mesh_init_publishers(void);
+void app_ble_mesh_publish_gen_onoff_state(uint8_t state);
 void app_ble_mesh_register_gen_onoff_cb(gen_onoff_mesh_srv_model_cb *cbs);
 void blemesh_on_reset(int reason);
 void blemesh_on_sync(void);

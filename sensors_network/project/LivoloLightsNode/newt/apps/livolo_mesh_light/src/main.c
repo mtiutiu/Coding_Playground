@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
   ble_hs_cfg.sync_cb = blemesh_on_sync;
   ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
+  app_ble_mesh_init_publishers();
   app_ble_mesh_register_gen_onoff_cb(&gen_onoff_callbacks);
 
   init_app_gpio();

@@ -1,9 +1,11 @@
 #include "bsp/bsp.h"
 #include "hal/hal_gpio.h"
 #include "app_gpio.h"
+#include "app_ble_mesh.h"
 
 static void gpio_irq_handler(void *arg) {
   hal_gpio_toggle(S1_LED_PIN);
+  app_ble_mesh_publish_gen_onoff_state((uint8_t)hal_gpio_read(S1_LED_PIN));
 }
 
 void init_app_gpio(void) {
