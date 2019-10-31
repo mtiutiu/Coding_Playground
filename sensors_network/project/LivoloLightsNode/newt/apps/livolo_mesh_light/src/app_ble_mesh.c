@@ -11,12 +11,12 @@
 #endif
 #include "app_ble_mesh.h"
 
-static gen_onoff_mesh_srv_model_cb gen_onoff_user_callbacks;
+static gen_onoff_mesh_srv_model_cb gen_onoff_srv_user_callbacks;
 
 /* Company ID */
 #define CID_NUMBER 0x05C3
 
-static struct bt_mesh_model_pub gen_onoff_pub;
+static struct bt_mesh_model_pub gen_onoff_srv_pub;
 static struct bt_mesh_model_pub gen_onoff_cli_pub;
 static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_cli_pub;
 
@@ -51,7 +51,9 @@ static struct bt_mesh_cfg_srv cfg_srv = {
   .relay_retransmit = BT_MESH_TRANSMIT(2, 20),
 };
 
-static const struct bt_mesh_model_op gen_onoff_op[] = {
+static struct bt_mesh_cfg_cli cfg_cli = {};
+
+static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get },
   { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set },
   { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set_unack },
@@ -65,7 +67,8 @@ static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
 
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_op, &gen_onoff_pub, &gen_onoff_user_callbacks),
+  BT_MESH_MODEL_CFG_CLI(&cfg_cli),
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_srv_pub, &gen_onoff_srv_user_callbacks),
   BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_cli_pub, NULL)
 };
 
@@ -95,7 +98,7 @@ static const struct bt_mesh_prov prov = {
 };
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx) {
-  struct os_mbuf *msg = NET_BUF_SIMPLE(3);
+  struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1);
   uint8_t *state;
   gen_onoff_mesh_srv_model_cb *cb = model->user_data;
 
@@ -145,7 +148,7 @@ static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 }
 
 void app_ble_mesh_register_gen_onoff_cb(gen_onoff_mesh_srv_model_cb *cbs) {
-  gen_onoff_user_callbacks = *cbs;
+  gen_onoff_srv_user_callbacks = *cbs;
 }
 
 void app_ble_mesh_init_publishers(void) {
@@ -154,12 +157,12 @@ void app_ble_mesh_init_publishers(void) {
 }
 
 void app_ble_mesh_publish_gen_onoff_state(uint8_t state) {
-  if(root_models[2].pub->addr == BT_MESH_ADDR_UNASSIGNED) {
+  if(root_models[3].pub->addr == BT_MESH_ADDR_UNASSIGNED) {
     return;
   }
-  bt_mesh_model_msg_init(root_models[2].pub->msg, BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK);
-  net_buf_simple_add_u8(root_models[2].pub->msg, state);
-  bt_mesh_model_publish(&root_models[2]);
+  bt_mesh_model_msg_init(root_models[3].pub->msg, BT_MESH_MODEL_OP_GEN_ONOFF_SET);
+  net_buf_simple_add_u8(root_models[3].pub->msg, state);
+  bt_mesh_model_publish(&root_models[3]);
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))

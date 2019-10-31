@@ -3,9 +3,15 @@
 #include "app_gpio.h"
 #include "app_ble_mesh.h"
 
+
 static void gpio_irq_handler(void *arg) {
+  static uint8_t current_state;
+
   hal_gpio_toggle(S1_LED_PIN);
-  app_ble_mesh_publish_gen_onoff_state((uint8_t)hal_gpio_read(S1_LED_PIN));
+
+  current_state = hal_gpio_read(S1_LED_PIN);
+
+  app_ble_mesh_publish_gen_onoff_state(current_state);
 }
 
 void init_app_gpio(void) {

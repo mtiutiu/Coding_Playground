@@ -45,14 +45,6 @@ int main(int argc, char **argv) {
   /* Initialize OS */
   sysinit();
 
-  /* Initialize the NimBLE host configuration. */
-  ble_hs_cfg.reset_cb = blemesh_on_reset;
-  ble_hs_cfg.sync_cb = blemesh_on_sync;
-  ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
-
-  app_ble_mesh_init_publishers();
-  app_ble_mesh_register_gen_onoff_cb(&gen_onoff_callbacks);
-
   init_app_gpio();
   //init_led_timer();
 #if MYNEWT_VAL(PWM_0)
@@ -60,6 +52,15 @@ int main(int argc, char **argv) {
   init_app_pwm0_dev();
   set_pwm0_duty_cycle_perc(MTSA_PERC_LVL);
 #endif
+
+  app_ble_mesh_init_publishers();
+  app_ble_mesh_register_gen_onoff_cb(&gen_onoff_callbacks);
+
+  /* Initialize the NimBLE host configuration. */
+  ble_hs_cfg.reset_cb = blemesh_on_reset;
+  ble_hs_cfg.sync_cb = blemesh_on_sync;
+  ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+
   while (1) {
     os_eventq_run(os_eventq_dflt_get());
   }
