@@ -35,6 +35,7 @@
 
 #define LOW   0
 #define HIGH  1
+#define BTN_DEBOUNCE_INTERVAL_MS  250
 
 #define CID_RUNTIME 0x05C3
 
@@ -57,12 +58,12 @@ static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx
 static struct bt_mesh_cfg_srv cfg_srv = {
   .relay = BT_MESH_RELAY_DISABLED,
   .beacon = BT_MESH_BEACON_ENABLED,
-#if defined(CONFIG_BT_MESH_FRIEND)
+#if MYNEWT_VAL(BLE_MESH_FRIEND)
   .frnd = BT_MESH_FRIEND_ENABLED,
 #else
-  .frnd = BT_MESH_FRIEND_NOT_SUPPORTED,
+  .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
 #endif
-#if defined(CONFIG_BT_MESH_GATT_PROXY)
+#if MYNEWT_VAL(BLE_MESH_GATT_PROXY)
   .gatt_proxy = BT_MESH_GATT_PROXY_ENABLED,
 #else
   .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
@@ -196,7 +197,6 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = model->pub->msg;
-  uint8_t previous_state = hal_gpio_read(LED_1);
   uint8_t new_state = net_buf_simple_pull_u8(buf);
 
   hal_gpio_write(LED_1, new_state);
@@ -209,14 +209,17 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
    *
    * Only publish if there is an assigned address
    */
+  if (model->pub->addr == BT_MESH_ADDR_UNASSIGNED) {
+    return;
+  }
 
-  if (new_state != previous_state && model->pub->addr != BT_MESH_ADDR_UNASSIGNED) {
-    bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-    net_buf_simple_add_u8(msg, new_state);
-    int err = bt_mesh_model_publish(model);
-    if (err) {
-      console_printf("bt_mesh_model_publish err %d\n", err);
-    }
+  bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
+  net_buf_simple_add_u8(msg, hal_gpio_read(LED_1));
+
+  console_printf("bt_mesh_model_publish new state: %d\n", new_state);
+  int err = bt_mesh_model_publish(model);
+  if (err) {
+    console_printf("bt_mesh_model_publish err %d\n", err);
   }
 }
 
@@ -284,8 +287,14 @@ void init_led(uint8_t dev) {
 }
 
 static void gpio_irq_handler(void *arg) {
-  hal_gpio_toggle(LED_1);
-  bt_mesh_gen_onoff_client_publish(hal_gpio_read(LED_1));
+  static uint32_t last_pressed_time_ms;
+
+  // simple debouncing
+  if ((k_uptime_get_32() - last_pressed_time_ms) >= BTN_DEBOUNCE_INTERVAL_MS) {
+    hal_gpio_toggle(LED_1);
+    bt_mesh_gen_onoff_client_publish(hal_gpio_read(LED_1));
+    last_pressed_time_ms = k_uptime_get_32();
+  }
 }
 
 void init_button(int button) {
