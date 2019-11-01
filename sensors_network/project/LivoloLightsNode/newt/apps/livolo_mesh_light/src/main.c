@@ -41,7 +41,7 @@ gen_onoff_mesh_srv_model_cb gen_onoff_callbacks = {
 //     os_callout_reset(&led_code_blink_callout, OS_TICKS_PER_SEC);
 // }
 
-int main(int argc, char **argv) {
+int main(void) {
   /* Initialize OS */
   sysinit();
 

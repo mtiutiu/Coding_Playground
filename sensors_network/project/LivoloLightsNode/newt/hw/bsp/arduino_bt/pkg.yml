@@ -17,9 +17,3 @@ pkg.cflags.HARDFLOAT:
 pkg.deps:
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
   - "@apache-mynewt-core/libc/baselibc"
-
-pkg.deps.BSP_UART_CONSOLE:
-  - "@apache-mynewt-core/sys/console/full"
-  - "@apache-mynewt-core/sys/log/full"
-  - "@apache-mynewt-core/sys/log/modlog"
-  - "@apache-mynewt-core/sys/stats/full"

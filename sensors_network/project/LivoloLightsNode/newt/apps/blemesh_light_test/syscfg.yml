@@ -1,39 +1,37 @@
-syscfg.defs:
-  BLE_MESH_OOB_PROV_ENABLED:
-    description: "Set to indicate OOB provisioning is enabled"
-    value: 1
-
 syscfg.vals:
   # Set log level.
   LOG_LEVEL: 3
+
+  # SMP is not supported in this app, so disable smp-over-shell.
+  SHELL_MGMT: 0
 
   # Default task settings
   OS_MAIN_STACK_SIZE: 768
   MSYS_1_BLOCK_COUNT: 48
 
   BLE_MESH: 1
-
+  BLE_MESH_CFG_CLI: 1
   BLE_MESH_PROV: 1
   BLE_MESH_PB_ADV: 1
   BLE_MESH_PB_GATT: 1
   BLE_MESH_GATT_PROXY: 1
 
-  BLE_MESH_RELAY: 1
+  BLE_MESH_RELAY: 0
   BLE_MESH_LOW_POWER: 0
   BLE_MESH_LPN_AUTO: 0
   BLE_MESH_FRIEND: 0
 
-  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xdd, 0xdd, 0})"
+  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xdd, 0xde, 0})"
   BLE_MESH_DEVICE_NAME: '"Arduino_BT"'
 
   BLE_MESH_TX_SEG_MAX: 6
-  #There must be at least 3 more advertising buffers (BT_MESH_ADV_BUF_COUNT) as there are outgoing segments (BLE_MESH_TX_SEG_MAX)
+  #There must be at least 3 more advertising buffers (BT_MESH_ADV_BUF_COUNT) than outgoing segments (BLE_MESH_TX_SEG_MAX)
   BLE_MESH_ADV_BUF_COUNT: 20
 
   BLE_MESH_DEBUG_SETTINGS: 0
 
   BLE_MESH_SETTINGS: 1
-  BLE_MESH_OOB_PROV_ENABLED: 1
+  BLE_MESH_OOB_PROV_ENABLED: 0
 
   CONFIG_FCB: 1
   CONFIG_NFFS: 0
