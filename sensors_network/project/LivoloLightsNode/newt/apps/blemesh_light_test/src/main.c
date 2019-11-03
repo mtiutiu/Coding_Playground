@@ -128,8 +128,8 @@ void init_pub(void) {
 
 static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get },
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 2, gen_onoff_set },
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 2, gen_onoff_set_unack },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 1, gen_onoff_set },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 1, gen_onoff_set_unack },
   BT_MESH_MODEL_OP_END,
 };
 
@@ -180,7 +180,7 @@ static const struct bt_mesh_comp comp = {
  */
 
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
-  struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1);
+  struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
   uint8_t current_state = hal_gpio_read(LED_1);
 
   console_printf("addr 0x%04x onoff 0x%02x\n", bt_mesh_model_elem(model)->addr, current_state);
