@@ -183,13 +183,13 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
   uint8_t current_state = hal_gpio_read(LED_1);
 
-  console_printf("addr 0x%04x onoff 0x%02x\n", bt_mesh_model_elem(model)->addr, current_state);
+  console_printf("[INFO] Mesh OnOff GET operation! Sending reply payload: %d\n", current_state);
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   net_buf_simple_add_u8(msg, current_state);
 
   int err = bt_mesh_model_send(model, ctx, msg, NULL, NULL);
   if (err) {
-    console_printf("Unable to send On Off Status response\n");
+    console_printf("[ERROR] Unable to send On Off Status response\n");
   }
 
   os_mbuf_free_chain(msg);
@@ -198,6 +198,8 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = model->pub->msg;
   uint8_t new_state = net_buf_simple_pull_u8(buf);
+
+  console_printf("[INFO] Mesh OnOff SET operation! Received payload: %d\n", new_state);
 
   hal_gpio_write(LED_1, new_state);
 
@@ -216,10 +218,9 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   net_buf_simple_add_u8(msg, hal_gpio_read(LED_1));
 
-  console_printf("bt_mesh_model_publish new state: %d\n", new_state);
   int err = bt_mesh_model_publish(model);
   if (err) {
-    console_printf("bt_mesh_model_publish err %d\n", err);
+    console_printf("[ERROR] bt_mesh_model_publish err %d\n", err);
   }
 }
 
@@ -231,7 +232,7 @@ static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   uint8_t state = net_buf_simple_pull_u8(buf);
 
-  console_printf("Node 0x%04x OnOff status from 0x%04x with state 0x%02x\n", bt_mesh_model_elem(model)->addr, ctx->addr, state);
+  console_printf("[INFO] Node 0x%04x OnOff status from 0x%04x with state 0x%02x\n", bt_mesh_model_elem(model)->addr, ctx->addr, state);
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
@@ -242,7 +243,7 @@ static int output_number(bt_mesh_output_action_t action, u32_t number) {
 #endif
 
 static void prov_complete(u16_t net_idx, u16_t addr) {
-  console_printf("provisioning complete for net_idx 0x%04x addr 0x%04x\n", net_idx, addr);
+  console_printf("[INFO] Provisioning complete for net_idx 0x%04x addr 0x%04x\n", net_idx, addr);
 }
 
 static void prov_reset(void) {
@@ -278,7 +279,7 @@ void bt_mesh_gen_onoff_client_publish(uint8_t data) {
   net_buf_simple_add_u8(pub_cli->msg, data);
   int err = bt_mesh_model_publish(mod_cli);
   if (err) {
-    console_printf("bt_mesh_model_publish err %d\n", err);
+    console_printf("[ERROR] bt_mesh_model_publish err %d\n", err);
   }
 }
 
@@ -303,14 +304,14 @@ void init_button(int button) {
 }
 
 static void blemesh_on_reset(int reason) {
-  console_printf("Resetting state; reason=%d\n", reason);
+  console_printf("[INFO] Resetting state; reason=%d\n", reason);
 }
 
 static void blemesh_on_sync(void) {
   int err;
   ble_addr_t addr;
 
-  console_printf("Bluetooth initialized\n");
+  console_printf("[INFO] Bluetooth initialized\n");
 
   /* Use NRPA */
   err = ble_hs_id_gen_rnd(1, &addr);
@@ -320,7 +321,7 @@ static void blemesh_on_sync(void) {
 
   err = bt_mesh_init(addr.type, &prov, &comp);
   if (err) {
-    console_printf("Initializing mesh failed (err %d)\n", err);
+    console_printf("[INFO] Initializing mesh failed (err %d)\n", err);
     return;
   }
 
@@ -329,19 +330,19 @@ static void blemesh_on_sync(void) {
   }
 
   if (bt_mesh_is_provisioned()) {
-    console_printf("Mesh network restored from flash\n");
+    console_printf("[INFO] Mesh network restored from flash\n");
   }
 
   bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
 
-  console_printf("Mesh initialized\n");
+  console_printf("[INFO] Mesh initialized\n");
 }
 
 int main(void) {
   /* Initialize OS */
   sysinit();
 
-  console_printf("Initializing...\n");
+  console_printf("[INFO] System initializing...\n");
 
   init_led(LED_1);
   init_button(BUTTON_1);

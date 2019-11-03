@@ -1,3 +1,0 @@
-target.app: apps/livolo_mesh_light
-target.bsp: hw/bsp/livolo_holyiot_17095_1ch
-target.build_profile: optimized

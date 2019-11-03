@@ -7,12 +7,9 @@ pkg.keywords:
 
 pkg.deps:
   - "@apache-mynewt-core/kernel/os"
-  - "@apache-mynewt-nimble/nimble/controller"
-  - "@apache-mynewt-nimble/nimble/host"
-  - "@apache-mynewt-nimble/nimble/host/services/gap"
+  - "@apache-mynewt-nimble/nimble/host/mesh"
+  - "@apache-mynewt-nimble/nimble/transport"
   - "@apache-mynewt-nimble/nimble/host/services/gatt"
-  - "@apache-mynewt-nimble/nimble/host/store/config"
-  - "@apache-mynewt-nimble/nimble/transport/ram"
 
 pkg.deps.BSP_UART_CONSOLE:
   - "@apache-mynewt-core/sys/console/full"

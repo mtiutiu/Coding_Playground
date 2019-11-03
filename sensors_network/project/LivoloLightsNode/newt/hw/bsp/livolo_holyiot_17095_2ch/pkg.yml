@@ -16,9 +16,6 @@ pkg.cflags.HARDFLOAT:
 pkg.deps:
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
   - "@apache-mynewt-core/libc/baselibc"
-  - "@apache-mynewt-core/hw/util/button"
+
+pkg.deps.PWM_0:
   - "@apache-mynewt-core/hw/drivers/pwm"
-  - "@apache-mynewt-core/sys/console/stub"
-  - "@apache-mynewt-core/sys/log/stub"
-  - "@apache-mynewt-core/sys/log/stub"
-  - "@apache-mynewt-core/sys/stats/stub"

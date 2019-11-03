@@ -16,9 +16,3 @@ pkg.cflags.HARDFLOAT:
 pkg.deps:
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx"
   - "@apache-mynewt-core/libc/baselibc"
-
-pkg.deps.SOFT_PWM:
-  - "@apache-mynewt-core/hw/drivers/pwm/soft_pwm"
-
-pkg.deps.UARTBB_0:
-  - "@apache-mynewt-core/hw/drivers/uart/uart_bitbang"
