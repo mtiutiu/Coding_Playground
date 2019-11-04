@@ -68,6 +68,23 @@ Notes:
  - LED_1
  - BUTTON_1
 
+ The app will log messages using the bsp UART console if available. The logging level can be adjusted in `syscfg.yaml` by setting the `LOG_LEVEL` value (`1` means the most verbose).
+Other ble mesh debug settings can be enabled if desired (set to `1` to enable):
+```
+BLE_MESH_DEBUG: 0
+BLE_MESH_DEBUG_NET: 0
+BLE_MESH_DEBUG_TRANS: 0
+BLE_MESH_DEBUG_BEACON: 0
+BLE_MESH_DEBUG_CRYPTO: 0
+BLE_MESH_DEBUG_PROV: 0
+BLE_MESH_DEBUG_ACCESS: 0
+BLE_MESH_DEBUG_MODEL: 0
+BLE_MESH_DEBUG_ADV: 0
+BLE_MESH_DEBUG_LOW_POWER: 0
+BLE_MESH_DEBUG_FRIEND: 0
+BLE_MESH_DEBUG_PROXY: 0
+```
+
 
 See also:
 [Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
