@@ -1,3 +1,11 @@
+syscfg.defs:
+  BSP_UART_CONSOLE:
+    description: "Set to indicate that BSP has a debug UART console"
+    value: 1
+  BLE_MESH_OOB_PROV_ENABLED:
+    description: "Set to indicate if OOB provisioning is enabled"
+    value: 0
+
 syscfg.vals:
   # Set log level.
   LOG_LEVEL: 3

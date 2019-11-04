@@ -19,41 +19,55 @@
 #
 -->
 
-# Apache Blinky
+# Apache Nimble Mesh Generic OnOff test app
 
 ## Overview
 
-Apache Blinky is a skeleton for new Apache Mynewt projects.  The user downloads
-this skeleton by issuing the "newt new" command (using Apache Newt).  Apache
-blinky also contains an example app and target for use with Apache Mynewt to
-help you get started.
+Testing BLE Mesh generic onoff server/client
 
 ## Building
 
-Apache Blinky contains an example Apache Mynewt application called blinky.
-When executed on suitably equipped hardware, this application repeatedly blinks
-an LED.  The below procedure describes how to build this application for the
-Apache Mynewt simulator.
+1. Prerequisites
 
-1. Download and install Apache Newt.
+- Download the Apache Newt tool, as documented in the [Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
+- Obtain and install `GCC ARM Embedded` for your OS (and make the `bin` directory available in the `PATH` env variable)
+- Depending on your hardware you need JLink or OpenOCD installed also (and available in `PATH`)
+- Every following step is done inside the [newt](https://github.com/mtiutiu/Coding_Playground/tree/master/sensors_network/project/LivoloLightsNode/newt) directory from this repo
 
-You will need to download the Apache Newt tool, as documented in the [Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
+1. Download the project dependencies
 
-2. Download the Apache Mynewt Core package (executed from the blinky directory).
-
-```no-highlight
-    $ newt install
+```
+  $ newt upgrade
+```
+```
+Note:
+ If getting this `Error: Error updating "mcuboot": error: The following untracked working tree files would be overwritten by checkout...` you can safely delete the `repos/mcuboot/ext` directory and run `newt upgrade again`
 ```
 
-3. Build the blinky app for the sim platform using the "my_blinky_sim" target
-(executed from the blinky directory).
+1. Create a new target for the bootloader then build and flash it to your specific bsp ([available bsp's](https://github.com/apache/mynewt-core/tree/master/hw/bsp))
 
-```no-highlight
-    $ newt build my_blinky_sim
+```
+  $ newt target create mesh_test_boot
+  $ newt target set mesh_test_boot app=@mcuboot/boot/mynewt bsp=@apache-mynewt-core/hw/bsp/nordic_pca10040 build_profile=optimized
+  $ newt build mesh_test_boot
+  $ newt load mesh_test_boot
 ```
 
-The Apache Newt tool should indicate the location of the generated blinky
-executable.  Since the simulator does not have an LED to blink, this version of
-blinky is not terribly exciting - a printed message indicating the current LED
-state.  To learn how to build blinky for actual hardware, please see the
+4. Create a new target for the main application then build and flash it
+
+```
+  $ newt target create mesh_test_app
+  $ newt target set mesh_test_app app=apps/blemesh_light_test bsp=@apache-mynewt-core/hw/bsp/nordic_pca10040 build_profile=optimized
+  $ newt build mesh_test_app
+  $ newt create-image mesh_test_app 0.0.1
+  $ newt load mesh_test_app
+```
+
+Notes:
+ In case of compile errors the blemesh_light_test [main.c](https://github.com/mtiutiu/Coding_Playground/blob/master/sensors_network/project/LivoloLightsNode/newt/apps/blemesh_light_test/src/main.c) file uses bsp specific macros (only two actually) that may need to be changed (or redefined) for your specific bsp:
+ - LED_1
+ - BUTTON_1
+
+
+See also:
 [Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
