@@ -34,7 +34,7 @@ Testing BLE Mesh generic onoff server/client
 - Depending on your hardware you need JLink or OpenOCD installed also (and available in `PATH`)
 - Every following step is done inside the [newt](https://github.com/mtiutiu/Coding_Playground/tree/master/sensors_network/project/LivoloLightsNode/newt) directory from this repo
 
-1. Download the project dependencies
+2. Download the project dependencies
 
 ```
   $ newt upgrade
@@ -44,7 +44,7 @@ Note:
  If getting this `Error: Error updating "mcuboot": error: The following untracked working tree files would be overwritten by checkout...` you can safely delete the `repos/mcuboot/ext` directory and run `newt upgrade again`
 ```
 
-1. Create a new target for the bootloader then build and flash it to your specific bsp ([available bsp's](https://github.com/apache/mynewt-core/tree/master/hw/bsp))
+3. Create a new target for the bootloader then build and flash it to your specific bsp ([available bsp's](https://github.com/apache/mynewt-core/tree/master/hw/bsp))
 
 ```
   $ newt target create mesh_test_boot
