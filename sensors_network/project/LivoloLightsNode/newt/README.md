@@ -30,8 +30,8 @@ Testing BLE Mesh generic onoff server/client
 1. Prerequisites
 
 - Download the Apache Newt tool, as documented in the [Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
-- Obtain and install `GCC ARM Embedded` for your OS as documented [here](https://mynewt.apache.org/latest/get_started/native_install/cross_tools.html#installing-the-arm-cross-toolchain)
-- Depending on your hardware you need JLink or OpenOCD installed also as documented [here](https://mynewt.apache.org/latest/get_started/native_install/cross_tools.html#installing-the-debuggers)
+- Obtain and install `GCC ARM Embedded` for your OS as described [here](https://mynewt.apache.org/latest/get_started/native_install/cross_tools.html#installing-the-arm-cross-toolchain)
+- Depending on your hardware you need JLink or OpenOCD installed also as described [here](https://mynewt.apache.org/latest/get_started/native_install/cross_tools.html#installing-the-debuggers)
 - Every following step is done inside the [newt](https://github.com/mtiutiu/Coding_Playground/tree/master/sensors_network/project/LivoloLightsNode/newt) directory from this repo
 
 2. Download the project dependencies
