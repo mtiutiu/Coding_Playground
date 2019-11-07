@@ -2,6 +2,12 @@ syscfg.defs:
   BSP_NRF52:
     description: "Set to indicate that BSP has NRF52"
     value: 1
+BSP_UART_CONSOLE:
+  description: "Set to indicate that BSP has a debug UART console"
+  value: 0
+BLE_MESH_OOB_PROV_ENABLED:
+  description: "Set to indicate if OOB provisioning is enabled"
+  value: 0
 
 syscfg.vals:
   # Enable nRF52832 MCU
