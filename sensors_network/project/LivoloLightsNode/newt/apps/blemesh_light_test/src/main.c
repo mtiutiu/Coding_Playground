@@ -36,7 +36,7 @@
 
 #define LOW   0
 #define HIGH  1
-#define BTN_DEBOUNCE_INTERVAL_MS  250
+#define BTN_DEBOUNCE_INTERVAL_MS  500
 
 #define CID_RUNTIME 0x05C3
 
@@ -76,7 +76,7 @@ static void ch1_relay_trigger(uint8_t new_state, os_time_t timeout) {
 static void ch1_relay_toggle() {
   ch1_state = !ch1_state;
 
-  ch1_relay_trigger(ch1_state, OS_TICKS_PER_SEC / 20);
+  ch1_relay_trigger(ch1_state, OS_TICKS_PER_SEC / 64);
 }
 
 static struct pwm_dev *pwm0;
@@ -241,15 +241,17 @@ static const struct bt_mesh_comp comp = {
 
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
-  uint8_t current_state = ch1_state;
-
-  console_printf("[INFO] Mesh OnOff GET operation! Sending reply payload: %d\n", current_state);
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
+  console_printf("[INFO] Mesh OnOff GET operation! Sending reply payload: %d\n", ch1_state);
+#endif
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  net_buf_simple_add_u8(msg, current_state);
+  net_buf_simple_add_u8(msg, ch1_state);
 
   int err = bt_mesh_model_send(model, ctx, msg, NULL, NULL);
   if (err) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("[ERROR] Unable to send On Off Status response\n");
+#endif
   }
 
   os_mbuf_free_chain(msg);
@@ -258,10 +260,10 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = model->pub->msg;
   uint8_t new_state = net_buf_simple_pull_u8(buf);
-
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] Mesh OnOff SET operation! Received payload: %d\n", new_state);
-
-  ch1_relay_trigger(new_state, OS_TICKS_PER_SEC / 20);
+#endif
+  ch1_relay_trigger(new_state, OS_TICKS_PER_SEC / 64);
 
 
   /*
@@ -281,7 +283,9 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
 
   int err = bt_mesh_model_publish(model);
   if (err) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("[ERROR] bt_mesh_model_publish err %d\n", err);
+#endif
   }
 }
 
@@ -291,20 +295,25 @@ static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 }
 
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   uint8_t state = net_buf_simple_pull_u8(buf);
-
   console_printf("[INFO] Node 0x%04x OnOff status from 0x%04x with state 0x%02x\n", bt_mesh_model_elem(model)->addr, ctx->addr, state);
+#endif
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
 static int output_number(bt_mesh_output_action_t action, u32_t number) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("OOB Number %ld\n", number);
+#endif
   return 0;
 }
 #endif
 
 static void prov_complete(u16_t net_idx, u16_t addr) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] Provisioning complete for net_idx 0x%04x addr 0x%04x\n", net_idx, addr);
+#endif
 }
 
 static void prov_reset(void) {
@@ -340,7 +349,9 @@ void bt_mesh_gen_onoff_client_publish(uint8_t data) {
   net_buf_simple_add_u8(pub_cli->msg, data);
   int err = bt_mesh_model_publish(mod_cli);
   if (err) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("[ERROR] bt_mesh_model_publish err %d\n", err);
+#endif
   }
 }
 
@@ -361,15 +372,17 @@ static void init_button(int button) {
 }
 
 static void blemesh_on_reset(int reason) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] Resetting state; reason=%d\n", reason);
+#endif
 }
 
 static void blemesh_on_sync(void) {
   int err;
   ble_addr_t addr;
-
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] Bluetooth initialized\n");
-
+#endif
   /* Use NRPA */
   err = ble_hs_id_gen_rnd(1, &addr);
   assert(err == 0);
@@ -378,7 +391,9 @@ static void blemesh_on_sync(void) {
 
   err = bt_mesh_init(addr.type, &prov, &comp);
   if (err) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("[INFO] Initializing mesh failed (err %d)\n", err);
+#endif
     return;
   }
 
@@ -387,26 +402,30 @@ static void blemesh_on_sync(void) {
   }
 
   if (bt_mesh_is_provisioned()) {
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
     console_printf("[INFO] Mesh network restored from flash\n");
+#endif
   }
 
   bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
-
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] Mesh initialized\n");
+#endif
 }
 
 int main(void) {
   /* Initialize OS */
   sysinit();
-
+#if (MYNEWT_VAL(BSP_UART_CONSOLE))
   console_printf("[INFO] System initializing...\n");
-
+#endif
   hal_gpio_init_out(RELAY1_SET_PIN, LOW);
   hal_gpio_init_out(RELAY1_RESET_PIN, LOW);
   hal_gpio_init_out(S1_LED_PIN, HIGH);
+  hal_gpio_init_out(MTPM_PIN, HIGH);
   init_button(TS1_PIN);
   init_pwm0_dev();
-  set_pwm0_duty_cycle_perc(20);
+  set_pwm0_duty_cycle_perc(40);
 
   os_callout_init(&relay_callout, os_eventq_dflt_get(), relay_timer_ev_cb, NULL);
   ch1_relay_trigger(OFF, OS_TICKS_PER_SEC * 2);
