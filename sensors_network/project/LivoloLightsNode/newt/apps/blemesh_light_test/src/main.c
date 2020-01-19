@@ -32,6 +32,7 @@
 #include "mesh/glue.h"
 #include "mesh/mesh.h"
 #include "os/mynewt.h"
+#include "pwm/pwm.h"
 
 #define LOW   0
 #define HIGH  1
@@ -49,6 +50,65 @@ static void gen_onoff_set(struct bt_mesh_model * model, struct bt_mesh_msg_ctx *
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+
+
+#define OFF 0
+#define ON  1
+static struct os_callout relay_callout;
+static uint8_t relay_pin;
+static uint8_t ch1_state;
+
+static void relay_timer_ev_cb(struct os_event *ev) {
+  assert(ev != NULL);
+
+  hal_gpio_write(relay_pin, LOW);
+}
+
+static void ch1_relay_trigger(uint8_t new_state, os_time_t timeout) {
+  relay_pin = (new_state == ON) ? RELAY1_SET_PIN : RELAY1_RESET_PIN;
+
+  hal_gpio_write(S1_LED_PIN, !new_state);
+
+  hal_gpio_write(relay_pin, HIGH);
+  os_callout_reset(&relay_callout, timeout);
+}
+
+static void ch1_relay_toggle() {
+  ch1_state = !ch1_state;
+
+  ch1_relay_trigger(ch1_state, OS_TICKS_PER_SEC / 20);
+}
+
+static struct pwm_dev *pwm0;
+static struct pwm_chan_cfg mtsa_conf;
+
+static struct pwm_dev_cfg dev_conf = {
+    .n_cycles = 0,
+    .int_prio = 3,
+};
+
+static struct pwm_chan_cfg mtsa_conf = {
+    .pin = MTSA_PIN,
+    .inverted = false,
+};
+
+static void init_pwm0_dev(void) {
+  int rc = 0;
+
+  pwm0 = (struct pwm_dev *)os_dev_open("pwm0", 0, NULL);
+  assert(pwm0);
+  rc = pwm_configure_device(pwm0, &dev_conf);
+  assert(rc == 0);
+  rc = pwm_configure_channel(pwm0, 0, &mtsa_conf);
+  assert(rc == 0);
+  rc = pwm_enable(pwm0);
+  assert(rc == 0);
+}
+
+static void set_pwm0_duty_cycle_perc(uint8_t percent) {
+  uint16_t top_val = (uint16_t)pwm_get_top_value(pwm0);
+  pwm_set_duty_cycle(pwm0, 0, (uint16_t)(percent * top_val / 100));
+}
 
 
 /*
@@ -181,7 +241,7 @@ static const struct bt_mesh_comp comp = {
 
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
-  uint8_t current_state = hal_gpio_read(LED_1);
+  uint8_t current_state = ch1_state;
 
   console_printf("[INFO] Mesh OnOff GET operation! Sending reply payload: %d\n", current_state);
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
@@ -201,7 +261,8 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
 
   console_printf("[INFO] Mesh OnOff SET operation! Received payload: %d\n", new_state);
 
-  hal_gpio_write(LED_1, new_state);
+  ch1_relay_trigger(new_state, OS_TICKS_PER_SEC / 20);
+
 
   /*
    * If a server has a publish address, it is required to
@@ -216,7 +277,7 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
   }
 
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  net_buf_simple_add_u8(msg, hal_gpio_read(LED_1));
+  net_buf_simple_add_u8(msg, hal_gpio_read(S1_LED_PIN));
 
   int err = bt_mesh_model_publish(model);
   if (err) {
@@ -283,22 +344,18 @@ void bt_mesh_gen_onoff_client_publish(uint8_t data) {
   }
 }
 
-void init_led(uint8_t dev) {
-  hal_gpio_init_out(dev, LOW);
-}
-
 static void gpio_irq_handler(void *arg) {
   static uint32_t last_pressed_time_ms;
 
   // simple debouncing
   if ((k_uptime_get_32() - last_pressed_time_ms) >= BTN_DEBOUNCE_INTERVAL_MS) {
-    hal_gpio_toggle(LED_1);
-    bt_mesh_gen_onoff_client_publish(hal_gpio_read(LED_1));
+    ch1_relay_toggle();
+    bt_mesh_gen_onoff_client_publish(hal_gpio_read(S1_LED_PIN));
     last_pressed_time_ms = k_uptime_get_32();
   }
 }
 
-void init_button(int button) {
+static void init_button(int button) {
   hal_gpio_irq_init(button, gpio_irq_handler, NULL, HAL_GPIO_TRIG_FALLING, HAL_GPIO_PULL_UP);
   hal_gpio_irq_enable(button);
 }
@@ -344,8 +401,15 @@ int main(void) {
 
   console_printf("[INFO] System initializing...\n");
 
-  init_led(LED_1);
-  init_button(BUTTON_1);
+  hal_gpio_init_out(RELAY1_SET_PIN, LOW);
+  hal_gpio_init_out(RELAY1_RESET_PIN, LOW);
+  hal_gpio_init_out(S1_LED_PIN, HIGH);
+  init_button(TS1_PIN);
+  init_pwm0_dev();
+  set_pwm0_duty_cycle_perc(20);
+
+  os_callout_init(&relay_callout, os_eventq_dflt_get(), relay_timer_ev_cb, NULL);
+  ch1_relay_trigger(OFF, OS_TICKS_PER_SEC * 2);
 
   init_pub();
 

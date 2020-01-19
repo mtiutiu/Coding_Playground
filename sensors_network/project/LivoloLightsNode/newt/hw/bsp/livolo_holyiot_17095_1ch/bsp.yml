@@ -4,16 +4,16 @@ bsp.maker: "TIU-TECH"
 bsp.arch: cortex_m4
 bsp.compiler: "@apache-mynewt-core/compiler/arm-none-eabi-m4"
 bsp.linkerscript:
-  - "hw/bsp/holyiot_17095/nrf52xxaa.ld"
+  - "hw/bsp/livolo_holyiot_17095_1ch/nrf52xxaa.ld"
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
 bsp.linkerscript.BOOT_LOADER.OVERWRITE:
-  - "hw/bsp/holyiot_17095/boot-nrf52xxaa.ld"
+  - "hw/bsp/livolo_holyiot_17095_1ch/boot-nrf52xxaa.ld"
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
-bsp.part2linkerscript: "hw/bsp/holyiot_17095/split-holyiot-17095.ld"
-bsp.downloadscript: "hw/bsp/holyiot_17095/holyiot_17095_download.sh"
-bsp.debugscript: "hw/bsp/holyiot_17095/holyiot_17095_debug.sh"
-bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/holyiot_17095/holyiot_17095_download.cmd"
-bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/holyiot_17095/holyiot_17095_debug.cmd"
+bsp.part2linkerscript: "hw/bsp/livolo_holyiot_17095_1ch/split-holyiot-17095.ld"
+bsp.downloadscript: "hw/bsp/livolo_holyiot_17095_1ch/holyiot_17095_download.sh"
+bsp.debugscript: "hw/bsp/livolo_holyiot_17095_1ch/holyiot_17095_debug.sh"
+bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/livolo_holyiot_17095_1ch/holyiot_17095_download.cmd"
+bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/livolo_holyiot_17095_1ch/holyiot_17095_debug.cmd"
 
 bsp.flash_map:
   areas:

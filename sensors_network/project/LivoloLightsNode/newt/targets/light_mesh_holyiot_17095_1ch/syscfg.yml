@@ -1,0 +1,4 @@
+syscfg.vals:
+  BLE_MESH_DEVICE_NAME: '"HY17095_Mesh"'
+  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xdd, 0xdb, 0})"
+  BLE_LL_TX_PWR_DBM: 4  # TX power level
