@@ -264,9 +264,9 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
   console_printf("[INFO] Mesh OnOff SET operation! Received payload: %d\n", new_state);
 #endif
   ch1_relay_trigger(new_state, OS_TICKS_PER_SEC / 64);
+  ch1_state = new_state;
 
-
-  /*
+      /*
    * If a server has a publish address, it is required to
    * publish status on a state change
    *
@@ -274,7 +274,8 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
    *
    * Only publish if there is an assigned address
    */
-  if (model->pub->addr == BT_MESH_ADDR_UNASSIGNED) {
+      if (model->pub->addr == BT_MESH_ADDR_UNASSIGNED)
+  {
     return;
   }
 
