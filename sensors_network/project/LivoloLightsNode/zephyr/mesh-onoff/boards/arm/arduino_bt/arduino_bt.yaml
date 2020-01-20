@@ -1,0 +1,14 @@
+identifier: arduino_bt
+name: Arduino BT
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - ble
+  - pwm
+  - watchdog
+ram: 64
+flash: 512
