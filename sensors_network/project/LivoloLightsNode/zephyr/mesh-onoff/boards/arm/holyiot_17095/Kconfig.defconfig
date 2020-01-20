@@ -9,20 +9,14 @@ if BOARD_HOLYIOT_17095
 config BOARD
 	default "holyiot_17095"
 
-config GPIO_AS_PINRESET
-	default n
+if PWM
 
-config UART_NRFX
-	default n
+config PWM_0
+  default y
 
-if IEEE802154
-
-config IEEE802154_NRF5
-	default y
-
-endif # IEEE802154
+endif # PWM
 
 config BT_CTLR
-	default BT
+  default BT
 
 endif # BOARD_HOLYIOT_17095
