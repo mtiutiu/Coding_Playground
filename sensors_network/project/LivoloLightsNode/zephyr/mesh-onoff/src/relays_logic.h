@@ -12,6 +12,7 @@
 #define LIGHT_CHANNELS        1
 #define LIGHT_CHANNEL_1_INDEX 0
 
+
 void ch1_relay_toggle(void);
 void set_ch1_relay_state(uint8_t new_state);
 uint8_t get_ch1_relay_state(void);

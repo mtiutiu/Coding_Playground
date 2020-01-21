@@ -3,6 +3,7 @@
 #include "ts_buttons_logic.h"
 #include "mesh_logic.h"
 
+
 static uint8_t ch1_state;
 
 static void relay_pulse_timeout(struct k_timer *tim);
@@ -24,6 +25,7 @@ void set_ch1_relay_state(uint8_t new_state) {
 
 void ch1_relay_toggle(void) {
   ch1_state = !ch1_state;
+
   gpio_pin_write(port0, S1_LED_PIN, !ch1_state);
   mesh_publish_state(ch1_state);
 }

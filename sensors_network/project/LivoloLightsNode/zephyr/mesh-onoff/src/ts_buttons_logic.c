@@ -3,6 +3,7 @@
 #include "ts_buttons_logic.h"
 #include "relays_logic.h"
 
+
 struct device *port0;
 static struct gpio_callback button_cb;
 
@@ -23,6 +24,7 @@ static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t p
 
 void init_ts_gpio(void) {
   port0 = device_get_binding("GPIO_0");
+
   // LEDs
   gpio_pin_configure(port0, S1_LED_PIN, GPIO_DIR_OUT);
   gpio_pin_write(port0, S1_LED_PIN, HIGH);
