@@ -1,18 +1,18 @@
+#include <device.h>
 #include <drivers/gpio.h>
 #include <drivers/pwm.h>
 #include "ts_buttons_logic.h"
 #include "relays_logic.h"
 
 
-struct device *port0;
+static struct device *port0;
 static struct gpio_callback button_cb;
 
 static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t pin_pos) {
   static uint32_t last_press_timestamp;
 
   // simple debouncing
-  if ((k_uptime_get_32() - last_press_timestamp) >=
-      BUTTON_DEBOUNCE_INTERVAL_MS) {
+  if ((k_uptime_get_32() - last_press_timestamp) >= BUTTON_DEBOUNCE_INTERVAL_MS) {
     // process TS1
     if (pin_pos == BIT(TS1_PIN)) {
       ch1_relay_toggle();

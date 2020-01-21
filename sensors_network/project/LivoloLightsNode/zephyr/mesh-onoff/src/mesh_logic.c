@@ -126,7 +126,7 @@ static struct bt_mesh_model root_models[] = {
  * Button to Client Model Assignments
  */
 
-struct bt_mesh_model *mod_cli_sw[] = {
+static struct bt_mesh_model *mod_cli_ts_btn[] = {
   &root_models[4]
 };
 
@@ -243,8 +243,8 @@ void bt_ready(int err) {
   bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
 }
 
-void mesh_publish_state(uint8_t new_state) {
-  struct bt_mesh_model *mod_cli = mod_cli_sw[LIGHT_CHANNEL_1_INDEX];
+void mesh_publish_state(uint8_t channel, uint8_t new_state) {
+  struct bt_mesh_model *mod_cli = mod_cli_ts_btn[channel];
   struct bt_mesh_model_pub *pub_cli = mod_cli->pub;
 
   if (pub_cli->addr == BT_MESH_ADDR_UNASSIGNED) {

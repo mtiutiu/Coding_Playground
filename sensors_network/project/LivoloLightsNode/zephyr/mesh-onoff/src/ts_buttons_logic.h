@@ -17,7 +17,6 @@
 
 #define BUTTON_DEBOUNCE_INTERVAL_MS 250
 
-extern struct device *port0;
 
 void init_ts_gpio(void);
 
