@@ -5,4 +5,10 @@ project(mesh-onoff)
 
 # Add your source file to the "app" target. This must come after
 # the boilerplate code, which defines the target.
-target_sources(app PRIVATE src/main.c)
+
+target_sources(app PRIVATE
+  src/main.c
+	src/mesh_logic.c
+  src/ts_buttons_logic.c
+  src/relays_logic.c
+)
