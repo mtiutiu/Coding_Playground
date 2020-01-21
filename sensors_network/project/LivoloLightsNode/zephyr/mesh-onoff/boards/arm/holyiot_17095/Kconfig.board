@@ -6,4 +6,4 @@
 
 config BOARD_HOLYIOT_17095
 	bool "Holyiot 17095"
-	depends on SOC_NRF52832_QFAA
+	depends on SOC_NRF52832_CIAA
