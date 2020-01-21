@@ -23,6 +23,7 @@ uint8_t get_ch1_relay_state(void) {
 
 void set_ch1_relay_state(uint8_t new_state) {
   ch1_state = new_state;
+
   gpio_pin_write(port0, S1_LED_PIN, !ch1_state);
 }
 
@@ -33,10 +34,9 @@ void ch1_relay_toggle(void) {
 
   gpio_pin_write(port0, RELAY1_SET_PIN, HIGH);
   relay1_pulse_timer.user_data = RELAY1_SET_PIN;
-  k_timer_start(&relay1_pulse_timer, K_MSEC(20), 0);
+  k_timer_start(&relay1_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), 0);
 
   mesh_publish_state(LIGHT_CHANNEL_1_INDEX, ch1_state);
-
 }
 
 void init_relays_gpio(void) {

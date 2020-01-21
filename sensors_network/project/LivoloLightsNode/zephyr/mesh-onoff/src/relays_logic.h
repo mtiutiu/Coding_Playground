@@ -4,10 +4,11 @@
 #define LOW   0
 #define HIGH  1
 
-#define RELAY1_SET_PIN 0
-#define RELAY1_RESET_PIN 6
-#define RELAY2_SET_PIN 5
-#define RELAY2_RESET_PIN 1
+#define RELAY1_SET_PIN                    0
+#define RELAY1_RESET_PIN                  6
+// #define RELAY2_SET_PIN                    5
+// #define RELAY2_RESET_PIN                  1
+#define RELAY_TRIGGER_PULSE_DURATION_MS  20
 
 #define LIGHT_CHANNELS        1
 #define LIGHT_CHANNEL_1_INDEX 0
