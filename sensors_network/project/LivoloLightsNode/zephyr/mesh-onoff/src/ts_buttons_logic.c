@@ -50,7 +50,7 @@ void init_ts_gpio(void) {
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN));
 #if LIGHT_CHANNELS == 2
   gpio_pin_configure(port0, TS2_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
-  gpio_init_callback(&button_cb, button_pressed, BIT(TS2_PIN));
+  gpio_init_callback(&ts_cb, button_pressed, BIT(TS2_PIN));
 #endif
   gpio_add_callback(port0, &ts_cb);
   gpio_pin_enable_callback(port0, TS1_PIN);

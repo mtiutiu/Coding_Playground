@@ -27,6 +27,6 @@ void init_leds_gpio(void) {
 
 #if LIGHT_CHANNELS == 2
   gpio_pin_configure(port0, S2_LED_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(port0, S2_LED_PIN, HIGH)
+  gpio_pin_write(port0, S2_LED_PIN, HIGH);
 #endif
 }
