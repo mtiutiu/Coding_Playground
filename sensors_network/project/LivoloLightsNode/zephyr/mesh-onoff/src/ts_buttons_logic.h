@@ -10,6 +10,6 @@
 #define BUTTON_DEBOUNCE_INTERVAL_MS 250
 
 
-void init_ts_gpio(void);
+void init_ts(void);
 
 #endif

@@ -32,13 +32,13 @@ static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t p
   }
 }
 
-void init_ts_gpio(void) {
-  struct device *port0 = device_get_binding("GPIO_0");
+void init_ts(void) {
+  struct device *ts_port = device_get_binding("GPIO_0");
 
   // Touch sensor power mode
 #ifdef MTPM_PIN
-  gpio_pin_configure(port0, MTPM_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(port0, MTPM_PIN, HIGH);
+  gpio_pin_configure(ts_port, MTPM_PIN, GPIO_DIR_OUT);
+  gpio_pin_write(ts_port, MTPM_PIN, HIGH);
 #endif
 
   // Touch sensor sensitivity
@@ -46,15 +46,15 @@ void init_ts_gpio(void) {
   pwm_pin_set_usec(pwm0_dev, MTSA_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
 
   // Touch sensor reading
-  gpio_pin_configure(port0, TS1_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
+  gpio_pin_configure(ts_port, TS1_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN));
 #if LIGHT_CHANNELS == 2
-  gpio_pin_configure(port0, TS2_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
+  gpio_pin_configure(ts_port, TS2_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS2_PIN));
 #endif
-  gpio_add_callback(port0, &ts_cb);
-  gpio_pin_enable_callback(port0, TS1_PIN);
+  gpio_add_callback(ts_port, &ts_cb);
+  gpio_pin_enable_callback(ts_port, TS1_PIN);
 #if LIGHT_CHANNELS == 2
-  gpio_pin_enable_callback(port0, TS2_PIN);
+  gpio_pin_enable_callback(ts_port, TS2_PIN);
 #endif
 }

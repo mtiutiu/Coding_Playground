@@ -13,20 +13,20 @@ static uint8_t LED_PINS[LIGHT_CHANNELS] = {
 #endif
 };
 
-static struct device *port0;
+static struct device *led_port;
 
 void set_led_state(uint8_t channel) {
-  gpio_pin_write(port0, LED_PINS[channel], !channel);
+  gpio_pin_write(led_port, LED_PINS[channel], !channel);
 }
 
-void init_leds_gpio(void) {
-  port0 = device_get_binding("GPIO_0");
+void init_leds(void) {
+  led_port = device_get_binding("GPIO_0");
 
-  gpio_pin_configure(port0, S1_LED_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(port0, S1_LED_PIN, HIGH);
+  gpio_pin_configure(led_port, S1_LED_PIN, GPIO_DIR_OUT);
+  gpio_pin_write(led_port, S1_LED_PIN, HIGH);
 
 #if LIGHT_CHANNELS == 2
-  gpio_pin_configure(port0, S2_LED_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(port0, S2_LED_PIN, HIGH);
+  gpio_pin_configure(led_port, S2_LED_PIN, GPIO_DIR_OUT);
+  gpio_pin_write(led_port, S2_LED_PIN, HIGH);
 #endif
 }

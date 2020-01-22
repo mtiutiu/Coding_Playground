@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void init_leds_gpio(void);
+void init_leds(void);
 void set_led_state(uint8_t channel);
 
 #endif

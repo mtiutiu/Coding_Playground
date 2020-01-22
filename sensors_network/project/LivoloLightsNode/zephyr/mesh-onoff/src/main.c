@@ -5,9 +5,9 @@
 #include "leds_logic.h"
 
 void main(void) {
-  init_leds_gpio();
-  init_ts_gpio();
-  init_relays_gpio();
+  init_leds();
+  init_relays();
+  init_ts();
 
   /* Initialize the Bluetooth Subsystem */
   int err;
