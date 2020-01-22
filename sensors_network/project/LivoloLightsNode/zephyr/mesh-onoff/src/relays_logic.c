@@ -13,6 +13,9 @@
 #define LOW  0
 #define HIGH 1
 
+#define RELAY_INIT_TIMEOUT_MS 1500
+#define RELAY_TRIGGER_PULSE_DURATION_MS 20
+
 static struct device *relay_port;
 static uint8_t coil_pin;
 static uint8_t ch_state[LIGHT_CHANNELS];
