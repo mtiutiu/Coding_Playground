@@ -9,6 +9,13 @@
 #define LOW  0
 #define HIGH 1
 
+#define PWM_DUTY_CYCLE_PERCENT 30
+#define PWM_FREQUENCY_HZ 100000
+#define PWM_PERIOD_USEC (1000000 / PWM_FREQUENCY_HZ)
+#define PWM_PULSE_US (PWM_PERIOD_USEC * PWM_DUTY_CYCLE_PERCENT) / 100
+
+#define BUTTON_DEBOUNCE_INTERVAL_MS 250
+
 static struct gpio_callback ts_cb;
 
 static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t pin_pos) {
@@ -36,14 +43,17 @@ void init_ts(void) {
   struct device *ts_port = device_get_binding("GPIO_0");
 
   // Touch sensor power mode
-#ifdef MTPM_PIN
-  gpio_pin_configure(ts_port, MTPM_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(ts_port, MTPM_PIN, HIGH);
+#ifdef MTPM1_PIN
+  gpio_pin_configure(ts_port, MTPM1_PIN, GPIO_DIR_OUT);
+  gpio_pin_write(ts_port, MTPM1_PIN, HIGH);
 #endif
 
   // Touch sensor sensitivity
-  struct device *pwm0_dev = device_get_binding("PWM_0");
-  pwm_pin_set_usec(pwm0_dev, MTSA_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
+  struct device *ts_pwm = device_get_binding("PWM_0");
+  pwm_pin_set_usec(ts_pwm, MTSA1_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
+#ifdef MTSA2_PIN
+  pwm_pin_set_usec(ts_pwm, MTSA2_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
+#endif
 
   // Touch sensor reading
   gpio_pin_configure(ts_port, TS1_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));

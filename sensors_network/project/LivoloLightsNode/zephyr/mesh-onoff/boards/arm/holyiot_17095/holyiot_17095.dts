@@ -9,8 +9,7 @@
 
 / {
 	model = "Holyiot 17095";
-	compatible = "holyiot,17095", "nordic,nrf52832-qfaa",
-		     "nordic,nrf52832";
+	compatible = "holyiot,17095", "nordic,nrf52832-ciaa", "nordic,nrf52832";
 
 	chosen {
 		zephyr,sram = &sram0;

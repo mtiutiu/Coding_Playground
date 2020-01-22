@@ -2,14 +2,6 @@
 #define TS_BUTTONS_LOGIC_H
 
 
-#define PWM_DUTY_CYCLE_PERCENT  30
-#define PWM_FREQUENCY_HZ        100000
-#define PWM_PERIOD_USEC         (1000000 / PWM_FREQUENCY_HZ)
-#define PWM_PULSE_US            (PWM_PERIOD_USEC * PWM_DUTY_CYCLE_PERCENT) / 100
-
-#define BUTTON_DEBOUNCE_INTERVAL_MS 250
-
-
 void init_ts(void);
 
 #endif
