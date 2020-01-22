@@ -1,8 +1,0 @@
-{
-  "restructuredtext.confPath": "",
-  "files.associations": {
-    "kernel.h": "c",
-    "byteorder.h": "c",
-    "device.h": "c"
-  }
-}
