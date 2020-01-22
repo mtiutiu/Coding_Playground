@@ -11,4 +11,5 @@ target_sources(app PRIVATE
 	src/mesh_logic.c
   src/ts_buttons_logic.c
   src/relays_logic.c
+  src/leds_logic.c
 )

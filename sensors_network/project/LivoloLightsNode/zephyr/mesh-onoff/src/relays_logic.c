@@ -1,43 +1,54 @@
+#include <stdint.h>
 #include <device.h>
 #include <drivers/gpio.h>
 #include "relays_logic.h"
-#include "ts_buttons_logic.h"
+#include "leds_logic.h"
 #include "mesh_logic.h"
+#include "node_conf.h"
 
 
 #define OFF 0
 #define ON  1
 
+#define LOW  0
+#define HIGH 1
+
 static struct device *port0;
-static uint8_t ch1_state;
 static uint8_t coil_pin;
+static uint8_t ch_state[LIGHT_CHANNELS];
 
+static uint8_t RELAY_COIL[][2] = {
+  { RELAY1_SET_PIN, RELAY1_RESET_PIN },
+#if LIGHT_CHANNELS == 2
+  { RELAY2_SET_PIN, RELAY2_RESET_PIN }
+#endif
+};
 
-static void relay1_pulse_timeout(struct k_timer *tim);
-K_TIMER_DEFINE(relay1_pulse_timer, relay1_pulse_timeout, NULL);
+static void relay_pulse_timeout(struct k_timer *tim);
+K_TIMER_DEFINE(relay_pulse_timer, relay_pulse_timeout, NULL);
 
-static void relay1_pulse_timeout(struct k_timer *tim) {
+static void relay_pulse_timeout(struct k_timer *tim) {
   gpio_pin_write(port0, coil_pin, LOW);
 }
 
-uint8_t get_ch1_relay_state(void) {
-  return ch1_state;
+uint8_t get_relay_state(uint8_t channel) {
+  return ch_state[channel];
 }
 
-void set_ch1_relay_state(uint8_t new_state) {
-  ch1_state = new_state;
-  coil_pin = (ch1_state == ON) ? RELAY1_SET_PIN : RELAY1_RESET_PIN;
+void set_relay_state(uint8_t channel, uint8_t new_state) {
+  ch_state[channel] = new_state;
+  coil_pin = RELAY_COIL[channel][new_state];
 
   gpio_pin_write(port0, coil_pin, HIGH);
-  k_timer_start(&relay1_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), 0);
-  gpio_pin_write(port0, S1_LED_PIN, !ch1_state);
-  mesh_publish_state(LIGHT_CHANNEL_1_INDEX, ch1_state);
+  k_timer_start(&relay_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), 0);
+  set_led_state(new_state);
+  mesh_publish_state(channel, ch_state[channel]);
 }
 
-void ch1_relay_toggle(void) {
-  ch1_state = !ch1_state;
+void relay_toggle(uint8_t channel) {
+  ch_state[channel] = !ch_state[channel];
 
-  set_ch1_relay_state(ch1_state);
+  set_relay_state(channel, ch_state[channel]);
 }
 
 void init_relays_gpio(void) {

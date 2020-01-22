@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/conn.h>
 #include <bluetooth/hci.h>
@@ -6,6 +7,7 @@
 #include <settings/settings.h>
 #include "mesh_logic.h"
 #include "relays_logic.h"
+#include "node_conf.h"
 
 
 /* Model Operation Codes */
@@ -74,8 +76,13 @@ static struct bt_mesh_health_srv health_srv = {};
 
 BT_MESH_HEALTH_PUB_DEFINE(health_pub, 0);
 
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv, NULL, 2 + LIGHT_CHANNELS);
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli, NULL, 2 + LIGHT_CHANNELS);
+BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv_ch1, NULL, 2 + 1);
+BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli_ch1, NULL, 2 + 1);
+
+#if LIGHT_CHANNELS == 2
+BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv_ch2, NULL, 2 + 1);
+BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli_ch2, NULL, 2 + 1);
+#endif
 
 /*
  * Models in an element must have unique op codes.
@@ -93,8 +100,8 @@ BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli, NULL, 2 + LIGHT_CHANNELS);
 
 static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get },
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, LIGHT_CHANNELS, gen_onoff_set },
-  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, LIGHT_CHANNELS, gen_onoff_set_unack },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET, 1, gen_onoff_set },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK, 1, gen_onoff_set_unack },
   BT_MESH_MODEL_OP_END
 };
 
@@ -114,20 +121,41 @@ static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
  * Element 0 Root Models
  */
 
+static uint8_t light_channel_idx[] = {
+  0,
+#if LIGHT_CHANNELS == 2
+  1,
+#endif
+};
+
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
   BT_MESH_MODEL_CFG_CLI(&cfg_cli),
-  BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub),
-  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_pub_srv, NULL),
-  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_pub_cli, NULL)
+  BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub)
 };
+
+static struct bt_mesh_model secondary_models_ch1[] = {
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_pub_srv_ch1, &light_channel_idx[0]),
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_pub_cli_ch1, &light_channel_idx[0])
+};
+
+#if LIGHT_CHANNELS == 2
+static struct bt_mesh_model secondary_models_ch2[] = {
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_pub_srv_ch2, &light_channel_idx[1]),
+  BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_pub_cli_ch2, &light_channel_idx[1])
+};
+#endif
+
 
 /*
  * Button to Client Model Assignments
  */
 
 static struct bt_mesh_model *mod_cli_ts_btn[] = {
-  &root_models[4]
+  &secondary_models_ch1[1],
+#if LIGHT_CHANNELS == 2
+  &secondary_models_ch2[1],
+#endif
 };
 
 /*
@@ -135,7 +163,11 @@ static struct bt_mesh_model *mod_cli_ts_btn[] = {
  */
 
 static struct bt_mesh_elem elements[] = {
-  BT_MESH_ELEM(0, root_models, BT_MESH_MODEL_NONE)
+  BT_MESH_ELEM(0, root_models, BT_MESH_MODEL_NONE),
+  BT_MESH_ELEM(0, secondary_models_ch1, BT_MESH_MODEL_NONE),
+#if LIGHT_CHANNELS == 2
+  BT_MESH_ELEM(0, secondary_models_ch2, BT_MESH_MODEL_NONE),
+#endif
 };
 
 static const struct bt_mesh_comp comp = {
@@ -155,10 +187,12 @@ static uint16_t primary_net_idx;
  */
 
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
-  NET_BUF_SIMPLE_DEFINE(msg, 2 + LIGHT_CHANNELS + 4);
+  NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
+
+  uint8_t *channel = (uint8_t*)model->user_data;
 
   bt_mesh_model_msg_init(&msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  net_buf_simple_add_u8(&msg, get_ch1_relay_state());
+  net_buf_simple_add_u8(&msg, get_relay_state(*channel));
 
   if (bt_mesh_model_send(model, ctx, &msg, NULL, NULL)) {
 
@@ -167,12 +201,13 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
 
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   struct net_buf_simple *msg = model->pub->msg;
+  uint8_t *channel = (uint8_t *)model->user_data;
 
-  set_ch1_relay_state(net_buf_simple_pull_u8(buf));
+  set_relay_state(*channel, net_buf_simple_pull_u8(buf));
 
   if (model->pub->addr != BT_MESH_ADDR_UNASSIGNED) {
     bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-    net_buf_simple_add_u8(msg, get_ch1_relay_state());
+    net_buf_simple_add_u8(msg, get_relay_state(*channel));
     int err = bt_mesh_model_publish(model);
     if (err) {
 

@@ -2,10 +2,10 @@
 #include "mesh_logic.h"
 #include "ts_buttons_logic.h"
 #include "relays_logic.h"
-
+#include "leds_logic.h"
 
 void main(void) {
-  // gpios
+  init_leds_gpio();
   init_ts_gpio();
   init_relays_gpio();
 
