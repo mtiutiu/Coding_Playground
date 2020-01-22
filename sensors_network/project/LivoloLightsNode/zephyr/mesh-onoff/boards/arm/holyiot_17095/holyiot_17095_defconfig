@@ -7,7 +7,7 @@ CONFIG_BOARD_HOLYIOT_17095=y
 CONFIG_ARM_MPU=y
 
 # clock source
-#CONFIG_CLOCK_CONTROL_NRF_K32SRC_SYNTH=y
+# holyiot_17095 module seems more stable if using the RC oscillator
 CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
 
 # enable GPIO
