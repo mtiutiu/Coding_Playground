@@ -1,5 +1,5 @@
 pydbus==0.6.0
-psutil==3.4.2
+psutil==5.6.6
 uptime==3.0.1
 gatt==0.2.6
 paho-mqtt==1.3.1
