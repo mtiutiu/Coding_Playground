@@ -1,7 +1,9 @@
 #include <stdint.h>
 #include <device.h>
 #include <drivers/gpio.h>
+#ifdef TOUCH_SENSITIVITY_ADJUST
 #include <drivers/pwm.h>
+#endif
 #include "ts_buttons_logic.h"
 #include "relays_logic.h"
 #include "node_conf.h"
@@ -9,10 +11,12 @@
 #define LOW  0
 #define HIGH 1
 
+#ifdef TOUCH_SENSITIVITY_ADJUST
 #define PWM_DUTY_CYCLE_PERCENT 30
 #define PWM_FREQUENCY_HZ 100000
 #define PWM_PERIOD_USEC (1000000 / PWM_FREQUENCY_HZ)
 #define PWM_PULSE_US (PWM_PERIOD_USEC * PWM_DUTY_CYCLE_PERCENT) / 100
+#endif
 
 #define BUTTON_DEBOUNCE_INTERVAL_MS 250
 
@@ -44,27 +48,27 @@ void init_ts(void) {
 
   // Touch sensor power mode
 #ifdef MTPM1_PIN
-  gpio_pin_configure(gpio_dev_port, MTPM1_PIN, GPIO_DIR_OUT);
-  gpio_pin_write(gpio_dev_port, MTPM1_PIN, HIGH);
+  gpio_pin_configure(gpio_dev_port, MTPM1_PIN, GPIO_OUTPUT);
+  gpio_pin_set(gpio_dev_port, MTPM1_PIN, HIGH);
 #endif
 
+#ifdef TOUCH_SENSITIVITY_ADJUST
   // Touch sensor sensitivity
   struct device *ts_pwm = device_get_binding("PWM_0");
   pwm_pin_set_usec(ts_pwm, MTSA1_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
 #ifdef MTSA2_PIN
   pwm_pin_set_usec(ts_pwm, MTSA2_PIN, PWM_PERIOD_USEC, PWM_PULSE_US);
 #endif
+#endif
 
   // Touch sensor reading
-  gpio_pin_configure(gpio_dev_port, TS1_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
+  gpio_pin_configure(gpio_dev_port, TS1_PIN, GPIO_INPUT);
+  gpio_pin_interrupt_configure(gpio_dev_port, TS1_PIN, GPIO_INT_EDGE_FALLING);
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN));
 #if LIGHT_CHANNELS == 2
-  gpio_pin_configure(gpio_dev_port, TS2_PIN, (GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE | GPIO_INT_ACTIVE_LOW | GPIO_PUD_PULL_UP));
+  gpio_pin_configure(gpio_dev_port, TS2_PIN, GPIO_INPUT);
+  gpio_pin_interrupt_configure(gpio_dev_port, TS2_PIN, GPIO_INT_EDGE_FALLING);
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS2_PIN));
 #endif
   gpio_add_callback(gpio_dev_port, &ts_cb);
-  gpio_pin_enable_callback(gpio_dev_port, TS1_PIN);
-#if LIGHT_CHANNELS == 2
-  gpio_pin_enable_callback(gpio_dev_port, TS2_PIN);
-#endif
 }

@@ -1,8 +1,8 @@
 #ifndef NODE_CONF_H
 #define NODE_CONF_H
 
-#define HOLYIOT_BOARD_TYPE
-//#define NRF52_CUSTOM_BOARD_TYPE
+//#define HOLYIOT_BOARD_TYPE
+#define NRF52_TS_BOARD_TYPE
 
 #define LIGHT_CHANNELS 1
 #define LIGHT_CHANNEL_1_INDEX 0
@@ -10,6 +10,7 @@
 
 
 #if defined(HOLYIOT_BOARD_TYPE)
+  #define TOUCH_SENSITIVITY_ADJUST
   // Touch sensor configuration
   #if LIGHT_CHANNELS == 1
     #define S1_LED_PIN 8
@@ -32,11 +33,10 @@
   #else
     #error "Unsupported number of channels!"
   #endif
-#elif defined(NRF52_CUSTOM_BOARD_TYPE)
+#elif defined(NRF52_TS_BOARD_TYPE)
   #if LIGHT_CHANNELS == 1
     #define S1_LED_PIN 17
-    #define TS1_PIN 11
-    #define MTSA1_PIN 12
+    #define TS1_PIN 12
     #define VSENSE_PIN 18
     #define RELAY1_SET_PIN 14
     #define RELAY1_RESET_PIN 13
@@ -45,8 +45,6 @@
     #define S2_LED_PIN 11
     #define TS1_PIN 19
     #define TS2_PIN 17
-    #define MTSA1_PIN 18
-    #define MTSA2_PIN 16
     #define VSENSE_PIN 22
     #define RELAY1_SET_PIN 13
     #define RELAY1_RESET_PIN 12

@@ -1,0 +1,12 @@
+identifier: ts_nrf52
+name: TS NRF52
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - ble
+  - watchdog
+ram: 64
+flash: 512
