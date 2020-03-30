@@ -48,7 +48,7 @@ void set_relay_state(uint8_t channel, uint8_t new_state) {
 
   gpio_pin_set(gpio_dev_port, coil_pin, HIGH);
   k_timer_start(&relay_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), 0);
-  set_led_state(new_state);
+  set_led_state(channel, new_state);
   mesh_publish_state(channel, ch_state[channel]);
 }
 

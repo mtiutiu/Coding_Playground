@@ -15,8 +15,8 @@ static uint8_t LED_PINS[LIGHT_CHANNELS] = {
 
 static struct device *gpio_dev_port;
 
-void set_led_state(uint8_t channel) {
-  gpio_pin_set(gpio_dev_port, LED_PINS[channel], !channel);
+void set_led_state(uint8_t channel, uint8_t state) {
+  gpio_pin_set(gpio_dev_port, LED_PINS[channel], !state);
 }
 
 void init_leds(void) {

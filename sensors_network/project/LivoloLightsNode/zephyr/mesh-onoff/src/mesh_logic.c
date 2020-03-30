@@ -124,7 +124,7 @@ static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
 static uint8_t light_channel_idx[] = {
   0,
 #if LIGHT_CHANNELS == 2
-  1,
+  1
 #endif
 };
 
