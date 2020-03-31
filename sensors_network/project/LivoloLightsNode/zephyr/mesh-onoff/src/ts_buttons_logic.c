@@ -22,19 +22,19 @@
 
 static struct gpio_callback ts_cb;
 
-static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t pin_pos) {
+static void button_pressed(struct device *dev, struct gpio_callback *cb, u32_t pins) {
   static uint32_t last_press_timestamp;
 
   // simple debouncing
   if ((k_uptime_get_32() - last_press_timestamp) >= BUTTON_DEBOUNCE_INTERVAL_MS) {
     // process TS1
-    if (pin_pos == BIT(TS1_PIN)) {
+    if (pins & BIT(TS1_PIN)) {
       relay_toggle(LIGHT_CHANNEL_1_INDEX);
     }
 
 #if LIGHT_CHANNELS == 2
     // process TS2
-    if (pin_pos == BIT(TS2_PIN)) {
+    if (pins & BIT(TS2_PIN)) {
       relay_toggle(LIGHT_CHANNEL_2_INDEX);
     }
 #endif
@@ -64,11 +64,14 @@ void init_ts(void) {
   // Touch sensor reading
   gpio_pin_configure(gpio_dev_port, TS1_PIN, GPIO_INPUT);
   gpio_pin_interrupt_configure(gpio_dev_port, TS1_PIN, GPIO_INT_EDGE_FALLING);
-  gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN));
 #if LIGHT_CHANNELS == 2
   gpio_pin_configure(gpio_dev_port, TS2_PIN, GPIO_INPUT);
   gpio_pin_interrupt_configure(gpio_dev_port, TS2_PIN, GPIO_INT_EDGE_FALLING);
-  gpio_init_callback(&ts_cb, button_pressed, BIT(TS2_PIN));
+#endif
+  gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN)
+#if LIGHT_CHANNELS == 2
+    | BIT(TS2_PIN)
+  );
 #endif
   gpio_add_callback(gpio_dev_port, &ts_cb);
 }
