@@ -71,7 +71,7 @@ void init_ts(void) {
   gpio_init_callback(&ts_cb, button_pressed, BIT(TS1_PIN)
 #if LIGHT_CHANNELS == 2
     | BIT(TS2_PIN)
-  );
 #endif
+  );
   gpio_add_callback(gpio_dev_port, &ts_cb);
 }
