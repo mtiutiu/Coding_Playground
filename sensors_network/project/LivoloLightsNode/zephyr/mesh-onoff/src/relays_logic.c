@@ -13,7 +13,7 @@
 #define LOW  0
 #define HIGH 1
 
-#define RELAY_INIT_TIMEOUT_MS 1500
+#define RELAY_INIT_TIMEOUT_MS 10000
 #define RELAY_TRIGGER_PULSE_DURATION_MS 20
 
 static struct device *gpio_dev_port;
