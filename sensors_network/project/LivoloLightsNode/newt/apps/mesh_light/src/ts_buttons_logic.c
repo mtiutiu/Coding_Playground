@@ -38,6 +38,6 @@ void init_ts(void) {
   hal_gpio_irq_enable(TS1_PIN);
 #if LIGHT_CHANNELS == 2
   hal_gpio_irq_init(TS2_PIN, btn2_handler, NULL, HAL_GPIO_TRIG_FALLING, HAL_GPIO_PULL_NONE);
-  hal_gpio_irq_enable(TS2_PIN)
+  hal_gpio_irq_enable(TS2_PIN);
 #endif
 }
