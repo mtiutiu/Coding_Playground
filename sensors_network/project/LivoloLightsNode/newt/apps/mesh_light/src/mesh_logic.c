@@ -1,14 +1,14 @@
-#include <stdint.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/conn.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/l2cap.h>
-#include <bluetooth/mesh.h>
-#include <settings/settings.h>
 #include "mesh_logic.h"
-#include "relays_logic.h"
+#include <bsp/bsp.h>
+#include <host/ble_hs.h>
+#include <mesh/glue.h>
+#include <mesh/mesh.h>
 #include "node_conf.h"
+#include <os/mynewt.h>
+#include "relays_logic.h"
 
+
+#define CID_RUNTIME 0x05C3
 
 /* Model Operation Codes */
 #define BT_MESH_MODEL_OP_GEN_ONOFF_GET        BT_MESH_MODEL_OP_2(0x82, 0x01)
@@ -16,10 +16,10 @@
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK  BT_MESH_MODEL_OP_2(0x82, 0x03)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_STATUS     BT_MESH_MODEL_OP_2(0x82, 0x04)
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
+static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
 
 /*
  * Server Configuration Declaration
@@ -74,14 +74,19 @@ static struct bt_mesh_health_srv health_srv = {};
  *
  */
 
-BT_MESH_HEALTH_PUB_DEFINE(health_pub, 0);
+static struct bt_mesh_model_pub health_pub;
+static struct os_mbuf *bt_mesh_pub_msg_health_pub;
 
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv_ch1, NULL, 2 + 1);
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli_ch1, NULL, 2 + 1);
+static struct bt_mesh_model_pub gen_onoff_pub_srv_ch1;
+static struct bt_mesh_model_pub gen_onoff_pub_cli_ch1;
+static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_pub_srv_ch1;
+static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_pub_cli_ch1;
 
 #if LIGHT_CHANNELS == 2
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv_ch2, NULL, 2 + 1);
-BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli_ch2, NULL, 2 + 1);
+static struct bt_mesh_model_pub gen_onoff_pub_srv_ch2;
+static struct bt_mesh_model_pub gen_onoff_pub_cli_ch2;
+static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_pub_srv_ch2;
+static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_pub_cli_ch2;
 #endif
 
 /*
@@ -171,13 +176,31 @@ static struct bt_mesh_elem elements[] = {
 };
 
 static const struct bt_mesh_comp comp = {
-  .cid = BT_COMP_ID_LF,
+  .cid = CID_RUNTIME,
   .elem = elements,
   .elem_count = ARRAY_SIZE(elements)
 };
 
 static uint16_t primary_addr;
 static uint16_t primary_net_idx;
+
+
+void init_pub(void) {
+  bt_mesh_pub_msg_health_pub = NET_BUF_SIMPLE(1 + 3 + 0);
+  health_pub.msg = bt_mesh_pub_msg_health_pub;
+
+  bt_mesh_pub_msg_gen_onoff_pub_srv_ch1 = NET_BUF_SIMPLE(2 + 1);
+  gen_onoff_pub_srv_ch1.msg = bt_mesh_pub_msg_gen_onoff_pub_srv_ch1;
+  bt_mesh_pub_msg_gen_onoff_pub_cli_ch1 = NET_BUF_SIMPLE(2 + 1);
+  gen_onoff_pub_cli_ch1.msg = bt_mesh_pub_msg_gen_onoff_pub_cli_ch1;
+
+#if LIGHT_CHANNELS == 2
+  bt_mesh_pub_msg_gen_onoff_pub_srv_ch2 = NET_BUF_SIMPLE(2 + 1);
+  gen_onoff_pub_srv_ch2.msg = bt_mesh_pub_msg_gen_onoff_pub_srv_ch2;
+  bt_mesh_pub_msg_gen_onoff_pub_cli_ch2 = NET_BUF_SIMPLE(2 + 1);
+  gen_onoff_pub_cli_ch2.msg = bt_mesh_pub_msg_gen_onoff_pub_cli_ch2;
+#endif
+}
 
 /*
  * Generic OnOff Model Server Message Handlers
@@ -186,21 +209,22 @@ static uint16_t primary_net_idx;
  *
  */
 
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
-  NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
-
+static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+  struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
   uint8_t *channel = (uint8_t*)model->user_data;
 
-  bt_mesh_model_msg_init(&msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  net_buf_simple_add_u8(&msg, get_relay_state(*channel));
+  bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
+  net_buf_simple_add_u8(msg, get_relay_state(*channel));
 
-  if (bt_mesh_model_send(model, ctx, &msg, NULL, NULL)) {
+  if (bt_mesh_model_send(model, ctx, msg, NULL, NULL)) {
 
   }
+
+  os_mbuf_free_chain(msg);
 }
 
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
-  struct net_buf_simple *msg = model->pub->msg;
+static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+  struct os_mbuf *msg = model->pub->msg;
   uint8_t *channel = (uint8_t *)model->user_data;
 
   set_relay_state(*channel, net_buf_simple_pull_u8(buf));
@@ -215,12 +239,12 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
   }
 }
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   gen_onoff_set_unack(model, ctx, buf);
   gen_onoff_get(model, ctx, buf);
 }
 
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
 
 }
 
@@ -233,7 +257,7 @@ static void prov_reset(void) {
   bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 }
 
-static uint8_t dev_uuid[16] = {0xdd, 0xdd};
+static uint8_t dev_uuid[16] = MYNEWT_VAL(BLE_MESH_DEV_UUID);
 
 /* Disable OOB security */
 
@@ -246,19 +270,25 @@ static const struct bt_mesh_prov prov = {
   .reset = prov_reset
 };
 
-/*
- * Bluetooth Ready Callback
- */
+void blemesh_on_reset(int reason) {
 
-void bt_ready(int err) {
-  struct bt_le_oob oob;
+}
 
+void blemesh_on_sync(void) {
+  int err;
+  ble_addr_t addr;
+
+  // console_printf("Bluetooth initialized\n");
+
+  /* Use NRPA */
+  err = ble_hs_id_gen_rnd(1, &addr);
+  assert(err == 0);
+  err = ble_hs_id_set_rnd(addr.val);
+  assert(err == 0);
+
+  err = bt_mesh_init(addr.type, &prov, &comp);
   if (err) {
-    return;
-  }
-
-  err = bt_mesh_init(&prov, &comp);
-  if (err) {;
+    // console_printf("Initializing mesh failed (err %d)\n", err);
     return;
   }
 
@@ -266,14 +296,13 @@ void bt_ready(int err) {
     settings_load();
   }
 
-  /* Use identity address as device UUID */
-  if (bt_le_oob_get_local(BT_ID_DEFAULT, &oob)) {
-
-  } else {
-    memcpy(dev_uuid, oob.addr.a.val, 6);
+  if (bt_mesh_is_provisioned()) {
+    // console_printf("Mesh network restored from flash\n");
   }
 
   bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
+
+  // console_printf("Mesh initialized\n");
 }
 
 void mesh_publish_state(uint8_t channel, uint8_t new_state) {
