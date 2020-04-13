@@ -1,7 +1,7 @@
 #include "relays_logic.h"
 #include "leds_logic.h"
 #include "mesh_logic.h"
-#include "node_conf.h"
+#include <bsp/bsp.h>
 #include <hal/hal_gpio.h>
 #include <os/mynewt.h>
 

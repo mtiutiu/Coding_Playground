@@ -1,8 +1,7 @@
 #include "leds_logic.h"
+#include <bsp/bsp.h>
 #include <hal/hal_gpio.h>
-#include "node_conf.h"
 #include <os/mynewt.h>
-
 
 #define LOW 0
 #define HIGH 1

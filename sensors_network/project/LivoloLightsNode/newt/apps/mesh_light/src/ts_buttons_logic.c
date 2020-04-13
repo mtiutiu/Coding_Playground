@@ -1,6 +1,6 @@
 #include "ts_buttons_logic.h"
-#include "node_conf.h"
 #include "relays_logic.h"
+#include <bsp/bsp.h>
 #include <hal/hal_gpio.h>
 #include <os/mynewt.h>
 

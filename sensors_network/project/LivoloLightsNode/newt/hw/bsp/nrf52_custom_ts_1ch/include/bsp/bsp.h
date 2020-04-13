@@ -41,4 +41,16 @@ extern uint8_t _ram_start;
 }
 #endif
 
+#define LIGHT_CHANNELS 1
+#define LIGHT_CHANNEL_1_INDEX 0
+
+//#define V_SENSE_FEATURE
+#define S1_LED_PIN 17
+#define TS1_PIN 12
+#ifdef V_SENSE_FEATURE
+#define VSENSE_PIN 18
+#endif
+#define RELAY1_SET_PIN 14
+#define RELAY1_RESET_PIN 13
+
 #endif  /* H_BSP_H */

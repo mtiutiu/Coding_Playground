@@ -23,16 +23,16 @@ bsp.maker: "TT"
 bsp.arch: cortex_m4
 bsp.compiler: "@apache-mynewt-core/compiler/arm-none-eabi-m4"
 bsp.linkerscript:
-  - "hw/bsp/nrf52_custom_ts/nrf52xxaa.ld"
+  - "hw/bsp/nrf52_custom_ts_2ch/nrf52xxaa.ld"
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
 bsp.linkerscript.BOOT_LOADER.OVERWRITE:
-  - "hw/bsp/nrf52_custom_ts/boot-nrf52xxaa.ld"
+  - "hw/bsp/nrf52_custom_ts_2ch/boot-nrf52xxaa.ld"
   - "@apache-mynewt-core/hw/mcu/nordic/nrf52xxx/nrf52.ld"
-bsp.part2linkerscript: "hw/bsp/nrf52_custom_ts/split-nrf52-custom-ts.ld"
-bsp.downloadscript: "hw/bsp/nrf52_custom_ts/nrf52_custom_ts_download.sh"
-bsp.debugscript: "hw/bsp/nrf52_custom_ts/nrf52_custom_ts_debug.sh"
-bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/nrf52_custom_ts/nrf52_custom_ts_download.cmd"
-bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/nrf52_custom_ts/nrf52_custom_ts_debug.cmd"
+bsp.part2linkerscript: "hw/bsp/nrf52_custom_ts_2ch/split-nrf52-custom-ts.ld"
+bsp.downloadscript: "hw/bsp/nrf52_custom_ts_2ch/nrf52_custom_ts_download.sh"
+bsp.debugscript: "hw/bsp/nrf52_custom_ts_2ch/nrf52_custom_ts_debug.sh"
+bsp.downloadscript.WINDOWS.OVERWRITE: "hw/bsp/nrf52_custom_ts_2ch/nrf52_custom_ts_download.cmd"
+bsp.debugscript.WINDOWS.OVERWRITE: "hw/bsp/nrf52_custom_ts_2ch/nrf52_custom_ts_debug.cmd"
 
 bsp.flash_map:
   areas:

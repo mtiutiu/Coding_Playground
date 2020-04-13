@@ -1,4 +1,4 @@
-pkg.name: hw/bsp/nrf52_custom_ts
+pkg.name: hw/bsp/nrf52_custom_ts_2ch
 pkg.type: bsp
 pkg.description: BSP definition for the NRF52 custom module.
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"

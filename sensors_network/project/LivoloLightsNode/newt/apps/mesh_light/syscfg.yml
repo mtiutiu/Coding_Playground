@@ -1,15 +1,9 @@
-syscfg.defs:
-  BLE_MESH_OOB_PROV_ENABLED:
-    description: "Set to indicate OOB provisioning is enabled"
-    value: 1
-
 syscfg.vals:
-  # Set log level.
-  LOG_LEVEL: 3
-
   # Default task settings
-  OS_MAIN_STACK_SIZE: 768
+  OS_MAIN_STACK_SIZE: 1024
   MSYS_1_BLOCK_COUNT: 48
+
+  BLE_LL_TX_PWR_DBM: 4
 
   BLE_MESH: 1
   BLE_MESH_CFG_CLI: 1
@@ -23,18 +17,10 @@ syscfg.vals:
   BLE_MESH_LPN_AUTO: 0
   BLE_MESH_FRIEND: 0
 
-  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xdd, 0xde, 0})"
-  BLE_MESH_DEVICE_NAME: '"Livolo"'
-
   BLE_MESH_TX_SEG_MAX: 6
-  #There must be at least 3 more advertising buffers (BT_MESH_ADV_BUF_COUNT) as there are outgoing segments (BLE_MESH_TX_SEG_MAX)
-  BLE_MESH_ADV_BUF_COUNT: 20
-
-  BLE_MESH_DEBUG_SETTINGS: 0
+  BLE_MESH_ADV_BUF_COUNT: 40
 
   BLE_MESH_SETTINGS: 1
-  BLE_MESH_OOB_PROV_ENABLED: 0
 
   CONFIG_FCB: 1
   CONFIG_NFFS: 0
-  BLE_LL_TX_PWR_DBM: 4
