@@ -73,6 +73,9 @@ static struct bt_mesh_health_srv health_srv = {};
  *
  */
 
+static struct bt_mesh_model_pub health_pub;
+static struct os_mbuf *bt_mesh_pub_msg_health_pub;
+
 static struct bt_mesh_model_pub gen_onoff_pub_srv_ch1;
 static struct bt_mesh_model_pub gen_onoff_pub_cli_ch1;
 static struct os_mbuf *bt_mesh_pub_msg_gen_onoff_pub_srv_ch1;
@@ -132,7 +135,7 @@ static uint8_t light_channel_idx[] = {
 static struct bt_mesh_model root_models[] = {
   BT_MESH_MODEL_CFG_SRV(&cfg_srv),
   BT_MESH_MODEL_CFG_CLI(&cfg_cli),
-  BT_MESH_MODEL_HEALTH_SRV(&health_srv, NULL)
+  BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub)
 };
 
 static struct bt_mesh_model secondary_models_ch1[] = {
@@ -182,6 +185,9 @@ static uint16_t primary_net_idx;
 
 
 void init_pub(void) {
+  bt_mesh_pub_msg_health_pub = NET_BUF_SIMPLE(1 + 3 + 0);
+  health_pub.msg = bt_mesh_pub_msg_health_pub;
+
   bt_mesh_pub_msg_gen_onoff_pub_srv_ch1 = NET_BUF_SIMPLE(2 + 1);
   gen_onoff_pub_srv_ch1.msg = bt_mesh_pub_msg_gen_onoff_pub_srv_ch1;
   bt_mesh_pub_msg_gen_onoff_pub_cli_ch1 = NET_BUF_SIMPLE(2 + 1);
