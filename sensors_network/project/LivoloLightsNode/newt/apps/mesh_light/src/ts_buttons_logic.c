@@ -7,37 +7,39 @@
 #define LOW  0
 #define HIGH 1
 
-#define BUTTON_DEBOUNCE_INTERVAL_MS 250
+#define MSEC_TO_USEC(interval) (interval * 1000)
 
+#define BUTTON_DEBOUNCE_INTERVAL_MS 800
 
-static void btn1_handler(void *arg) {
-  static uint32_t last_press_timestamp;
-
-  // simple debouncing
-  if ((os_cputime_get32() - last_press_timestamp) >= BUTTON_DEBOUNCE_INTERVAL_MS) {
-    relay_toggle(LIGHT_CHANNEL_1_INDEX);
-    last_press_timestamp = os_cputime_get32();
-  }
-}
-
+static uint8_t light_channel_idx[LIGHT_CHANNELS] = {
+  LIGHT_CHANNEL_1_INDEX,
 #if LIGHT_CHANNELS == 2
-static void btn2_handler(void *arg) {
-  static uint32_t last_press_timestamp;
+  LIGHT_CHANNEL_2_INDEX
+#endif
+};
+
+uint16_t TS_PINS[LIGHT_CHANNELS] = {
+  TS1_PIN,
+#if LIGHT_CHANNELS == 2
+  TS2_PIN
+#endif
+};
+
+static void btn_handler(void *arg) {
+  uint8_t *channel = (uint8_t *)arg;
+  static uint64_t last_press_timestamp;
 
   // simple debouncing
-  if ((os_cputime_get32() - last_press_timestamp) >= BUTTON_DEBOUNCE_INTERVAL_MS) {
-    relay_toggle(LIGHT_CHANNEL_2_INDEX);
-    last_press_timestamp = os_cputime_get32();
+  if ((os_get_uptime_usec() - last_press_timestamp) >= MSEC_TO_USEC(BUTTON_DEBOUNCE_INTERVAL_MS)) {
+    relay_toggle(*channel);
+    last_press_timestamp = os_get_uptime_usec();
   }
 }
-#endif
 
 void init_ts(void) {
   // Touch sensor reading
-  hal_gpio_irq_init(TS1_PIN, btn1_handler, NULL, HAL_GPIO_TRIG_FALLING, HAL_GPIO_PULL_NONE);
-  hal_gpio_irq_enable(TS1_PIN);
-#if LIGHT_CHANNELS == 2
-  hal_gpio_irq_init(TS2_PIN, btn2_handler, NULL, HAL_GPIO_TRIG_FALLING, HAL_GPIO_PULL_NONE);
-  hal_gpio_irq_enable(TS2_PIN);
-#endif
+  for (uint8_t i = 0; i < LIGHT_CHANNELS; i++) {
+    hal_gpio_irq_init(TS_PINS[i], btn_handler, &light_channel_idx[i], HAL_GPIO_TRIG_FALLING, HAL_GPIO_PULL_NONE);
+    hal_gpio_irq_enable(TS_PINS[i]);
+  }
 }

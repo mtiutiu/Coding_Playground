@@ -125,10 +125,10 @@ static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
  * Element 0 Root Models
  */
 
-static uint8_t light_channel_idx[] = {
-  0,
+static uint8_t light_channel_idx[LIGHT_CHANNELS] = {
+  LIGHT_CHANNEL_1_INDEX,
 #if LIGHT_CHANNELS == 2
-  1
+  LIGHT_CHANNEL_2_INDEX
 #endif
 };
 
@@ -226,7 +226,7 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
   struct os_mbuf *msg = model->pub->msg;
   uint8_t *channel = (uint8_t *)model->user_data;
 
-  set_relay_state(*channel, net_buf_simple_pull_u8(buf));
+  set_relay_state(*channel, net_buf_simple_pull_u8(buf), false);
 
   if (model->pub->addr != BT_MESH_ADDR_UNASSIGNED) {
     bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
