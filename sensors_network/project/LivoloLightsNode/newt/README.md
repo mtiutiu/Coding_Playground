@@ -3,7 +3,7 @@
 
 ## Overview
 
-This is the bluetooth mesh custom firmware made for the boards available [here](https://github.com/mtiutiu/Hardware_Playground/tree/master/IOT/node/livolo_EU_switch/VL-C700X-1_Ver_C2/NRF52832)
+This is the bluetooth mesh custom firmware made for the boards available [here](https://github.com/mtiutiu/Hardware_Playground/tree/master/IOT/node/livolo_EU_switch/VL-C700X-1_Ver_C2/NRF52832).
 
 ## Building
 
