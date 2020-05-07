@@ -25,6 +25,7 @@ Note:
 ```
 
 3. Build the bootloader target and flash it to your specific bsp (available targets can be seen [here](https://github.com/mtiutiu/Coding_Playground/tree/master/sensors_network/project/LivoloLightsNode/newt/targets))
+
 Let's build this for the HolyIOT NRF52 based board:
 
 ```
@@ -43,5 +44,4 @@ Let's build this for the HolyIOT NRF52 based board:
 5. Start the provisioning process as documented on my [blog](https://mtiutiu.design.blog/2020/05/06/intelligent-light-switches-part-2)
 
 
-See also:
-[Getting Started Guide](https://mynewt.apache.org/latest/get_started/index.html).
+TODO: maybe add more details.
