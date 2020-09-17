@@ -1,4 +1,4 @@
 syscfg.vals:
-  BLE_MESH_DEVICE_NAME: '"Arduino_BT"'
-  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xdd, 0xdb, 0})"
+  BLE_MESH_DEVICE_NAME: '"BLE_MESH_GW"'
+  BLE_MESH_DEV_UUID: "((uint8_t[16]){0xca, 0xaa, 0})"
   BLE_LL_TX_PWR_DBM: 4  # TX power level

@@ -7,22 +7,15 @@ BSP_UART_CONSOLE:
   value: 1
 BLE_MESH_OOB_PROV_ENABLED:
   description: "Set to indicate if OOB provisioning is enabled"
-  value: 1
+  value: 0
 
 syscfg.vals:
   # Enable nRF52832 MCU
   MCU_TARGET: nRF52832
   UART_0: 1 # enable UART0 for logging
-  SPI_0: 1 # enable SPI0
-  I2C_0: 1 # enable I2C0
   # Set default pins for peripherals
   UART_0_PIN_TX: 6
   UART_0_PIN_RX: 8
-  SPI_0_MASTER_PIN_SCK: 12
-  SPI_0_MASTER_PIN_MOSI: 13
-  SPI_0_MASTER_PIN_MISO: 14
-  I2C_0_PIN_SCL: 26
-  I2C_0_PIN_SDA: 25
 
   CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
   REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG

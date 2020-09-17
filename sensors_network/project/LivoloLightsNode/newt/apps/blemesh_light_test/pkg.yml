@@ -10,12 +10,7 @@ pkg.deps:
   - "@apache-mynewt-nimble/nimble/host/mesh"
   - "@apache-mynewt-nimble/nimble/transport"
   - "@apache-mynewt-nimble/nimble/host/services/gatt"
-  - "@apache-mynewt-core/sys/console/stub"
+  - "@apache-mynewt-core/sys/console/minimal"
+  - "@apache-mynewt-core/sys/log/stub"
   - "@apache-mynewt-core/sys/log/stub"
   - "@apache-mynewt-core/sys/stats/stub"
-
-pkg.deps.BSP_UART_CONSOLE:
-  - "@apache-mynewt-core/sys/console/full"
-  - "@apache-mynewt-core/sys/log/full"
-  - "@apache-mynewt-core/sys/log/modlog"
-  - "@apache-mynewt-core/sys/stats/full"
