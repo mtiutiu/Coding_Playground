@@ -34,7 +34,7 @@ const float AD_FACTOR = (ANALOG_REF_VALUE_VOLTS / ANALOG_RESOLUTION_BITS);
 const uint8_t WINDOW_SNS_READ_PIN = 3;
 const uint8_t WINDOW_SNS_CHILD_ID = 0;
 
-MyMessage msg(WINDOW_SNS_CHILD_ID, V_STATUS);
+MyMessage msg(WINDOW_SNS_CHILD_ID, V_TRIPPED);
 
 const uint8_t PRESENTATION_MSG_CYCLE = 5;
 
@@ -55,7 +55,7 @@ void setup() {
 
 void presentation() {
   sendSketchInfo(NODE_NAME, "0.1");
-  present(WINDOW_SNS_CHILD_ID, S_BINARY);
+  present(WINDOW_SNS_CHILD_ID, S_DOOR);
 }
 
 void loop() {
@@ -68,7 +68,7 @@ void loop() {
     presCycle = 0;
   }
 
-  uint8_t currentWindowState = !digitalRead(WINDOW_SNS_READ_PIN);
+  uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
     send(msg.set(currentWindowState));
     prevWindowState = currentWindowState;
