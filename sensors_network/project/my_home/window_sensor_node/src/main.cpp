@@ -36,7 +36,7 @@ const uint8_t WINDOW_SNS_CHILD_ID = 0;
 
 MyMessage msg(WINDOW_SNS_CHILD_ID, V_TRIPPED);
 
-const uint8_t PRESENTATION_MSG_CYCLE = 5;
+const uint8_t PRESENTATION_MSG_CYCLE = 10;
 
 
 uint8_t getBattLvl(uint8_t samplesCount = 10) {
