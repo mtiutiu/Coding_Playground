@@ -68,6 +68,11 @@ void loop() {
     presCycle = 0;
   }
 
+  // sending succesive readings too fast has negative impact on a coin cell
+  // so let it settle for a while as this is not critical
+  // also let the sensors settle before taking readings if the case
+  sleep(5);
+
   uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
     send(msg.set(currentWindowState));
@@ -76,7 +81,8 @@ void loop() {
 
   // sending succesive readings too fast has negative impact on a coin cell
   // so let it settle for a while as this is not critical
-  sleep(10);
+  // also let the sensors settle before taking readings if the case
+  sleep(5);
 
   uint8_t currentBattLvl = getBattLvl();
   if (currentBattLvl != prevBattLvl) {
