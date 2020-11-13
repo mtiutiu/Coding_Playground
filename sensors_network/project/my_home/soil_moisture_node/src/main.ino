@@ -11,7 +11,7 @@
 const float MAX_BATT_VOLTAGE_V = 3.0;
 const uint8_t BATTERY_READ_PIN = A0;
 
-const uint32_t SLEEP_TIME_MS = 60000; // 60s
+const uint32_t SLEEP_TIME_MS = 300000; // 5m
 const float ANALOG_REF_VALUE_VOLTS = 3.3;
 const uint16_t ANALOG_RESOLUTION_BITS = 1024;
 const float AD_FACTOR = (ANALOG_REF_VALUE_VOLTS / ANALOG_RESOLUTION_BITS);
@@ -19,9 +19,13 @@ const float AD_FACTOR = (ANALOG_REF_VALUE_VOLTS / ANALOG_RESOLUTION_BITS);
 const uint8_t MOIST_SNS_PWR_PIN = 3;
 const uint8_t MOIST_SNS_READ_PIN = A4;
 const uint8_t MOIST_SNS_CHILD_ID = 0;
+const float MOIST_SNS_DRY_VALUE = 720.0;
+const float MOIST_SNS_WET_VALUE = 420.0;
+
 MyMessage msg(MOIST_SNS_CHILD_ID, V_LEVEL);
 
 const uint8_t PRESENTATION_MSG_CYCLE = 10;
+
 
 uint8_t getBattLvl(uint8_t samplesCount = 10) {
   float batteryVoltage = 0.0;
@@ -33,17 +37,19 @@ uint8_t getBattLvl(uint8_t samplesCount = 10) {
   return constrain((batteryVoltage / MAX_BATT_VOLTAGE_V) * 100, 0, 100);
 }
 
-uint16_t getMoistLvl(uint8_t samplesCount = 10) {
-  uint16_t lvl = 0;
+uint8_t getMoistPercentage(uint8_t samplesCount = 10) {
+  float lvl = 0;
 
   digitalWrite(MOIST_SNS_PWR_PIN, HIGH); // power up sensor
   wait(50); // wait a little for the sensor to start working after power up
   for (uint8_t samples = 0; samples < samplesCount; samples++) {
-    lvl += analogRead(MOIST_SNS_READ_PIN) / samplesCount;
+    lvl += (float)analogRead(MOIST_SNS_READ_PIN) / samplesCount;
   }
   digitalWrite(MOIST_SNS_PWR_PIN, LOW); // power down sensor
 
-  return lvl;
+  lvl = round(map(lvl, MOIST_SNS_DRY_VALUE, MOIST_SNS_WET_VALUE, 0, 100));
+
+  return constrain(lvl, 0, 100);
 }
 
 void setup() {
@@ -64,10 +70,9 @@ void loop() {
   if (++presCycle >= PRESENTATION_MSG_CYCLE) {
     presentation();
     presCycle = 0;
-    ;
   }
 
-  uint16_t currentMoistLvl = getMoistLvl();
+  uint16_t currentMoistLvl = getMoistPercentage();
   if (currentMoistLvl != prevMoistLvl) {
     send(msg.set(currentMoistLvl));
     prevMoistLvl = currentMoistLvl;
