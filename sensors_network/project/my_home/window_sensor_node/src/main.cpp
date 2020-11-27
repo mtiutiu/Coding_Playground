@@ -1,4 +1,4 @@
-#define MY_NODE_ID 1
+#define MY_NODE_ID 4
 //#define MY_DEBUG
 #define MY_DISABLED_SERIAL
 #define MY_RADIO_RFM69
