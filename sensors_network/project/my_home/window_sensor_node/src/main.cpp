@@ -23,13 +23,10 @@
 #include <Arduino.h>
 #include <MySensors.h>
 
-const float MAX_BATT_VOLTAGE_V = 3.3;
-const uint8_t BATTERY_READ_PIN = A1;
+const float MAX_BATT_VOLTAGE_MV = 3000;
+const float BATT_VOLTAGE_CORRECTION_FACTOR = 8.0;
 
 const uint32_t SLEEP_TIME_MS = 300000; // 5m
-const float ANALOG_REF_VALUE_VOLTS = 3.3;
-const float ANALOG_RESOLUTION_BITS = 1024.0;
-const float AD_FACTOR = (ANALOG_REF_VALUE_VOLTS / ANALOG_RESOLUTION_BITS);
 
 const uint8_t WINDOW_SNS_READ_PIN = 3;
 const uint8_t WINDOW_SNS_CHILD_ID = 0;
@@ -43,10 +40,10 @@ uint8_t getBattLvl(uint8_t samplesCount = 10) {
   float batteryVoltageSample = 0.0;
 
   for (uint8_t samples = 0; samples < samplesCount; samples++) {
-    batteryVoltageSample += (analogRead(BATTERY_READ_PIN) * AD_FACTOR) / samplesCount;
+    batteryVoltageSample += (float)hwCPUVoltage() / samplesCount;
   }
 
-  return constrain((batteryVoltageSample / MAX_BATT_VOLTAGE_V) * 100, 0, 100);
+  return constrain(((batteryVoltageSample / MAX_BATT_VOLTAGE_MV) * 100) - BATT_VOLTAGE_CORRECTION_FACTOR, 0, 100);
 }
 
 void setup() {
