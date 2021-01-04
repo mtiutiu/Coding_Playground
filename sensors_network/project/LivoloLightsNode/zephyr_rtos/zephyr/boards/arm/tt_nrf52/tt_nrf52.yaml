@@ -1,5 +1,5 @@
-identifier: holyiot_holyiot_17095
-name: Holyiot 17095
+identifier: tt_nrf52
+name: TT NRF52
 type: mcu
 arch: arm
 toolchain:

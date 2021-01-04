@@ -194,24 +194,23 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   bt_mesh_model_msg_init(&msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   net_buf_simple_add_u8(&msg, get_relay_state(*channel));
 
-  if (bt_mesh_model_send(model, ctx, &msg, NULL, NULL)) {
-
-  }
+  bt_mesh_model_send(model, ctx, &msg, NULL, NULL);
 }
 
 static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   struct net_buf_simple *msg = model->pub->msg;
   uint8_t *channel = (uint8_t *)model->user_data;
+  uint8_t desired_state = net_buf_simple_pull_u8(buf);
+  uint8_t current_state = get_relay_state(*channel);
 
-  set_relay_state(*channel, net_buf_simple_pull_u8(buf));
+  if (desired_state != current_state) {
+    set_relay_state(*channel, desired_state);
+  }
 
   if (model->pub->addr != BT_MESH_ADDR_UNASSIGNED) {
     bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
     net_buf_simple_add_u8(msg, get_relay_state(*channel));
-    int err = bt_mesh_model_publish(model);
-    if (err) {
-
-    }
+    bt_mesh_model_publish(model);
   }
 }
 
@@ -224,7 +223,7 @@ static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx
 
 }
 
-static void prov_complete(u16_t net_idx, u16_t addr) {
+static void prov_complete(uint16_t net_idx, uint16_t addr) {
   primary_addr = addr;
   primary_net_idx = net_idx;
 }
@@ -254,11 +253,13 @@ void bt_ready(int err) {
   struct bt_le_oob oob;
 
   if (err) {
+    // Bluetooth init failed
     return;
   }
 
   err = bt_mesh_init(&prov, &comp);
-  if (err) {;
+  if (err) {
+    // Initializing mesh failed
     return;
   }
 
@@ -268,7 +269,7 @@ void bt_ready(int err) {
 
   /* Use identity address as device UUID */
   if (bt_le_oob_get_local(BT_ID_DEFAULT, &oob)) {
-
+    // Identity Address unavailable
   } else {
     memcpy(dev_uuid, oob.addr.a.val, 6);
   }
@@ -287,8 +288,5 @@ void mesh_publish_state(uint8_t channel, uint8_t new_state) {
   bt_mesh_model_msg_init(pub_cli->msg, BT_MESH_MODEL_OP_GEN_ONOFF_SET);
   net_buf_simple_add_u8(pub_cli->msg, new_state);
 
-  int err = bt_mesh_model_publish(mod_cli);
-  if (err) {
-
-  }
+  bt_mesh_model_publish(mod_cli);
 }

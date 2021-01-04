@@ -4,19 +4,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_HOLYIOT_17095
+if BOARD_TT_NRF52
 
 config BOARD
-	default "holyiot_17095"
-
-if PWM
-
-config PWM_0
-  default y
-
-endif # PWM
+	default "tt_nrf52"
 
 config BT_CTLR
   default BT
 
-endif # BOARD_HOLYIOT_17095
+endif # BOARD_TT_NRF52

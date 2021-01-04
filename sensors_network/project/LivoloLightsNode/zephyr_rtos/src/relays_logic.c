@@ -13,10 +13,10 @@
 #define LOW  0
 #define HIGH 1
 
-#define RELAY_INIT_TIMEOUT_MS 10000
-#define RELAY_TRIGGER_PULSE_DURATION_MS 20
+#define RELAY_INIT_TIMEOUT_MS 3000
+#define RELAY_TRIGGER_PULSE_DURATION_MS 50
 
-static struct device *gpio_dev_port;
+static const struct device *gpio_dev_port;
 static uint8_t coil_pin;
 static uint8_t ch_state[LIGHT_CHANNELS];
 
@@ -47,7 +47,7 @@ void set_relay_state(uint8_t channel, uint8_t new_state) {
   coil_pin = RELAY_COIL[channel][new_state];
 
   gpio_pin_set(gpio_dev_port, coil_pin, HIGH);
-  k_timer_start(&relay_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), 0);
+  k_timer_start(&relay_pulse_timer, K_MSEC(RELAY_TRIGGER_PULSE_DURATION_MS), K_NO_WAIT);
   set_led_state(channel, new_state);
   mesh_publish_state(channel, ch_state[channel]);
 }
@@ -61,9 +61,6 @@ void relay_toggle(uint8_t channel) {
 static void relay_init_timeout(struct k_timer *tim) {
 #ifdef VSENSE_PIN
   uint32_t switch_state = gpio_pin_get(gpio_dev_port, VSENSE_PIN);
-#endif
-
-#ifdef VSENSE_PIN
   if (switch_state == ON) {
 #endif
     set_relay_state(LIGHT_CHANNEL_1_INDEX, OFF);
@@ -97,5 +94,5 @@ void init_relays(void) {
 #endif
 
   // reset relays to the OFF state after some time when system starts
-  k_timer_start(&relay_startup_timer, K_MSEC(RELAY_INIT_TIMEOUT_MS), 0);
+  k_timer_start(&relay_startup_timer, K_MSEC(RELAY_INIT_TIMEOUT_MS), K_NO_WAIT);
 }

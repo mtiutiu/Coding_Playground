@@ -8,7 +8,7 @@ config BOARD_ENABLE_DCDC
   bool "Enable DCDC mode"
   select SOC_DCDC_NRF52X
   default y
-  depends on BOARD_TS_NRF52
+  depends on BOARD_TT_NRF52
 
 config GPIO_AS_PINRESET
 	bool "GPIO as pin reset (reset button)"

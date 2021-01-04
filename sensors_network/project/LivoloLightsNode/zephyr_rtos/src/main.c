@@ -9,10 +9,6 @@ void main(void) {
   init_relays();
   init_ts();
 
-  /* Initialize the Bluetooth Subsystem */
-  int err;
-  err = bt_enable(bt_ready);
-  if (err) {
-
-  }
+  // Initialize the Bluetooth Subsystem
+  bt_enable(bt_ready);
 }
