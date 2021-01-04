@@ -41,10 +41,10 @@ static void button_pressed_handler(const struct device *dev, struct gpio_callbac
     process_button(TS1_PIN, LIGHT_CHANNEL_1_INDEX);
   }
 #if LIGHT_CHANNELS == 2
-    // process TS2
-    if (pins & BIT(TS2_PIN)) {
-      process_button(TS2_PIN, LIGHT_CHANNEL_2_INDEX);
-    }
+  // process TS2
+  if (pins & BIT(TS2_PIN)) {
+    process_button(TS2_PIN, LIGHT_CHANNEL_2_INDEX);
+  }
 #endif
 }
 

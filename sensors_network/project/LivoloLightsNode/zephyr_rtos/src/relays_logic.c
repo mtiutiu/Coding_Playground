@@ -13,8 +13,11 @@
 #define LOW  0
 #define HIGH 1
 
-#define RELAY_INIT_TIMEOUT_MS 3000
-#define RELAY_TRIGGER_PULSE_DURATION_MS 50
+#define RELAY1_INIT_TIMEOUT_MS 1500
+#if LIGHT_CHANNELS == 2
+#define RELAY2_INIT_TIMEOUT_MS 2500
+#endif
+#define RELAY_TRIGGER_PULSE_DURATION_MS 40
 
 static const struct device *gpio_dev_port;
 static uint8_t coil_pin;
@@ -30,9 +33,12 @@ static uint8_t RELAY_COIL[][2] = {
 static void relay_pulse_timeout(struct k_timer *tim);
 K_TIMER_DEFINE(relay_pulse_timer, relay_pulse_timeout, NULL);
 
-static void relay_init_timeout(struct k_timer *tim);
-K_TIMER_DEFINE(relay_startup_timer, relay_init_timeout, NULL);
-
+static void relay1_init_timeout_handler(struct k_timer *tim);
+K_TIMER_DEFINE(relay1_init_timer, relay1_init_timeout_handler, NULL);
+#if LIGHT_CHANNELS == 2
+static void relay2_init_timeout_handler(struct k_timer *tim);
+K_TIMER_DEFINE(relay2_init_timer, relay2_init_timeout_handler, NULL);
+#endif
 
 static void relay_pulse_timeout(struct k_timer *tim) {
   gpio_pin_set(gpio_dev_port, coil_pin, LOW);
@@ -58,19 +64,15 @@ void relay_toggle(uint8_t channel) {
   set_relay_state(channel, ch_state[channel]);
 }
 
-static void relay_init_timeout(struct k_timer *tim) {
-#ifdef VSENSE_PIN
-  uint32_t switch_state = gpio_pin_get(gpio_dev_port, VSENSE_PIN);
-  if (switch_state == ON) {
-#endif
-    set_relay_state(LIGHT_CHANNEL_1_INDEX, OFF);
-#if LIGHT_CHANNELS == 2
-    set_relay_state(LIGHT_CHANNEL_2_INDEX, OFF);
-#endif
-#ifdef VSENSE_PIN
-  }
-#endif
+static void relay1_init_timeout_handler(struct k_timer *tim) {
+  set_relay_state(LIGHT_CHANNEL_1_INDEX, OFF);
 }
+
+#if LIGHT_CHANNELS == 2
+static void relay2_init_timeout_handler(struct k_timer *tim) {
+  set_relay_state(LIGHT_CHANNEL_2_INDEX, OFF);
+}
+#endif
 
 void init_relays(void) {
   gpio_dev_port = device_get_binding("GPIO_0");
@@ -89,10 +91,10 @@ void init_relays(void) {
   gpio_pin_set(gpio_dev_port, RELAY2_RESET_PIN, LOW);
 #endif
 
-#ifdef VSENSE_PIN
-  gpio_pin_configure(gpio_dev_port, VSENSE_PIN, GPIO_INPUT);
+  // reset relays to the OFF state after some time when the system starts
+  // when having multiple relays make sure that they are NOT reset at the same time
+  k_timer_start(&relay1_init_timer, K_MSEC(RELAY1_INIT_TIMEOUT_MS), K_NO_WAIT);
+#if LIGHT_CHANNELS == 2
+  k_timer_start(&relay2_init_timer, K_MSEC(RELAY2_INIT_TIMEOUT_MS), K_NO_WAIT);
 #endif
-
-  // reset relays to the OFF state after some time when system starts
-  k_timer_start(&relay_startup_timer, K_MSEC(RELAY_INIT_TIMEOUT_MS), K_NO_WAIT);
 }
