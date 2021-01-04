@@ -26,7 +26,7 @@ static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx
  */
 
 static struct bt_mesh_cfg_srv cfg_srv = {
-  .relay = BT_MESH_RELAY_DISABLED,
+  .relay = BT_MESH_RELAY_ENABLED,
   .beacon = BT_MESH_BEACON_ENABLED,
 #if defined(CONFIG_BT_MESH_FRIEND)
   .frnd = BT_MESH_FRIEND_ENABLED,
