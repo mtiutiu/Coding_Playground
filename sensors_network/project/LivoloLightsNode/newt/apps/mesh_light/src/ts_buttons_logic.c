@@ -18,7 +18,7 @@ static uint8_t light_channel_idx[LIGHT_CHANNELS] = {
 #endif
 };
 
-uint16_t TS_PINS[LIGHT_CHANNELS] = {
+static uint16_t TS_PINS[LIGHT_CHANNELS] = {
   TS1_PIN,
 #if LIGHT_CHANNELS == 2
   TS2_PIN
