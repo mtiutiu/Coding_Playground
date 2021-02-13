@@ -1,91 +1,102 @@
-#define MY_NODE_ID 8
-//#define MY_DEBUG
-#define MY_DISABLED_SERIAL
-#define MY_RADIO_RFM69
-//#define MY_IS_RFM69HW
-#define MY_RFM69_FREQUENCY (RFM69_868MHZ)
-#define MY_RFM69_NEW_DRIVER
+#include <Arduino.h>
+#include <LowPower.h>
+#include <MySensorsWrapper.h>
+#include <RFM69.h>
 
-
-#ifdef MY_IS_RFM69HW
-#define MY_RFM69_TX_POWER_DBM (20)
-#else
-#define MY_RFM69_TX_POWER_DBM (13)
+#ifndef NODE_NAME
+#define NODE_NAME "Test"
 #endif
 
-// Optimizations when running on 2032 Coin Cell
-#define MY_TRANSPORT_UPLINK_CHECK_DISABLED
-#define MY_TRANSPORT_WAIT_READY_MS  5000
-#define MY_SLEEP_TRANSPORT_RECONNECT_TIMEOUT_MS 2000
-#define MY_PARENT_NODE_ID 0
-#define MY_PARENT_NODE_IS_STATIC
+#define NETWORKID 0
+#define MYNODEID  4
+#define FREQUENCY RF69_868MHZ
 
-#include <Arduino.h>
-#include <MySensors.h>
+#define WINDOW_SNS_CHILD_ID 0
+#define WINDOW_SNS_READ_PIN 3
 
-const float MAX_BATT_VOLTAGE_MV = 3000;
-const float BATT_VOLTAGE_CORRECTION_FACTOR = 8.0;
+#define INTERNAL_AREF_V     1100
+#define MAX_BATT_VOLTAGE_MV 3000
+#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (-8)
+//#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (14)
+#define NODE_SLEEP_INTERVAL_S 1800 // 30min
 
-const uint32_t SLEEP_TIME_MS = 300000; // 5m
+static RFM69 radio;
+static MySensors mysNode(MYNODEID, radio);
 
-const uint8_t WINDOW_SNS_READ_PIN = 3;
-const uint8_t WINDOW_SNS_CHILD_ID = 0;
+static bool externalInterrupt = false;
 
-MyMessage msg(WINDOW_SNS_CHILD_ID, V_TRIPPED);
+void wakeUpHandler() {
+  externalInterrupt = true;
+}
 
-const uint8_t PRESENTATION_MSG_CYCLE = 10;
+static uint8_t getBattLvl() {
+  float batteryVolts = 0.0;
 
+  // Measure Vcc against 1.1V Vref
+#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) ||              \
+    defined(__AVR_ATmega2560__)
+  ADMUX = (_BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1));
+#elif defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) ||                \
+    defined(__AVR_ATtiny84__)
+  ADMUX = (_BV(MUX5) | _BV(MUX0));
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) ||                \
+    defined(__AVR_ATtiny85__)
+  ADMUX = (_BV(MUX3) | _BV(MUX2));
+#else
+  ADMUX = (_BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1));
+#endif
+  // Vref settle
+  delay(70);
+  // Do conversion
+  ADCSRA |= _BV(ADSC);
+  while (bit_is_set(ADCSRA, ADSC)) {};
+  batteryVolts = (1125300UL) / ADC;
 
-uint8_t getBattLvl(uint8_t samplesCount = 10) {
-  float batteryVoltageSample = 0.0;
+  return constrain(((batteryVolts / MAX_BATT_VOLTAGE_MV) * 100) + BATTERY_PERCENT_LVL_CORRECTION_FACTOR, 0, 100);
+}
 
-  for (uint8_t samples = 0; samples < samplesCount; samples++) {
-    batteryVoltageSample += (float)hwCPUVoltage() / samplesCount;
+static void nodeSleep(uint32_t seconds) {
+  radio.sleep();
+
+  for (uint32_t i = 0; i < seconds; i++) {
+    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+    // if an external interrupt took place then break sleep loop so that we can send the data
+    if(externalInterrupt) {
+      externalInterrupt = false;
+      break;
+    }
   }
-
-  return constrain(((batteryVoltageSample / MAX_BATT_VOLTAGE_MV) * 100) - BATT_VOLTAGE_CORRECTION_FACTOR, 0, 100);
 }
 
 void setup() {
   pinMode(WINDOW_SNS_READ_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), wakeUpHandler, CHANGE);
+
+  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
+  //node.setHighPower(); // Always use this for RFM69HW
+  radio.setPowerLevel(31);
+
+  mysNode.send_sketch_name(NODE_NAME);
+  mysNode.send_sketch_version("0.1");
+  mysNode.present(WINDOW_SNS_CHILD_ID, S_DOOR, NODE_NAME);
 }
 
-void presentation() {
-  sendSketchInfo(NODE_NAME, "0.1");
-  present(WINDOW_SNS_CHILD_ID, S_DOOR);
-}
 
 void loop() {
-  static uint8_t prevBattLvl;
   static uint8_t prevWindowState;
-  static uint8_t presCycle;
-
-  if (++presCycle >= PRESENTATION_MSG_CYCLE) {
-    presentation();
-    presCycle = 0;
-  }
-
-  // sending succesive readings too fast has negative impact on a coin cell
-  // so let it settle for a while as this is not critical
-  // also let the sensors settle before taking readings if the case
-  sleep(5);
+  static uint8_t prevBattLvl;
 
   uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
-    send(msg.set(currentWindowState));
+    mysNode.send(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
     prevWindowState = currentWindowState;
   }
 
-  // sending succesive readings too fast has negative impact on a coin cell
-  // so let it settle for a while as this is not critical
-  // also let the sensors settle before taking readings if the case
-  sleep(5);
-
   uint8_t currentBattLvl = getBattLvl();
   if (currentBattLvl != prevBattLvl) {
-    sendBatteryLevel(currentBattLvl);
+    mysNode.send_battery_level(currentBattLvl);
     prevBattLvl = currentBattLvl;
   }
 
-  sleep(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), CHANGE, SLEEP_TIME_MS);
+  nodeSleep(NODE_SLEEP_INTERVAL_S);
 }
