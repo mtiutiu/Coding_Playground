@@ -10,7 +10,16 @@
 
 class MySensors {
   public:
-    MySensors(const uint8_t node_id, RFM69& radioTransport): _node_id(node_id), _radioTransport(radioTransport) {}
+    MySensors(RFM69 &radioTransport): _radioTransport(radioTransport) {}
+
+    void begin(const uint8_t freqBand, const uint16_t id, const uint8_t networkID) {
+      _node_id = id;
+      _radioTransport.initialize(freqBand, id, networkID);
+    #ifdef RFM69_HIGH_POWER
+      _radioTransport.setHighPower(); // Always use this for RFM69HW
+    #endif
+      _radioTransport.setPowerLevel(31);
+    }
 
     void present(const uint8_t id, const uint8_t sub_type, const char* alias, uint8_t ack = 0) {
       // present this node as a MySensors node first
@@ -36,6 +45,10 @@ class MySensors {
 
     void send(uint8_t child_sensor_id, uint8_t sub_type, uint8_t payload, uint8_t ack = 0) {
       _send(_node_id, child_sensor_id, M_SET, sub_type, payload, ack);
+    }
+
+    void sleep() {
+      _radioTransport.sleep();
     }
 
   private:

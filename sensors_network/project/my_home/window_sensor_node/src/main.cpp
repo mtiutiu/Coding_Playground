@@ -3,27 +3,51 @@
 #include <MySensorsWrapper.h>
 #include <RFM69.h>
 
-#ifndef NODE_NAME
-#define NODE_NAME "Test"
+#ifndef MY_NODE_NAME
+#define MY_NODE_NAME "Test"
 #endif
 
-#define NETWORKID 0
-#define MYNODEID  4
-#define FREQUENCY RF69_868MHZ
+#ifndef MY_NODE_VERSION
+#define MY_NODE_VERSION "0.1"
+#endif
+
+#ifndef MY_NODE_ID
+#define MY_NODE_ID 1
+#endif
+
+#ifndef MY_NETWORK_ID
+#define MY_NETWORK_ID 0
+#endif
+
+#ifndef MY_FREQUENCY
+#define MY_FREQUENCY RF69_868MHZ
+#endif
 
 #define WINDOW_SNS_CHILD_ID 0
 #define WINDOW_SNS_READ_PIN 3
 
-#define INTERNAL_AREF_V     1100
 #define MAX_BATT_VOLTAGE_MV 3000
-#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (-8)
-//#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (14)
-#define NODE_SLEEP_INTERVAL_S 1800 // 30min
+//#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (-8)
+#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (14)
 
-static RFM69 radio;
-static MySensors mysNode(MYNODEID, radio);
+// interval must be given in seconds
+#define SLEEP_5_SECONDS        5
+#define SLEEP_10_SECONDS      10
+#define SLEEP_30_SECONDS      30
+#define SLEEP_1_MINUTE        60
+#define SLEEP_5_MINUTES      300
+#define SLEEP_10_MINUTES     600
+#define SLEEP_30_MINUTE     1800
+#define SLEEP_1_HOUR        3600 
 
-static bool externalInterrupt = false;
+#define NO_WAKEUP                 0
+#define SLEEP_TIMER_WAKEUP        1
+#define EXTERNAL_INTERRUPT_WAKEUP 2
+
+static RFM69 rfm69RadioTransport;
+static MySensors mysNode(rfm69RadioTransport);
+
+static volatile bool externalInterrupt = false;
 
 void wakeUpHandler() {
   externalInterrupt = true;
@@ -55,48 +79,64 @@ static uint8_t getBattLvl() {
   return constrain(((batteryVolts / MAX_BATT_VOLTAGE_MV) * 100) + BATTERY_PERCENT_LVL_CORRECTION_FACTOR, 0, 100);
 }
 
-static void nodeSleep(uint32_t seconds) {
-  radio.sleep();
+static uint8_t nodeSleep(uint32_t seconds) {
+  mysNode.sleep();
 
   for (uint32_t i = 0; i < seconds; i++) {
     LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
     // if an external interrupt took place then break sleep loop so that we can send the data
     if(externalInterrupt) {
       externalInterrupt = false;
-      break;
+      return EXTERNAL_INTERRUPT_WAKEUP;
     }
   }
+
+  return SLEEP_TIMER_WAKEUP;
 }
 
-void setup() {
-  pinMode(WINDOW_SNS_READ_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), wakeUpHandler, CHANGE);
-
-  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
-  //node.setHighPower(); // Always use this for RFM69HW
-  radio.setPowerLevel(31);
-
-  mysNode.send_sketch_name(NODE_NAME);
-  mysNode.send_sketch_version("0.1");
-  mysNode.present(WINDOW_SNS_CHILD_ID, S_DOOR, NODE_NAME);
-}
-
-
-void loop() {
+void checkWindowState(uint8_t wakeUpSource) {
   static uint8_t prevWindowState;
-  static uint8_t prevBattLvl;
 
   uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
     mysNode.send(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
     prevWindowState = currentWindowState;
   }
+}
+
+void checkBatteryState(uint8_t wakeUpSource) {
+  static uint8_t prevBattLvl;
 
   uint8_t currentBattLvl = getBattLvl();
-  if (currentBattLvl != prevBattLvl) {
+  if ((wakeUpSource == SLEEP_TIMER_WAKEUP) && (currentBattLvl != prevBattLvl)) {
     mysNode.send_battery_level(currentBattLvl);
     prevBattLvl = currentBattLvl;
   }
+}
 
-  nodeSleep(NODE_SLEEP_INTERVAL_S);
+void setup() {
+  pinMode(WINDOW_SNS_READ_PIN, INPUT);
+
+  // initialize node and radio transport
+  mysNode.begin(MY_FREQUENCY, MY_NODE_ID, MY_NETWORK_ID);
+  // present this node and send the initial readings
+  mysNode.send_sketch_name(MY_NODE_NAME);
+  nodeSleep(SLEEP_5_SECONDS);
+  mysNode.send_sketch_version(MY_NODE_VERSION);
+  nodeSleep(SLEEP_5_SECONDS);
+  mysNode.present(WINDOW_SNS_CHILD_ID, S_DOOR, MY_NODE_NAME);
+  nodeSleep(SLEEP_5_SECONDS);
+  mysNode.send_battery_level(getBattLvl());
+  nodeSleep(SLEEP_5_SECONDS);
+  mysNode.send(WINDOW_SNS_CHILD_ID, V_TRIPPED, digitalRead(WINDOW_SNS_READ_PIN));
+
+  // respond to external interrupts
+  attachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), wakeUpHandler, CHANGE);
+}
+
+void loop() {
+  uint8_t wakeUpSource = nodeSleep(SLEEP_1_HOUR);
+
+  checkWindowState(wakeUpSource);
+  checkBatteryState(wakeUpSource);
 }
