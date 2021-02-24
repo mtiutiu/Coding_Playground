@@ -10,9 +10,9 @@
 
 #define MSEC_TO_USEC(interval) (interval * 1000)
 
-#define BUTTON_DEBOUNCE_INTERVAL_MS 800
-#define BUTTON_LONG_PRESS_INTERVAL_MS 10000
-#define MESH_RESET_TIMEOUT_S  3
+#define BTN_DEBOUNCE_INTERVAL_MS          800
+#define MESH_RESET_BTN_PRESS_INTERVAL_MS 5000
+#define MESH_RESET_TIMEOUT_S                3
 
 static struct os_callout mesh_reset_timer;
 
@@ -41,7 +41,7 @@ static void btn_handler(void *arg) {
   // when the button is touched (pressed) we toggle the relay using some simple debouncing
   // also we store the timestamp for computing the touch (press) interval later
   if (hal_gpio_read(TS_PINS[*channel]) == LOW &&
-        (os_get_uptime_usec() - last_press_timestamp) >= MSEC_TO_USEC(BUTTON_DEBOUNCE_INTERVAL_MS)) {
+        (os_get_uptime_usec() - last_press_timestamp) >= MSEC_TO_USEC(BTN_DEBOUNCE_INTERVAL_MS)) {
     relay_toggle(*channel);
     last_press_timestamp = os_get_uptime_usec();
   }
@@ -49,7 +49,7 @@ static void btn_handler(void *arg) {
   // when the button is not touched (released) we can compute for how long it was in this state
   // in this case we use this information for resetting the provisioning state of this node
   if (hal_gpio_read(TS_PINS[*channel]) == HIGH &&
-        (os_get_uptime_usec() - last_press_timestamp) >= MSEC_TO_USEC(BUTTON_LONG_PRESS_INTERVAL_MS)) {
+        (os_get_uptime_usec() - last_press_timestamp) >= MSEC_TO_USEC(MESH_RESET_BTN_PRESS_INTERVAL_MS)) {
     // bt_mesh_reset() doesn't work when called inside an interrupt handler
     // we call it later using a os timer
     os_callout_init(&mesh_reset_timer, os_eventq_dflt_get(), mesh_reset_timer_cb, NULL);
