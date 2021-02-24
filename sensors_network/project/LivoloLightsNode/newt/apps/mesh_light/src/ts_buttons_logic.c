@@ -11,7 +11,7 @@
 #define MSEC_TO_USEC(interval) (interval * 1000)
 
 #define BUTTON_DEBOUNCE_INTERVAL_MS 800
-#define BUTTON_LONG_PRESS_INTERVAL_MS 5000
+#define BUTTON_LONG_PRESS_INTERVAL_MS 10000
 #define MESH_RESET_TIMEOUT_S  3
 
 static struct os_callout mesh_reset_timer;
