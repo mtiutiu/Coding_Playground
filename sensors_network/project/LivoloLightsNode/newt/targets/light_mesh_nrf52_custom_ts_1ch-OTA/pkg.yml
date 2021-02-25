@@ -1,0 +1,10 @@
+pkg.name: targets/light_mesh_nrf52_custom_ts_1ch
+pkg.type: target
+pkg.description:
+pkg.author:
+pkg.homepage:
+
+pkg.deps:
+  - "@apache-mynewt-core/mgmt/mgmt"
+  - "@apache-mynewt-core/mgmt/imgmgr"
+  - "@apache-mynewt-core/mgmt/newtmgr/transport/ble"
