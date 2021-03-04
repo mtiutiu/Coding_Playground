@@ -9,8 +9,9 @@
 #define LOW  0
 #define HIGH 1
 
-#define BUTTON_SHORT_PRESS_INTERVAL_MS 1000
+#define BUTTON_SHORT_PRESS_INTERVAL_MS  500
 #define BUTTON_LONG_PRESS_INTERVAL_MS  5000
+#define MESH_RESET_TIMEOUT_MS          1000
 
 static struct k_delayed_work mr_work;
 static const struct device *gpio_dev_port;
@@ -23,15 +24,15 @@ static void mesh_reset_handler(struct k_work *item) {
 static void process_button(uint8_t pin, uint8_t channel) {
   static uint64_t last_press_timestamp;
 
-  if (gpio_pin_get(gpio_dev_port, pin) == LOW) {
+  if ((gpio_pin_get(gpio_dev_port, pin) == LOW) &&
+        (k_uptime_get() - last_press_timestamp) >= BUTTON_SHORT_PRESS_INTERVAL_MS) {
+    relay_toggle(channel);
     last_press_timestamp = k_uptime_get();
-  } else {
-    if ((k_uptime_get() - last_press_timestamp) <= BUTTON_SHORT_PRESS_INTERVAL_MS) {
-      relay_toggle(channel);
-    }
-    if ((k_uptime_get() - last_press_timestamp) >= BUTTON_LONG_PRESS_INTERVAL_MS) {
-      k_delayed_work_submit(&mr_work, K_MSEC(1000));
-    }
+  }
+
+  if ((gpio_pin_get(gpio_dev_port, pin) == HIGH) &&
+        (k_uptime_get() - last_press_timestamp) >= BUTTON_LONG_PRESS_INTERVAL_MS) {
+    k_delayed_work_submit(&mr_work, K_MSEC(MESH_RESET_TIMEOUT_MS));
   }
 }
 

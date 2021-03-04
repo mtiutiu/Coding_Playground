@@ -10,7 +10,6 @@
 #include "node_conf.h"
 
 
-/* Model Operation Codes */
 #define BT_MESH_MODEL_OP_GEN_ONOFF_GET        BT_MESH_MODEL_OP_2(0x82, 0x01)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET        BT_MESH_MODEL_OP_2(0x82, 0x02)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK  BT_MESH_MODEL_OP_2(0x82, 0x03)
@@ -21,58 +20,8 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
 static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
 
-/*
- * Server Configuration Declaration
- */
-
-static struct bt_mesh_cfg_srv cfg_srv = {
-  .relay = BT_MESH_RELAY_ENABLED,
-  .beacon = BT_MESH_BEACON_ENABLED,
-#if defined(CONFIG_BT_MESH_FRIEND)
-  .frnd = BT_MESH_FRIEND_ENABLED,
-#else
-  .frnd = BT_MESH_FRIEND_NOT_SUPPORTED,
-#endif
-#if defined(CONFIG_BT_MESH_GATT_PROXY)
-  .gatt_proxy = BT_MESH_GATT_PROXY_ENABLED,
-#else
-  .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
-#endif
-  .default_ttl = 7,
-
-  /* 3 transmissions with 20ms interval */
-  .net_transmit = BT_MESH_TRANSMIT(2, 20),
-  .relay_retransmit = BT_MESH_TRANSMIT(2, 20)
-};
-
-/*
- * Client Configuration Declaration
- */
-
-static struct bt_mesh_cfg_cli cfg_cli = {};
-
-/*
- * Health Server Declaration
- */
 
 static struct bt_mesh_health_srv health_srv = {};
-
-/*
- * Publication Declarations
- *
- * The publication messages are initialized to the
- * the size of the opcode + content
- *
- * For publication, the message must be in static or global as
- * it is re-transmitted several times. This occurs
- * after the function that called bt_mesh_model_publish() has
- * exited and the stack is no longer valid.
- *
- * Note that the additional 4 bytes for the AppMIC is not needed
- * because it is added to a stack variable at the time a
- * transmission occurs.
- *
- */
 
 BT_MESH_HEALTH_PUB_DEFINE(health_pub, 0);
 
@@ -84,19 +33,6 @@ BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_srv_ch2, NULL, 2 + 1);
 BT_MESH_MODEL_PUB_DEFINE(gen_onoff_pub_cli_ch2, NULL, 2 + 1);
 #endif
 
-/*
- * Models in an element must have unique op codes.
- *
- * The mesh stack dispatches a message to the first model in an element
- * that is also bound to an app key and supports the op code in the
- * received message.
- *
- */
-
-/*
- * OnOff Model Server Op Dispatch Table
- *
- */
 
 static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_GET, 0, gen_onoff_get },
@@ -105,21 +41,12 @@ static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
   BT_MESH_MODEL_OP_END
 };
 
-/*
- * OnOff Model Client Op Dispatch Table
- */
 
 static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
   { BT_MESH_MODEL_OP_GEN_ONOFF_STATUS, 1, gen_onoff_status },
   BT_MESH_MODEL_OP_END
 };
 
-/*
- *
- * Element Model Declarations
- *
- * Element 0 Root Models
- */
 
 static uint8_t light_channel_idx[] = {
   0,
@@ -129,8 +56,7 @@ static uint8_t light_channel_idx[] = {
 };
 
 static struct bt_mesh_model root_models[] = {
-  BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL_CFG_CLI(&cfg_cli),
+  BT_MESH_MODEL_CFG_SRV,
   BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub)
 };
 
@@ -147,10 +73,6 @@ static struct bt_mesh_model secondary_models_ch2[] = {
 #endif
 
 
-/*
- * Button to Client Model Assignments
- */
-
 static struct bt_mesh_model *mod_cli_ts_btn[] = {
   &secondary_models_ch1[1],
 #if LIGHT_CHANNELS == 2
@@ -158,9 +80,6 @@ static struct bt_mesh_model *mod_cli_ts_btn[] = {
 #endif
 };
 
-/*
- * Root Element Declarations
- */
 
 static struct bt_mesh_elem elements[] = {
   BT_MESH_ELEM(0, root_models, BT_MESH_MODEL_NONE),
@@ -179,12 +98,6 @@ static const struct bt_mesh_comp comp = {
 static uint16_t primary_addr;
 static uint16_t primary_net_idx;
 
-/*
- * Generic OnOff Model Server Message Handlers
- *
- * Mesh Model Specification 3.1.1
- *
- */
 
 static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
@@ -234,7 +147,6 @@ static void prov_reset(void) {
 
 static uint8_t dev_uuid[16] = {0xdd, 0xdd};
 
-/* Disable OOB security */
 
 static const struct bt_mesh_prov prov = {
   .uuid = dev_uuid,
@@ -245,9 +157,6 @@ static const struct bt_mesh_prov prov = {
   .reset = prov_reset
 };
 
-/*
- * Bluetooth Ready Callback
- */
 
 void bt_ready(int err) {
   struct bt_le_oob oob;
@@ -274,7 +183,7 @@ void bt_ready(int err) {
     memcpy(dev_uuid, oob.addr.a.val, 6);
   }
 
-  bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
+  bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 }
 
 void mesh_publish_state(uint8_t channel, uint8_t new_state) {

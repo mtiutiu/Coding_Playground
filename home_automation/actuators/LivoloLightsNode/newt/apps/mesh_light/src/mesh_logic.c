@@ -299,7 +299,7 @@ void blemesh_on_sync(void) {
     // console_printf("Mesh network restored from flash\n");
   }
 
-  bt_mesh_prov_enable(BT_MESH_PROV_GATT | BT_MESH_PROV_ADV);
+  bt_mesh_prov_enable(BT_MESH_PROV_ADV | BT_MESH_PROV_GATT);
 
   // console_printf("Mesh initialized\n");
 }
