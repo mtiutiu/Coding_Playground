@@ -39,7 +39,7 @@ static struct bt_mesh_cfg_srv cfg_srv = {
 #endif
   .default_ttl = 7,
   .net_transmit = BT_MESH_TRANSMIT(3, 20),
-  .relay_retransmit = BT_MESH_TRANSMIT(7, 20)
+  .relay_retransmit = BT_MESH_TRANSMIT(3, 20)
 };
 
 /*
@@ -245,7 +245,7 @@ static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx
 
 }
 
-static void prov_complete(u16_t net_idx, u16_t addr) {
+static void prov_complete(uint16_t net_idx, uint16_t addr) {
   primary_addr = addr;
   primary_net_idx = net_idx;
 }

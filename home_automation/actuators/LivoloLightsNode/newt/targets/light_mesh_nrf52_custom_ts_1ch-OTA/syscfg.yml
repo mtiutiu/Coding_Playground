@@ -1,7 +1,6 @@
 syscfg.vals:
-  BLE_MESH_DEVICE_NAME: '"TT_Mesh"'
-  BLE_MESH_DEV_UUID: '(uint8_t[16]){0xdd, 0x01, 0}'
+  BLE_MESH_DEVICE_NAME: '"Guests_Room_Lights"'
+  BLE_MESH_DEV_UUID: '(uint8_t[16]){0xdd, 0x04, 0}'
   BLE_MESH_OOB_PROV_ENABLED: 0
-  BLE_MESH_APP_KEY_COUNT: 2
   BLE_MESH_MODEL_GROUP_COUNT: 2
-  BLE_LL_TX_PWR_DBM: 4
+  # BLE_LL_TX_PWR_DBM: 4
