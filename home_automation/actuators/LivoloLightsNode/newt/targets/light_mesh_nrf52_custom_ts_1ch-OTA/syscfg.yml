@@ -3,4 +3,3 @@ syscfg.vals:
   BLE_MESH_DEV_UUID: '(uint8_t[16]){0xdd, 0x04, 0}'
   BLE_MESH_OOB_PROV_ENABLED: 0
   BLE_MESH_MODEL_GROUP_COUNT: 2
-  # BLE_LL_TX_PWR_DBM: 4

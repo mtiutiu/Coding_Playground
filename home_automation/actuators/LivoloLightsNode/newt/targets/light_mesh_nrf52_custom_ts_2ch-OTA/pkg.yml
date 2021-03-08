@@ -8,3 +8,4 @@ pkg.deps:
   - "@apache-mynewt-core/mgmt/mgmt"
   - "@apache-mynewt-core/mgmt/imgmgr"
   - "@apache-mynewt-core/mgmt/newtmgr/transport/ble"
+  - "@mcuboot/boot/bootutil" # 1.7.0 requires this
