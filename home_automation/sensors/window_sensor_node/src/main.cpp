@@ -1,142 +1,86 @@
 #include <Arduino.h>
 #include <LowPower.h>
-#include <MySensorsWrapper.h>
+#include <MTypes.h>
 #include <RFM69.h>
+#include <Vcc.h>
 
-#ifndef MY_NODE_NAME
-#define MY_NODE_NAME "Test"
-#endif
-
-#ifndef MY_NODE_VERSION
-#define MY_NODE_VERSION "0.1"
-#endif
 
 #ifndef MY_NODE_ID
-#define MY_NODE_ID 1
+#define MY_NODE_ID 2
 #endif
 
 #ifndef MY_NETWORK_ID
 #define MY_NETWORK_ID 0
 #endif
 
+#ifndef MY_GATEWAY_ID
+#define MY_GATEWAY_ID 1
+#endif
+
 #ifndef MY_FREQUENCY
 #define MY_FREQUENCY RF69_868MHZ
 #endif
 
-#define WINDOW_SNS_CHILD_ID 0
-#define WINDOW_SNS_READ_PIN 3
+#define BATTERY_CHILD_ID    255
+#define WINDOW_SNS_CHILD_ID   0
+#define WINDOW_SNS_READ_PIN   3
 
-#define MAX_BATT_VOLTAGE_MV 3000
-//#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (-8)
-#define BATTERY_PERCENT_LVL_CORRECTION_FACTOR (14)
+#define VCC_CORRECTION_FACTOR 0.95
+#define VCC_BATT_MIN_VOLTS    2.2
+#define VCC_BATT_MAX_VOLTS    3.0
 
-// interval must be given in seconds
-#define SLEEP_5_SECONDS        5
-#define SLEEP_10_SECONDS      10
-#define SLEEP_30_SECONDS      30
-#define SLEEP_1_MINUTE        60
-#define SLEEP_5_MINUTES      300
-#define SLEEP_10_MINUTES     600
-#define SLEEP_30_MINUTE     1800
-#define SLEEP_1_HOUR        3600 
+static RFM69 radio;
+static Vcc vcc(VCC_CORRECTION_FACTOR);
 
-#define NO_WAKEUP                 0
-#define SLEEP_TIMER_WAKEUP        1
-#define EXTERNAL_INTERRUPT_WAKEUP 2
+static void wakeUpHandler() {}
 
-static RFM69 rfm69RadioTransport;
-static MySensors mysNode(rfm69RadioTransport);
+static void mys_send_byte(uint8_t child_id, uint8_t var_type, uint8_t data, uint8_t cmd_type = M_SET) {
+  char message[RF69_MAX_DATA_LEN];
+  memset(message, '\0', sizeof(message));
 
-static volatile bool externalInterrupt = false;
-
-void wakeUpHandler() {
-  externalInterrupt = true;
+  snprintf(message, sizeof(message), "%hhu;%hhu;%hhu;%hhu;%hhu;%hhu", 
+            MY_NODE_ID, child_id, cmd_type, 0, var_type, data);
+  radio.sendWithRetry(MY_GATEWAY_ID, message, sizeof(message));
 }
 
-static uint8_t getBattLvl() {
-  float batteryVolts = 0.0;
-
-  // Measure Vcc against 1.1V Vref
-#if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) ||              \
-    defined(__AVR_ATmega2560__)
-  ADMUX = (_BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1));
-#elif defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) ||                \
-    defined(__AVR_ATtiny84__)
-  ADMUX = (_BV(MUX5) | _BV(MUX0));
-#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) ||                \
-    defined(__AVR_ATtiny85__)
-  ADMUX = (_BV(MUX3) | _BV(MUX2));
-#else
-  ADMUX = (_BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1));
-#endif
-  // Vref settle
-  delay(70);
-  // Do conversion
-  ADCSRA |= _BV(ADSC);
-  while (bit_is_set(ADCSRA, ADSC)) {};
-  batteryVolts = (1125300UL) / ADC;
-
-  return constrain(((batteryVolts / MAX_BATT_VOLTAGE_MV) * 100) + BATTERY_PERCENT_LVL_CORRECTION_FACTOR, 0, 100);
-}
-
-static uint8_t nodeSleep(uint32_t seconds) {
-  mysNode.sleep();
-
-  for (uint32_t i = 0; i < seconds; i++) {
-    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
-    // if an external interrupt took place then break sleep loop so that we can send the data
-    if(externalInterrupt) {
-      externalInterrupt = false;
-      return EXTERNAL_INTERRUPT_WAKEUP;
-    }
-  }
-
-  return SLEEP_TIMER_WAKEUP;
-}
-
-void checkWindowState(uint8_t wakeUpSource) {
+static void checkWindowState() {
   static uint8_t prevWindowState;
 
   uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
-    mysNode.send(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
+    mys_send_byte(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
     prevWindowState = currentWindowState;
   }
 }
 
-void checkBatteryState(uint8_t wakeUpSource) {
+static void checkBatteryState() {
   static uint8_t prevBattLvl;
 
-  uint8_t currentBattLvl = getBattLvl();
-  if ((wakeUpSource == SLEEP_TIMER_WAKEUP) && (currentBattLvl != prevBattLvl)) {
-    mysNode.send_battery_level(currentBattLvl);
+  uint8_t currentBattLvl = (uint8_t)vcc.Read_Perc(VCC_BATT_MIN_VOLTS, VCC_BATT_MAX_VOLTS);
+  if (currentBattLvl != prevBattLvl) {
+    mys_send_byte(BATTERY_CHILD_ID, I_BATTERY_LEVEL, currentBattLvl, M_INTERNAL);
     prevBattLvl = currentBattLvl;
   }
+}
+
+static void nodeSleep() {
+  radio.sleep();
+  attachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), wakeUpHandler, CHANGE);
+  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+  detachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN));
 }
 
 void setup() {
   pinMode(WINDOW_SNS_READ_PIN, INPUT);
 
   // initialize node and radio transport
-  mysNode.begin(MY_FREQUENCY, MY_NODE_ID, MY_NETWORK_ID);
-  // present this node and send the initial readings
-  mysNode.send_sketch_name(MY_NODE_NAME);
-  nodeSleep(SLEEP_5_SECONDS);
-  mysNode.send_sketch_version(MY_NODE_VERSION);
-  nodeSleep(SLEEP_5_SECONDS);
-  mysNode.present(WINDOW_SNS_CHILD_ID, S_DOOR, MY_NODE_NAME);
-  nodeSleep(SLEEP_5_SECONDS);
-  mysNode.send_battery_level(getBattLvl());
-  nodeSleep(SLEEP_5_SECONDS);
-  mysNode.send(WINDOW_SNS_CHILD_ID, V_TRIPPED, digitalRead(WINDOW_SNS_READ_PIN));
-
-  // respond to external interrupts
-  attachInterrupt(digitalPinToInterrupt(WINDOW_SNS_READ_PIN), wakeUpHandler, CHANGE);
+  radio.initialize(MY_FREQUENCY, MY_NODE_ID, MY_NETWORK_ID);
+  // radio.setHighPower(); // Always use this for RFM69HCW
+  radio.setPowerLevel(31);
 }
 
 void loop() {
-  uint8_t wakeUpSource = nodeSleep(SLEEP_1_HOUR);
-
-  checkWindowState(wakeUpSource);
-  checkBatteryState(wakeUpSource);
+  nodeSleep();
+  checkBatteryState();
+  checkWindowState();
 }
