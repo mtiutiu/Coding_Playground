@@ -1,5 +1,5 @@
 syscfg.vals:
-  BLE_MESH_DEVICE_NAME: '"Guests_Room_Lights"'
-  BLE_MESH_DEV_UUID: '(uint8_t[16]){0xdd, 0x04, 0}'
-  BLE_MESH_OOB_PROV_ENABLED: 0
+  BLE_MESH_DEVICE_NAME: "\"Attic_Lab_Lights\""
+  BLE_MESH_DEV_UUID: "(uint8_t[16]){0xdd, 0x01, 0}"
   BLE_MESH_MODEL_GROUP_COUNT: 3
+  BLE_MESH_OOB_PROV_ENABLED: 0

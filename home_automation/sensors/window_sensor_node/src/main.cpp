@@ -29,12 +29,25 @@
 #define VCC_BATT_MIN_VOLTS    2.2
 #define VCC_BATT_MAX_VOLTS    3.0
 
+#ifdef WANT_LED_SIGNALING
+#define SENSOR_LED_PIN  A2
+#endif
+
 static RFM69 radio;
 static Vcc vcc(VCC_CORRECTION_FACTOR);
 
 static void wakeUpHandler() {}
 
-static void mys_send_byte(uint8_t child_id, uint8_t var_type, uint8_t data, uint8_t cmd_type = M_SET) {
+#ifdef WANT_LED_SIGNALING
+static void sensorLedBlink() {
+  digitalWrite(SENSOR_LED_PIN, HIGH);
+  radio.sleep();
+  LowPower.powerDown(SLEEP_60MS, ADC_OFF, BOD_OFF);
+  digitalWrite(SENSOR_LED_PIN, LOW);
+}
+#endif
+
+static void mysensorSendByte(uint8_t child_id, uint8_t var_type, uint8_t data, uint8_t cmd_type = M_SET) {
   char message[RF69_MAX_DATA_LEN];
   memset(message, '\0', sizeof(message));
 
@@ -48,8 +61,11 @@ static void checkWindowState() {
 
   uint8_t currentWindowState = digitalRead(WINDOW_SNS_READ_PIN);
   if (currentWindowState != prevWindowState) {
-    mys_send_byte(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
+    mysensorSendByte(WINDOW_SNS_CHILD_ID, V_TRIPPED, currentWindowState);
     prevWindowState = currentWindowState;
+#ifdef WANT_LED_SIGNALING
+    sensorLedBlink();
+#endif    
   }
 }
 
@@ -57,8 +73,9 @@ static void checkBatteryState() {
   static uint8_t prevBattLvl;
 
   uint8_t currentBattLvl = (uint8_t)vcc.Read_Perc(VCC_BATT_MIN_VOLTS, VCC_BATT_MAX_VOLTS);
+
   if (currentBattLvl != prevBattLvl) {
-    mys_send_byte(BATTERY_CHILD_ID, I_BATTERY_LEVEL, currentBattLvl, M_INTERNAL);
+    mysensorSendByte(BATTERY_CHILD_ID, I_BATTERY_LEVEL, currentBattLvl, M_INTERNAL);
     prevBattLvl = currentBattLvl;
   }
 }
@@ -72,6 +89,9 @@ static void nodeSleep() {
 
 void setup() {
   pinMode(WINDOW_SNS_READ_PIN, INPUT);
+#ifdef WANT_LED_SIGNALING
+  pinMode(SENSOR_LED_PIN, OUTPUT);
+#endif
 
   // initialize node and radio transport
   radio.initialize(MY_FREQUENCY, MY_NODE_ID, MY_NETWORK_ID);

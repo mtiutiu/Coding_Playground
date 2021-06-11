@@ -1,0 +1,11 @@
+BLE_MESH_DEVICE_NAME: "\"Attic_Lab_Lights\""
+BLE_MESH_DEV_UUID: "(uint8_t[16]){0xdd, 0x01, 0}"
+
+BLE_MESH_DEVICE_NAME: "\"Attic_Gym_Lights\""
+BLE_MESH_DEV_UUID: "(uint8_t[16]){0xdd, 0x02, 0}"
+
+BLE_MESH_DEVICE_NAME: "\"Kids_Room_Lights\""
+BLE_MESH_DEV_UUID: "(uint8_t[16]){0xdd, 0x03, 0}"
+
+BLE_MESH_DEVICE_NAME: "\"Guests_Room_Lights\""
+BLE_MESH_DEV_UUID: "(uint8_t[16]){0xdd, 0x04, 0}"
