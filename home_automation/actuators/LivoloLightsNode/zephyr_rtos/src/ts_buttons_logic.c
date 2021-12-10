@@ -1,3 +1,4 @@
+#include <kernel.h>
 #include <stdint.h>
 #include <device.h>
 #include <drivers/gpio.h>
@@ -13,7 +14,7 @@
 #define BUTTON_LONG_PRESS_INTERVAL_MS  5000
 #define MESH_RESET_TIMEOUT_MS          1000
 
-static struct k_delayed_work mr_work;
+static struct k_work_delayable mr_work;
 static const struct device *gpio_dev_port;
 static struct gpio_callback ts_cb;
 
@@ -32,7 +33,7 @@ static void process_button(uint8_t pin, uint8_t channel) {
 
   if ((gpio_pin_get(gpio_dev_port, pin) == HIGH) &&
         (k_uptime_get() - last_press_timestamp) >= BUTTON_LONG_PRESS_INTERVAL_MS) {
-    k_delayed_work_submit(&mr_work, K_MSEC(MESH_RESET_TIMEOUT_MS));
+    k_work_schedule(&mr_work, K_MSEC(MESH_RESET_TIMEOUT_MS));
   }
 }
 
@@ -50,7 +51,8 @@ static void button_pressed_handler(const struct device *dev, struct gpio_callbac
 }
 
 void init_ts(void) {
-  k_delayed_work_init(&mr_work, mesh_reset_handler);
+  k_work_init_delayable(&mr_work, mesh_reset_handler);
+
   gpio_dev_port = device_get_binding("GPIO_0");
 
   // Touch sensor reading

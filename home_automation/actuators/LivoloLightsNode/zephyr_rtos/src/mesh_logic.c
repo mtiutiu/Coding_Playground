@@ -1,10 +1,6 @@
 #include <stdint.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/conn.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/mesh.h>
-#include <settings/settings.h>
 #include "mesh_logic.h"
 #include "relays_logic.h"
 #include "node_conf.h"
@@ -15,10 +11,11 @@
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK  BT_MESH_MODEL_OP_2(0x82, 0x03)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_STATUS     BT_MESH_MODEL_OP_2(0x82, 0x04)
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
+
+static int gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
+static int gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
+static int gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
+static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf);
 
 
 static struct bt_mesh_health_srv health_srv = {};
@@ -43,7 +40,7 @@ static const struct bt_mesh_model_op gen_onoff_srv_op[] = {
 
 
 static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
-  { BT_MESH_MODEL_OP_GEN_ONOFF_STATUS, 1, gen_onoff_status },
+  { BT_MESH_MODEL_OP_GEN_ONOFF_STATUS, BT_MESH_LEN_EXACT(1), gen_onoff_status },
   BT_MESH_MODEL_OP_END
 };
 
@@ -99,7 +96,7 @@ static uint16_t primary_addr;
 static uint16_t primary_net_idx;
 
 
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+static int gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
 
   uint8_t *channel = (uint8_t*)model->user_data;
@@ -108,9 +105,11 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   net_buf_simple_add_u8(&msg, get_relay_state(*channel));
 
   bt_mesh_model_send(model, ctx, &msg, NULL, NULL);
+
+  return 0;
 }
 
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+static int gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   struct net_buf_simple *msg = model->pub->msg;
   uint8_t *channel = (uint8_t *)model->user_data;
   uint8_t desired_state = net_buf_simple_pull_u8(buf);
@@ -125,15 +124,19 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
     net_buf_simple_add_u8(msg, get_relay_state(*channel));
     bt_mesh_model_publish(model);
   }
+
+  return 0;
 }
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+static int gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
   gen_onoff_set_unack(model, ctx, buf);
   gen_onoff_get(model, ctx, buf);
+
+  return 0;
 }
 
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
-
+static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf) {
+  return 0;
 }
 
 static void prov_complete(uint16_t net_idx, uint16_t addr) {
