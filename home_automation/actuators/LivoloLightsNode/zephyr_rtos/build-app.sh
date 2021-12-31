@@ -2,8 +2,14 @@
 
 set -eu
 
-ZEPHYR_RELEASE="zephyr-v2.7.1"
-ZEPHYR_PROJ_DIR="zephyrproject-${ZEPHYR_RELEASE##*-}"
+ZEPHYR_VERSION="2.7.1"
+ZEPHYR_SDK_VERSION="0.13.2"
+
+ZEPHYR_RELEASE="zephyr-v${ZEPHYR_VERSION}"
+ZEPHYR_SDK_RELEASE="zephyr-sdk-${ZEPHYR_SDK_VERSION}"
+
+ZEPHYR_PROJ_DIR="zephyrproject-v${ZEPHYR_VERSION}"
+ZEPHYR_SDK_DIR="$HOME/.local/${ZEPHYR_SDK_RELEASE}"
 
 function usage() {
     echo "Usage: build-app.sh [--help|-h] [--board <board_name>] [--version <x.y.z>] [--upload]."
@@ -33,10 +39,29 @@ if [[ ${board}null == "null" ]]; then
 fi
 
 # Check requirements
+cmake &> /dev/null || {
+    wget https://apt.kitware.com/kitware-archive.sh
+
+    sudo bash kitware-archive.sh && rm -f kitware-archive.sh
+    sudo apt install -y --no-install-recommends git cmake ninja-build gperf \
+        ccache dfu-util device-tree-compiler wget \
+        python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
+        make gcc gcc-multilib g++-multilib libsdl2-dev
+}
+
 west &> /dev/null || {
     echo "[INFO] West tool is missing, installing it ..."
     pip3 install --user -U west
 }
+
+if [[ ! -d "$ZEPHYR_SDK_DIR" ]]; then
+echo "[INFO] Zephyr SDK was not found, installing it to $ZEPHYR_SDK_DIR ..."
+    wget "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}-linux-$(uname -m)-setup.run" -O \
+        "zephyr-sdk-${ZEPHYR_SDK_VERSION}-linux-x86_64-setup.run"
+    chmod u+x "zephyr-sdk-${ZEPHYR_SDK_VERSION}-linux-x86_64-setup.run"
+    ./zephyr-sdk-${ZEPHYR_SDK_VERSION}-linux-x86_64-setup.run -- -d "$ZEPHYR_SDK_DIR" && \
+    rm -f "zephyr-sdk-${ZEPHYR_SDK_VERSION}-linux-x86_64-setup.run"
+fi
 
 if [[ ! -d "$ZEPHYR_PROJ_DIR" ]]; then
     echo "[INFO] Zephyr repo was not found in current workspace, fetching it ..."
