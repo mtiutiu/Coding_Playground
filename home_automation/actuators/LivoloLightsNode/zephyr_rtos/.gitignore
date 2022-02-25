@@ -1,3 +1,6 @@
 .vscode/
 zephyrproject-v*/
 .west/
+build/
+build-mcuboot/
+build-app/
