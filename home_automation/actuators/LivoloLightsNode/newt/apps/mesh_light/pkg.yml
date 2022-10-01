@@ -12,7 +12,6 @@ pkg.deps:
   - "@apache-mynewt-nimble/nimble/host/services/gap"
   - "@apache-mynewt-nimble/nimble/host/services/gatt"
   - "@apache-mynewt-nimble/nimble/host/store/config"
-  - "@apache-mynewt-nimble/nimble/transport/ram"
   - "@apache-mynewt-core/sys/console/stub"
   - "@apache-mynewt-core/sys/log/stub"
   - "@apache-mynewt-core/sys/stats/stub"

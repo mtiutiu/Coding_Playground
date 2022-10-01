@@ -15,32 +15,11 @@
 #define BT_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK  BT_MESH_MODEL_OP_2(0x82, 0x03)
 #define BT_MESH_MODEL_OP_GEN_ONOFF_STATUS     BT_MESH_MODEL_OP_2(0x82, 0x04)
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static int gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static int gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static int gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
+static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf);
 
-/*
- * Server Configuration Declaration
- */
-
-static struct bt_mesh_cfg_srv cfg_srv = {
-  .relay = BT_MESH_RELAY_DISABLED,
-  .beacon = BT_MESH_BEACON_ENABLED,
-#if defined(CONFIG_BT_MESH_FRIEND)
-  .frnd = BT_MESH_FRIEND_ENABLED,
-#else
-  .frnd = BT_MESH_FRIEND_NOT_SUPPORTED,
-#endif
-#if defined(CONFIG_BT_MESH_GATT_PROXY)
-  .gatt_proxy = BT_MESH_GATT_PROXY_ENABLED,
-#else
-  .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
-#endif
-  .default_ttl = 7,
-  .net_transmit = BT_MESH_TRANSMIT(3, 20),
-  .relay_retransmit = BT_MESH_TRANSMIT(3, 20)
-};
 
 /*
  * Client Configuration Declaration
@@ -131,10 +110,9 @@ static uint8_t light_channel_idx[LIGHT_CHANNELS] = {
 };
 
 static struct bt_mesh_model root_models[] = {
-  BT_MESH_MODEL_CFG_SRV(&cfg_srv),
-  BT_MESH_MODEL_CFG_CLI(&cfg_cli),
-  BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub)
-};
+    BT_MESH_MODEL_CFG_SRV,
+    BT_MESH_MODEL_CFG_CLI(&cfg_cli),
+    BT_MESH_MODEL_HEALTH_SRV(&health_srv, &health_pub)};
 
 static struct bt_mesh_model secondary_models_ch1[] = {
   BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_pub_srv_ch1, &light_channel_idx[0]),
@@ -206,21 +184,26 @@ void init_pub(void) {
  *
  */
 
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+static int gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
   uint8_t *channel = (uint8_t*)model->user_data;
+  int rc;
 
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   net_buf_simple_add_u8(msg, get_relay_state(*channel));
 
-  if (bt_mesh_model_send(model, ctx, msg, NULL, NULL)) {
+  rc = bt_mesh_model_send(model, ctx, msg, NULL, NULL);
+
+  if (rc) {
 
   }
 
   os_mbuf_free_chain(msg);
+
+  return rc;
 }
 
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+static int gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = model->pub->msg;
   uint8_t *channel = (uint8_t *)model->user_data;
 
@@ -231,18 +214,31 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
     net_buf_simple_add_u8(msg, get_relay_state(*channel));
     int err = bt_mesh_model_publish(model);
     if (err) {
-
+      return err;
     }
   }
+
+  return 0;
 }
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
-  gen_onoff_set_unack(model, ctx, buf);
-  gen_onoff_get(model, ctx, buf);
+static int gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+  int rc;
+
+  rc = gen_onoff_set_unack(model, ctx, buf);
+  if (rc != 0) {
+    return rc;
+  }
+
+  rc = gen_onoff_get(model, ctx, buf);
+  if (rc != 0) {
+    return rc;
+  }
+
+  return 0;
 }
 
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
-
+static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+  return 0;
 }
 
 static void prov_complete(uint16_t net_idx, uint16_t addr) {

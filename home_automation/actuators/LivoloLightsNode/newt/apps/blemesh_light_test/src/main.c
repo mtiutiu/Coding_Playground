@@ -54,30 +54,6 @@ static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx 
 static uint8_t new_state = 0;
 
 /*
- * Server Configuration Declaration
- */
-
-static struct bt_mesh_cfg_srv cfg_srv = {
-  .relay = BT_MESH_RELAY_DISABLED,
-  .beacon = BT_MESH_BEACON_ENABLED,
-#if MYNEWT_VAL(BLE_MESH_FRIEND)
-  .frnd = BT_MESH_FRIEND_ENABLED,
-#else
-  .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
-#endif
-#if MYNEWT_VAL(BLE_MESH_GATT_PROXY)
-  .gatt_proxy = BT_MESH_GATT_PROXY_ENABLED,
-#else
-  .gatt_proxy = BT_MESH_GATT_PROXY_NOT_SUPPORTED,
-#endif
-  .default_ttl = 7,
-
-  /* 3 transmissions with 20ms interval */
-  .net_transmit = BT_MESH_TRANSMIT(2, 20),
-  .relay_retransmit = BT_MESH_TRANSMIT(2, 20),
-};
-
-/*
  * Client Configuration Declaration
  */
 
@@ -152,12 +128,11 @@ static const struct bt_mesh_model_op gen_onoff_cli_op[] = {
  */
 
 static struct bt_mesh_model root_models[] = {
-  BT_MESH_MODEL_CFG_SRV(&cfg_srv),
+  BT_MESH_MODEL_CFG_SRV,
   BT_MESH_MODEL_CFG_CLI(&cfg_cli),
   BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_SRV, gen_onoff_srv_op, &gen_onoff_pub_srv, NULL),
   BT_MESH_MODEL(BT_MESH_MODEL_ID_GEN_ONOFF_CLI, gen_onoff_cli_op, &gen_onoff_pub_cli, NULL),
 };
-
 
 /*
  * Root Element Declaration
@@ -181,7 +156,7 @@ static const struct bt_mesh_comp comp = {
  *
  */
 
-static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+static int gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = NET_BUF_SIMPLE(2 + 1 + 4);
 #ifdef APP_DEBUG
   printf("[INFO] Mesh OnOff GET operation! Sending reply payload: %d\n", new_state /* TO DO */);
@@ -189,19 +164,21 @@ static void gen_onoff_get(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *c
   bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
   net_buf_simple_add_u8(msg, new_state /*TO DO*/);
 
-  int err = bt_mesh_model_send(model, ctx, msg, NULL, NULL);
-  if (err) {
+  int rc = bt_mesh_model_send(model, ctx, msg, NULL, NULL);
+  if (rc) {
 #ifdef APP_DEBUG
     printf("[ERROR] Unable to send On Off Status response\n");
 #endif
   }
 
   os_mbuf_free_chain(msg);
+
+  return rc;
 }
 
-static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+static int gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
   struct os_mbuf *msg = model->pub->msg;
-  new_state = net_buf_simple_pull_u8(buf);
+  uint8_t new_state = net_buf_simple_pull_u8(buf);
 #ifdef APP_DEBUG
   printf("[INFO] Mesh OnOff SET operation! Received payload: %d from: 0x%04x and model idx: %d\n", new_state, ctx->addr, model->mod_idx);
 #endif
@@ -214,31 +191,44 @@ static void gen_onoff_set_unack(struct bt_mesh_model *model, struct bt_mesh_msg_
    *
    * Only publish if there is an assigned address
   */
-  if (model->pub->addr == BT_MESH_ADDR_UNASSIGNED) {
-    return;
-  }
-
-  bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
-  net_buf_simple_add_u8(msg, new_state /*TO DO*/);
-
-  int err = bt_mesh_model_publish(model);
-  if (err) {
+  if (model->pub->addr != BT_MESH_ADDR_UNASSIGNED) {
+    bt_mesh_model_msg_init(msg, BT_MESH_MODEL_OP_GEN_ONOFF_STATUS);
+    net_buf_simple_add_u8(msg, new_state);
+    int err = bt_mesh_model_publish(model);
+    if (err) {
 #ifdef APP_DEBUG
-    printf("[ERROR] bt_mesh_model_publish err %d\n", err);
+      printf("[ERROR] bt_mesh_model_publish err %d\n", err);
 #endif
+      return err;
+    }
   }
+
+  return 0;
 }
 
-static void gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
-  gen_onoff_set_unack(model, ctx, buf);
-  gen_onoff_get(model, ctx, buf);
+static int gen_onoff_set(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+  int rc;
+
+  rc = gen_onoff_set_unack(model, ctx, buf);
+  if (rc != 0) {
+    return rc;
+  }
+
+  rc = gen_onoff_get(model, ctx, buf);
+  if (rc != 0) {
+    return rc;
+  }
+
+  return 0;
 }
 
-static void gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
+static int gen_onoff_status(struct bt_mesh_model *model, struct bt_mesh_msg_ctx *ctx, struct os_mbuf *buf) {
 #ifdef APP_DEBUG
   uint8_t state = net_buf_simple_pull_u8(buf);
   printf("[INFO] Node 0x%04x OnOff status from 0x%04x with state 0x%02x\n", bt_mesh_model_elem(model)->addr, ctx->addr, state);
 #endif
+
+  return 0;
 }
 
 #if (MYNEWT_VAL(BLE_MESH_OOB_PROV_ENABLED))
@@ -250,7 +240,7 @@ static int output_number(bt_mesh_output_action_t action, u32_t number) {
 }
 #endif
 
-static void prov_complete(u16_t net_idx, u16_t addr) {
+static void prov_complete(uint16_t net_idx, uint16_t addr) {
 #ifdef APP_DEBUG
   printf("[INFO] Provisioning complete for net_idx 0x%04x addr 0x%04x\n", net_idx, addr);
 #endif
