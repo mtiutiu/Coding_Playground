@@ -1,11 +1,19 @@
-#include <bluetooth/bluetooth.h>
-#include <img_mgmt/img_mgmt.h>
+#ifdef CONFIG_MCUMGR_CMD_IMG_MGMT
+#include "img_mgmt/img_mgmt.h"
+#endif
+#ifdef CONFIG_MCUMGR_CMD_OS_MGMT
 #include "os_mgmt/os_mgmt.h"
-#include <mgmt/mcumgr/smp_bt.h>
-#include "mesh_logic.h"
-#include "ts_buttons_logic.h"
-#include "relays_logic.h"
+#endif
+#ifdef CONFIG_MCUMGR_SMP_BT
+#include <zephyr/mgmt/mcumgr/smp_bt.h>
+#endif
+#include <zephyr/bluetooth/bluetooth.h>
+
 #include "leds_logic.h"
+#include "mesh_logic.h"
+#include "relays_logic.h"
+#include "ts_buttons_logic.h"
+
 
 void main(void) {
   init_leds();
@@ -15,9 +23,15 @@ void main(void) {
   // Initialize the Bluetooth Subsystem
   bt_enable(bt_ready);
 
-  img_mgmt_register_group();
+#ifdef CONFIG_MCUMGR_CMD_OS_MGMT
   os_mgmt_register_group();
+#endif
 
-  // start_smp_bluetooth();
+#ifdef CONFIG_MCUMGR_CMD_IMG_MGMT
+  img_mgmt_register_group();
+#endif
+
+#ifdef CONFIG_MCUMGR_SMP_BT
   smp_bt_register();
+#endif
 }
