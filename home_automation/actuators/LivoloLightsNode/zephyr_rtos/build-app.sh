@@ -2,10 +2,7 @@
 
 set -eu
 
-source common.sh
-
-ZEPHYR_PROJ_DIR="zephyrproject-v${ZEPHYR_VERSION}"
-ZEPHYR_SDK_DIR="${HOME}/.local/$ZEPHYR_SDK_RELEASE"
+source util.sh
 
 
 function usage() {
@@ -35,38 +32,13 @@ if [[ ${board}null == "null" ]]; then
     usage
 fi
 
-# Check Zephyr RTOS prerequisites
-check_zephyr_prerequisites
+# Check OS prerequisites for Zephyr RTOS
+check_os_prerequisites
 
-# Check Zephyr SDK availability
-if [[ ! -d "$ZEPHYR_SDK_DIR" ]]; then
-  fetch_zephyr_sdk "$ZEPHYR_SDK_DIR"
-fi
+# Download and set up Zephyr SDK
+prepare_zephyr_sdk
 
-# Check Zephyr RTOS source tree availability
-if [[ ! -d "$ZEPHYR_PROJ_DIR" ]]; then
-  fetch_zephyr_rtos "$ZEPHYR_PROJ_DIR"
-fi
+# Download and set up Zephyr RTOS
+prepare_zephyr_rtos
 
-source "${ZEPHYR_PROJ_DIR}/zephyr/zephyr-env.sh"
-
-west zephyr-export
-
-west build -p auto -b "$board"
-
-if [[ "${version}null" != "null" ]]; then
-    west sign \
-      -t imgtool -- \
-      --key "${ZEPHYR_PROJ_DIR}/bootloader/mcuboot/root-rsa-2048.pem" \
-      --version "$version"
-else
-    west sign \
-      -t imgtool -- \
-      --key "${ZEPHYR_PROJ_DIR}/bootloader/mcuboot/root-rsa-2048.pem"
-fi
-
-if [[ "$upload" == "1" ]]; then
-    west flash \
-      -r jlink \
-      --hex-file ./build/zephyr/zephyr.signed.hex
-fi
+build_app "$board" "$version" "$upload"

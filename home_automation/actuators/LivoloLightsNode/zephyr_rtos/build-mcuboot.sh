@@ -2,15 +2,12 @@
 
 set -eu
 
-source common.sh
-
-ZEPHYR_PROJ_DIR="zephyrproject-v${ZEPHYR_VERSION}"
-ZEPHYR_SDK_DIR="${HOME}/.local/$ZEPHYR_SDK_RELEASE"
+source util.sh
 
 
 function usage() {
     echo "Usage: build-app.sh [--help|-h] [--board <board_name>] [--upload]."
-    echo "Example: build-app.sh --board tt_nrf52 --upload"
+    echo "Example: build-mcuboot.sh --board tt_nrf52 --upload"
     exit 1
 }
 
@@ -33,31 +30,13 @@ if [[ ${board}null == "null" ]]; then
     usage
 fi
 
-# Check Zephyr RTOS prerequisites
-check_zephyr_prerequisites
+# Check OS prerequisites for Zephyr RTOS
+check_os_prerequisites
 
-# Check Zephyr SDK availability
-if [[ ! -d "$ZEPHYR_SDK_DIR" ]]; then
-  fetch_zephyr_sdk "$ZEPHYR_SDK_DIR"
-fi
+# Download and set up Zephyr SDK
+prepare_zephyr_sdk
 
-# Check Zephyr RTOS source tree availability
-if [[ ! -d "$ZEPHYR_PROJ_DIR" ]]; then
-  fetch_zephyr_rtos "$ZEPHYR_PROJ_DIR"
-fi
+# Download and set up Zephyr RTOS
+prepare_zephyr_rtos
 
-source "${ZEPHYR_PROJ_DIR}/zephyr/zephyr-env.sh"
-
-west zephyr-export
-
-west build \
-  -p auto \
-  -b "$board" \
-  "${ZEPHYR_PROJ_DIR}/bootloader/mcuboot/boot/zephyr" \
-  -d build-mcuboot -- -DBOARD_ROOT="$(pwd)"
-
-if [[ "$upload" == "1" ]]; then
-  west flash \
-    -r jlink \
-    -d build-mcuboot
-fi
+build_mcuboot "$board" "$(pwd)"
