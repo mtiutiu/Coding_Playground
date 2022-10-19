@@ -1,11 +1,13 @@
-#include <kernel.h>
 #include <stdint.h>
-#include <device.h>
-#include <drivers/gpio.h>
-#include <bluetooth/mesh.h>
-#include "ts_buttons_logic.h"
-#include "relays_logic.h"
+#include <zephyr/bluetooth/mesh.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/kernel.h>
+
 #include "node_conf.h"
+#include "relays_logic.h"
+#include "ts_buttons_logic.h"
+
 
 #define LOW  0
 #define HIGH 1
@@ -17,6 +19,7 @@
 static struct k_work_delayable mr_work;
 static const struct device *gpio_dev_port;
 static struct gpio_callback ts_cb;
+
 
 static void mesh_reset_handler(struct k_work *item) {
   bt_mesh_reset();

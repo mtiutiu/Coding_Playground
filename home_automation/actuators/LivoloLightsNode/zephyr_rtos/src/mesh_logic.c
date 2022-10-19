@@ -1,6 +1,7 @@
 #include <stdint.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/mesh.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/mesh.h>
+
 #include "mesh_logic.h"
 #include "relays_logic.h"
 #include "node_conf.h"

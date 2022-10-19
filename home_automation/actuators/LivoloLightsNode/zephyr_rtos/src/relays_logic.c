@@ -1,6 +1,7 @@
 #include <stdint.h>
-#include <device.h>
-#include <drivers/gpio.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+
 #include "relays_logic.h"
 #include "leds_logic.h"
 #include "mesh_logic.h"
@@ -29,6 +30,7 @@ static uint8_t RELAY_COIL[][2] = {
   { RELAY2_RESET_PIN, RELAY2_SET_PIN }
 #endif
 };
+
 
 static void relay_pulse_timeout(struct k_timer *tim);
 K_TIMER_DEFINE(relay_pulse_timer, relay_pulse_timeout, NULL);
